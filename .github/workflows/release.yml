@@ -11,6 +11,10 @@ on:
         required: true
         default: 'v1.1.0'
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -37,19 +41,19 @@ jobs:
       
     - name: Build Electron app (Windows)
       if: matrix.os == 'windows-latest'
-      run: npm run electron:dist -- --publish=never
+      run: npm run electron:pack
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build Electron app (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: npm run electron:dist -- --publish=never
+      run: npm run electron:pack
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build Electron app (macOS)
       if: matrix.os == 'macos-latest'
-      run: npm run electron:dist -- --publish=never
+      run: npm run electron:pack
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -136,15 +140,10 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
 
-    - name: Publish to GitHub Releases for auto-updater
+    - name: Build and publish updates
       run: |
-        # Copy artifacts to dist-electron for publishing
-        mkdir -p dist-electron
-        cp -r windows-build/* dist-electron/ 2>/dev/null || true
-        cp -r linux-build/* dist-electron/ 2>/dev/null || true
-        cp -r macos-build/* dist-electron/ 2>/dev/null || true
-
-        # Publish updates
-        npx electron-builder --publish=always
+        # Build with publish enabled
+        npm run build
+        npx electron-builder --publish=always --config.publish.provider=github --config.publish.owner=shipdocs --config.publish.repo=tank-monitoring-system
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

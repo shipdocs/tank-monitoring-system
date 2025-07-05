@@ -82,11 +82,7 @@
     "directories": {
       "output": "dist-electron"
     },
-    "publish": {
-      "provider": "github",
-      "owner": "shipdocs",
-      "repo": "tank-monitoring-system"
-    },
+
     "files": [
       "dist/**/*",
       "electron/**/*",

@@ -53,10 +53,10 @@ function updateElectronBuilderVersion(newVersion) {
     `Version ${newVersion} - Latest Release`
   );
 
-  // 2. Version X.X.X - Initial Release
+  // 2. Version X.X.X - Initial Release (keep as 1.0.0)
   mainJs = mainJs.replace(
     /Version \d+\.\d+\.\d+ - Initial Release/g,
-    `Version ${newVersion} - Initial Release`
+    `Version 1.0.0 - Initial Release`
   );
 
   // 3. Version X.X.X (standalone)

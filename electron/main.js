@@ -952,7 +952,7 @@ function getHelpContent(type) {
 
             <h2>📋 Previous Versions</h2>
 
-            <h3>Version 2.0.0 - Initial Release</h3>
+            <h3>Version 1.0.0 - Initial Release</h3>
             <ul>
               <li>Real-time tank monitoring dashboard</li>
               <li>Serial port communication support</li>

@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Monitor - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-connected { background-color: #10b981; }
+        .status-disconnected { background-color: #6b7280; }
+        .status-error { background-color: #ef4444; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Password Protection Modal -->
+    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">🔒 Settings Access</h2>
+            <p class="text-gray-600 mb-4">This settings page is password protected. Please enter the password to continue.</p>
+            <input type="password" id="passwordInput" placeholder="Enter password"
+                   class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4">
+            <div class="flex space-x-3">
+                <button id="passwordSubmit" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                    Access Settings
+                </button>
+                <button id="passwordCancel" class="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
+                    Cancel
+                </button>
+            </div>
+            <div id="passwordError" class="text-red-600 text-sm mt-2" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div id="mainContent" class="container mx-auto px-4 py-8 max-w-4xl">
+        <div class="bg-white rounded-lg shadow-lg">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-2xl font-bold text-gray-900">Tank Monitor Settings</h1>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center">
+                            <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+                            <span class="text-sm text-gray-600" id="statusText">Disconnected</span>
+                        </div>
+                        <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            View Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-6">
+                <!-- COM Port Selection -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">COM Port Configuration</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Available Ports</label>
+                            <select id="portSelect" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select a port...</option>
+                            </select>
+                            <button id="refreshPorts" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
+                                🔄 Refresh Ports
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Baud Rate</label>
+                            <select id="baudRate" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="9600">9600</option>
+                                <option value="19200">19200</option>
+                                <option value="38400">38400</option>
+                                <option value="57600">57600</option>
+                                <option value="115200">115200</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Data Bits</label>
+                            <select id="dataBits" class="w-full p-2 border border-gray-300 rounded-md">
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Stop Bits</label>
+                            <select id="stopBits" class="w-full p-2 border border-gray-300 rounded-md">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Parity</label>
+                            <select id="parity" class="w-full p-2 border border-gray-300 rounded-md">
+                                <option value="none">None</option>
+                                <option value="even">Even</option>
+                                <option value="odd">Odd</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Format -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Data Format</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Format Type</label>
+                            <select id="dataFormat" class="w-full p-2 border border-gray-300 rounded-md">
+                                <option value="csv">CSV (Serial Port)</option>
+                                <option value="json">JSON (Serial Port)</option>
+                                <option value="csvfile">CSV File Import (Legacy)</option>
+                                <option value="flexible">🚀 Flexible File Import (NEW)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tank Count</label>
+                            <input type="number" id="tankCount" min="1" max="24" class="w-full p-2 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Expected Data Format Examples:</h3>
+                        <div class="bg-white p-3 rounded border text-sm font-mono">
+                            <div class="mb-2">
+                                <strong>CSV:</strong> <code>123.4,234.5,345.6,456.7,567.8,678.9,789.0,890.1,901.2,012.3,123.4,234.5</code>
+                            </div>
+                            <div>
+                                <strong>JSON:</strong> <code>{"tanks":[{"id":1,"level":123.4},{"id":2,"level":234.5}...]}</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CSV File Import Configuration -->
+                <div id="csvFileConfig" class="bg-blue-50 p-4 rounded-lg" style="display: none;">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">CSV File Import Configuration</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Data File Path</label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="csvFilePath" placeholder="No file selected - use wizard to configure"
+                                       class="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <button id="browseFile" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                                    Browse
+                                </button>
+                                <button id="validateFile" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                                    Validate
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">File selected in wizard or browse to change data source</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Import Interval (seconds)</label>
+                            <input type="number" id="importInterval" min="3" max="3600" value="30"
+                                   class="w-full p-2 border border-gray-300 rounded-md">
+                            <p class="text-xs text-gray-500 mt-1">How often to check for file updates (minimum 3 seconds)</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">CSV Delimiter</label>
+                            <select id="csvDelimiter" class="w-full p-2 border border-gray-300 rounded-md">
+                                <option value=",">Comma (,)</option>
+                                <option value=";">Semicolon (;)</option>
+                                <option value="\t">Tab</option>
+                                <option value=" ">Space</option>
+                                <option value="  ">Double Space</option>
+                                <option value="|">Pipe (|)</option>
+                                <option value=":">Colon (:)</option>
+                                <option value="~">Tilde (~)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="csvHasHeaders" checked class="mr-2">
+                                <span class="text-sm text-gray-700">CSV file has headers</span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="autoDiscoverColumns" checked class="mr-2">
+                                <span class="text-sm text-gray-700">Auto-discover column mapping</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Vertical Format Configuration -->
+                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 class="text-md font-semibold text-blue-900 mb-3">Vertical Format Options</h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="isVerticalFormat" class="mr-2">
+                                    <span class="text-sm text-gray-700">Vertical format (multiple lines per record)</span>
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1">Enable for files where each tank uses multiple lines</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Lines per record</label>
+                                <input type="number" id="linesPerRecord" min="2" max="20" value="4"
+                                       class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                <p class="text-xs text-gray-500 mt-1">How many lines represent one tank record</p>
+                            </div>
+                        </div>
+
+                        <!-- Line Mapping for Vertical Format -->
+                        <div id="lineMappingSection" class="mt-4" style="display: none;">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">Line Mapping</h4>
+                            <div id="lineMappingContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <!-- Dynamic line mapping inputs will be added here -->
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">Map each line position to a tank field. Use "Ignore" for unused lines.</p>
+                        </div>
+
+                        <!-- Data Quality & Limits -->
+                        <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <h4 class="text-sm font-medium text-green-900 mb-3">Data Quality & Limits</h4>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="autoDetectDataEnd" checked class="mr-2 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                    <label for="autoDetectDataEnd" class="text-sm text-gray-700">Auto-detect data end</label>
+                                </div>
+
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="skipOutliers" checked class="mr-2 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                    <label for="skipOutliers" class="text-sm text-gray-700">Skip outlier records</label>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Max records (0 = unlimited)</label>
+                                    <input type="number" id="maxRecords" min="0" max="1000" value="0"
+                                           class="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Temperature range (°C)</label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="number" id="tempRangeMin" min="-50" max="100" value="0"
+                                               class="w-20 p-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500">
+                                        <span class="text-sm text-gray-500">to</span>
+                                        <input type="number" id="tempRangeMax" min="-50" max="100" value="50"
+                                               class="w-20 p-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tank Configuration -->
+                    <div class="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <h4 class="text-sm font-medium text-purple-900 mb-3">Tank Configuration</h4>
+
+                        <!-- Global Alarm Settings -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 bg-white rounded border">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Pre-alarm (%)</label>
+                                <input type="number" id="preAlarmPercentage" min="0" max="100" value="86" step="0.1"
+                                       class="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-purple-500 focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Overfill alarm (%)</label>
+                                <input type="number" id="overfillPercentage" min="0" max="100" value="97.5" step="0.1"
+                                       class="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-purple-500 focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Low level (%)</label>
+                                <input type="number" id="lowLevelPercentage" min="0" max="100" value="10" step="0.1"
+                                       class="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-purple-500 focus:border-purple-500">
+                            </div>
+                        </div>
+
+                        <!-- Tank Configuration Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse border border-gray-300 text-sm">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-300 px-3 py-2 text-left">Tank Name</th>
+                                        <th class="border border-gray-300 px-3 py-2 text-left">Max Height (mm)</th>
+                                        <th class="border border-gray-300 px-3 py-2 text-left">Allowed Height (mm)</th>
+                                        <th class="border border-gray-300 px-3 py-2 text-left">Current (mm)</th>
+                                        <th class="border border-gray-300 px-3 py-2 text-left">%</th>
+                                        <th class="border border-gray-300 px-3 py-2 text-left">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tankConfigTable">
+                                    <!-- Tank rows will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3 flex space-x-2">
+                            <button id="saveTankConfig" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors">
+                                Save Tank Configuration
+                            </button>
+                            <button id="resetTankConfig" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">
+                                Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Column Mapping -->
+                    <div id="columnMappingSection" class="mt-6">
+                        <h3 class="text-md font-semibold text-gray-800 mb-3">Column Mapping</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tank ID</label>
+                                <select id="mapTankId" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tank Name</label>
+                                <select id="mapTankName" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                                <select id="mapLevel" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Capacity</label>
+                                <select id="mapMaxCapacity" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Min Level</label>
+                                <select id="mapMinLevel" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Level</label>
+                                <select id="mapMaxLevel" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                                <select id="mapUnit" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <select id="mapLocation" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CSV Preview -->
+                    <div class="mt-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-md font-semibold text-gray-800">CSV Preview</h3>
+                            <button id="testImport" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-sm">
+                                Test Import
+                            </button>
+                        </div>
+                        <div id="csvPreview" class="bg-white border rounded-md p-3 max-h-64 overflow-auto">
+                            <p class="text-gray-500 text-sm">Click "Test Import" to preview CSV data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flexible File Import Configuration -->
+                <div id="flexibleFileConfig" class="bg-green-50 p-4 rounded-lg" style="display: none;">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">🚀 Flexible File Import Configuration</h2>
+
+                    <div class="bg-white p-4 rounded-lg border border-green-200 mb-4">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="bg-green-500 text-white p-2 rounded-full">
+                                <span class="text-sm font-bold">NEW</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Advanced Multi-Format Support</h3>
+                                <p class="text-sm text-gray-600">Supports CSV, JSON, XML, TXT with temperature, pressure, and custom fields</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <a href="/flexible-settings" target="_blank"
+                               class="bg-green-600 text-white px-4 py-2 rounded-lg text-center hover:bg-green-700 transition-colors">
+                                🔧 Configure Data Sources
+                            </a>
+                            <a href="/flexible-settings#validator" target="_blank"
+                               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-center hover:bg-blue-700 transition-colors">
+                                🔍 Validate Files
+                            </a>
+                            <a href="/flexible-settings#monitor" target="_blank"
+                               class="bg-purple-600 text-white px-4 py-2 rounded-lg text-center hover:bg-purple-700 transition-colors">
+                                📊 Live Monitor
+                            </a>
+                        </div>
+
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">Supported Features:</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+                                <div>✅ Auto-format detection (CSV, JSON, XML, TXT)</div>
+                                <div>✅ Temperature & pressure monitoring</div>
+                                <div>✅ Multiple data sources</div>
+                                <div>✅ Real-time file watching</div>
+                                <div>✅ Smart column mapping</div>
+                                <div>✅ Custom field support</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="flexibleSourceStatus" class="bg-white p-4 rounded-lg border">
+                        <h4 class="font-semibold text-gray-800 mb-3">Active Data Sources</h4>
+                        <div id="flexibleSourcesList">
+                            <p class="text-gray-500">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Options -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Connection Options</h2>
+                    
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="autoConnect" class="mr-2">
+                            <span class="text-sm text-gray-700">Auto-connect on startup</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- App Branding Configuration -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">🎨 App Branding</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">App Name</label>
+                            <input type="text" id="appName" placeholder="Tank Monitoring System"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">App Slogan</label>
+                            <input type="text" id="appSlogan" placeholder="Real-time tank level monitoring dashboard"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Logo Upload</label>
+                            <div class="flex items-center space-x-3">
+                                <div id="logoPreview" class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <span class="text-gray-400 text-xs">No Logo</span>
+                                </div>
+                                <input type="file" id="logoUpload" accept="image/*" class="hidden">
+                                <button onclick="document.getElementById('logoUpload').click()"
+                                        class="bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-lg text-sm transition-colors">
+                                    Choose File
+                                </button>
+                                <button id="removeLogo" class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg text-sm transition-colors" style="display: none;">
+                                    Remove
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Upload an image (PNG, JPG). Square images work best for logos, round images for profile pictures.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="primaryColor" value="#2563eb"
+                                       class="w-12 h-10 rounded-lg border border-gray-300 cursor-pointer">
+                                <div class="grid grid-cols-4 gap-1">
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #2563eb" onclick="setPrimaryColor('#2563eb')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #dc2626" onclick="setPrimaryColor('#dc2626')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #059669" onclick="setPrimaryColor('#059669')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #7c3aed" onclick="setPrimaryColor('#7c3aed')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #ea580c" onclick="setPrimaryColor('#ea580c')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #0891b2" onclick="setPrimaryColor('#0891b2')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #be123c" onclick="setPrimaryColor('#be123c')"></button>
+                                    <button class="w-6 h-6 rounded border-2 border-gray-300" style="background-color: #4338ca" onclick="setPrimaryColor('#4338ca')"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button id="saveBranding" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            Save Branding
+                        </button>
+                        <button id="resetBranding" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors ml-2">
+                            Reset to Defaults
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Security Configuration -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">🔒 Security Settings</h2>
+
+                    <div class="flex items-center mb-4">
+                        <input type="checkbox" id="enablePassword" class="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="enablePassword" class="text-sm font-medium text-gray-700">Enable password protection for settings</label>
+                    </div>
+
+                    <div id="passwordSettings" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display: none;">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                            <input type="password" id="newPassword" placeholder="Enter password"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                            <input type="password" id="confirmPassword" placeholder="Confirm password"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button id="savePassword" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                            Save Security Settings
+                        </button>
+                        <button id="removePassword" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors ml-2" style="display: none;">
+                            Remove Password
+                        </button>
+                    </div>
+
+                    <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-sm text-yellow-800">
+                            <strong>Note:</strong> This is basic password protection for local access.
+                            Password is stored locally and provides simple access control.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="flex space-x-4 pt-4 border-t border-gray-200">
+                    <button id="saveConfig" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors">
+                        Save Configuration
+                    </button>
+                    <button id="connectBtn" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                        Connect
+                    </button>
+                    <button id="disconnectBtn" class="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-colors">
+                        Disconnect
+                    </button>
+                    <button id="testConnection" class="bg-yellow-600 text-white px-6 py-2 rounded-md hover:bg-yellow-700 transition-colors">
+                        Test Connection
+                    </button>
+                </div>
+
+                <!-- Status Log -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Connection Log</h2>
+                    <div id="logContainer" class="bg-white p-3 rounded border h-32 overflow-y-auto text-sm font-mono">
+                        <div class="text-gray-500">Ready to connect...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password protection check
+        function checkPasswordProtection() {
+            const savedPassword = localStorage.getItem('tankmon_settings_password');
+            if (savedPassword) {
+                document.getElementById('passwordModal').style.display = 'flex';
+                document.getElementById('mainContent').style.display = 'none';
+
+                const passwordInput = document.getElementById('passwordInput');
+                const passwordSubmit = document.getElementById('passwordSubmit');
+                const passwordCancel = document.getElementById('passwordCancel');
+                const passwordError = document.getElementById('passwordError');
+
+                function submitPassword() {
+                    const enteredPassword = passwordInput.value;
+                    const hashedEntered = btoa(enteredPassword);
+
+                    if (hashedEntered === savedPassword) {
+                        document.getElementById('passwordModal').style.display = 'none';
+                        document.getElementById('mainContent').style.display = 'block';
+                        passwordError.style.display = 'none';
+                    } else {
+                        passwordError.textContent = 'Incorrect password. Please try again.';
+                        passwordError.style.display = 'block';
+                        passwordInput.value = '';
+                        passwordInput.focus();
+                    }
+                }
+
+                passwordSubmit.addEventListener('click', submitPassword);
+                passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        submitPassword();
+                    }
+                });
+
+                passwordCancel.addEventListener('click', function() {
+                    window.location.href = '/';
+                });
+
+                // Focus password input
+                setTimeout(() => passwordInput.focus(), 100);
+            } else {
+                document.getElementById('mainContent').style.display = 'block';
+            }
+        }
+
+        // Check password protection on page load
+        checkPasswordProtection();
+
+        let currentConfig = {};
+        
+        // DOM elements
+        const elements = {
+            portSelect: document.getElementById('portSelect'),
+            baudRate: document.getElementById('baudRate'),
+            dataBits: document.getElementById('dataBits'),
+            stopBits: document.getElementById('stopBits'),
+            parity: document.getElementById('parity'),
+            dataFormat: document.getElementById('dataFormat'),
+            tankCount: document.getElementById('tankCount'),
+            autoConnect: document.getElementById('autoConnect'),
+            statusIndicator: document.getElementById('statusIndicator'),
+            statusText: document.getElementById('statusText'),
+            logContainer: document.getElementById('logContainer'),
+            refreshPorts: document.getElementById('refreshPorts'),
+            saveConfig: document.getElementById('saveConfig'),
+            connectBtn: document.getElementById('connectBtn'),
+            disconnectBtn: document.getElementById('disconnectBtn'),
+            testConnection: document.getElementById('testConnection'),
+            // CSV File elements
+            csvFileConfig: document.getElementById('csvFileConfig'),
+            csvFilePath: document.getElementById('csvFilePath'),
+            importInterval: document.getElementById('importInterval'),
+            csvDelimiter: document.getElementById('csvDelimiter'),
+            csvHasHeaders: document.getElementById('csvHasHeaders'),
+            autoDiscoverColumns: document.getElementById('autoDiscoverColumns'),
+            validateFile: document.getElementById('validateFile'),
+            browseFile: document.getElementById('browseFile'),
+            // Branding elements
+            appName: document.getElementById('appName'),
+            appSlogan: document.getElementById('appSlogan'),
+            logoUpload: document.getElementById('logoUpload'),
+            logoPreview: document.getElementById('logoPreview'),
+            removeLogo: document.getElementById('removeLogo'),
+            primaryColor: document.getElementById('primaryColor'),
+            saveBranding: document.getElementById('saveBranding'),
+            resetBranding: document.getElementById('resetBranding'),
+            // Security elements
+            enablePassword: document.getElementById('enablePassword'),
+            passwordSettings: document.getElementById('passwordSettings'),
+            newPassword: document.getElementById('newPassword'),
+            confirmPassword: document.getElementById('confirmPassword'),
+            savePassword: document.getElementById('savePassword'),
+            removePassword: document.getElementById('removePassword'),
+            testImport: document.getElementById('testImport'),
+            csvPreview: document.getElementById('csvPreview'),
+            // Vertical format elements
+            isVerticalFormat: document.getElementById('isVerticalFormat'),
+            linesPerRecord: document.getElementById('linesPerRecord'),
+            lineMappingSection: document.getElementById('lineMappingSection'),
+            lineMappingContainer: document.getElementById('lineMappingContainer'),
+            // Data quality elements
+            autoDetectDataEnd: document.getElementById('autoDetectDataEnd'),
+            skipOutliers: document.getElementById('skipOutliers'),
+            maxRecords: document.getElementById('maxRecords'),
+            tempRangeMin: document.getElementById('tempRangeMin'),
+            tempRangeMax: document.getElementById('tempRangeMax'),
+            // Flexible File elements
+            flexibleFileConfig: document.getElementById('flexibleFileConfig'),
+            flexibleSourcesList: document.getElementById('flexibleSourcesList'),
+            // Column mapping elements
+            mapTankId: document.getElementById('mapTankId'),
+            mapTankName: document.getElementById('mapTankName'),
+            mapLevel: document.getElementById('mapLevel'),
+            mapMaxCapacity: document.getElementById('mapMaxCapacity'),
+            mapMinLevel: document.getElementById('mapMinLevel'),
+            mapMaxLevel: document.getElementById('mapMaxLevel'),
+            mapUnit: document.getElementById('mapUnit'),
+            mapLocation: document.getElementById('mapLocation')
+        };
+
+        // Logging function
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+
+            // Enhanced styling based on type
+            let className = 'p-2 rounded-md mb-1 text-sm border-l-4 ';
+            switch(type) {
+                case 'error':
+                    className += 'bg-red-50 border-red-400 text-red-700';
+                    break;
+                case 'success':
+                    className += 'bg-green-50 border-green-400 text-green-700';
+                    break;
+                case 'warning':
+                    className += 'bg-yellow-50 border-yellow-400 text-yellow-700';
+                    break;
+                default:
+                    className += 'bg-blue-50 border-blue-400 text-blue-700';
+            }
+
+            logEntry.className = className;
+            logEntry.innerHTML = `<span class="font-mono text-xs text-gray-500">[${timestamp}]</span> ${message}`;
+            elements.logContainer.appendChild(logEntry);
+            elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
+
+            // Auto-remove old logs (keep last 50)
+            while (elements.logContainer.children.length > 50) {
+                elements.logContainer.removeChild(elements.logContainer.firstChild);
+            }
+        }
+
+        // Update status indicator
+        function updateStatus(status) {
+            elements.statusIndicator.className = `status-indicator status-${status}`;
+            elements.statusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        // Tank Configuration Functions
+        let currentTanks = [];
+        let tankConfig = {
+            preAlarmPercentage: 86,
+            overfillPercentage: 97.5,
+            lowLevelPercentage: 10,
+            tanks: {}
+        };
+
+        function loadTankConfiguration() {
+            // Load tank config from server
+            fetch('/api/tank-config')
+                .then(response => response.json())
+                .then(config => {
+                    tankConfig = { ...tankConfig, ...config };
+                    document.getElementById('preAlarmPercentage').value = tankConfig.preAlarmPercentage;
+                    document.getElementById('overfillPercentage').value = tankConfig.overfillPercentage;
+                    document.getElementById('lowLevelPercentage').value = tankConfig.lowLevelPercentage;
+                    updateTankConfigTable();
+                })
+                .catch(error => {
+                    console.log('No existing tank config found, using defaults');
+                    updateTankConfigTable();
+                });
+        }
+
+        function loadCurrentTanks() {
+            // Load current tank data
+            fetch('/api/tanks')
+                .then(response => response.json())
+                .then(tanks => {
+                    currentTanks = tanks;
+                    updateTankConfigTable();
+                })
+                .catch(error => {
+                    console.error('Failed to load tank data:', error);
+                });
+        }
+
+        function updateTankConfigTable() {
+            const tbody = document.getElementById('tankConfigTable');
+            if (!tbody || !currentTanks.length) return;
+
+            // Store currently focused element to restore focus after update
+            const activeElement = document.activeElement;
+            const activeId = activeElement ? activeElement.id : null;
+
+            tbody.innerHTML = '';
+
+            currentTanks.forEach(tank => {
+                const config = tankConfig.tanks[tank.id] || {
+                    maxHeight: 1500,
+                    allowedHeight: 1400
+                };
+
+                const percentage = config.allowedHeight > 0 ? (tank.currentLevel / config.allowedHeight * 100) : 0;
+                const status = getStatusFromPercentage(percentage);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="border border-gray-300 px-3 py-2">
+                        <input type="text"
+                               id="tankName_${tank.id}"
+                               value="${tank.name}"
+                               onchange="updateTankName(${tank.id}, this.value)"
+                               oninput="handleTankNameInput(${tank.id}, this.value)"
+                               class="w-full p-1 border border-gray-300 rounded text-sm">
+                    </td>
+                    <td class="border border-gray-300 px-3 py-2">
+                        <input type="number"
+                               id="maxHeight_${tank.id}"
+                               value="${config.maxHeight}"
+                               min="0"
+                               step="1"
+                               onchange="updateTankConfig(${tank.id}, 'maxHeight', this.value)"
+                               oninput="handleTankConfigInput(${tank.id}, 'maxHeight', this.value)"
+                               class="w-full p-1 border border-gray-300 rounded text-sm">
+                    </td>
+                    <td class="border border-gray-300 px-3 py-2">
+                        <input type="number"
+                               id="allowedHeight_${tank.id}"
+                               value="${config.allowedHeight}"
+                               min="0"
+                               step="1"
+                               onchange="updateTankConfig(${tank.id}, 'allowedHeight', this.value)"
+                               oninput="handleTankConfigInput(${tank.id}, 'allowedHeight', this.value)"
+                               class="w-full p-1 border border-gray-300 rounded text-sm">
+                    </td>
+                    <td class="border border-gray-300 px-3 py-2 text-center">
+                        ${tank.currentLevel.toFixed(0)} mm
+                    </td>
+                    <td class="border border-gray-300 px-3 py-2 text-center">
+                        ${percentage.toFixed(1)}%
+                    </td>
+                    <td class="border border-gray-300 px-3 py-2 text-center">
+                        <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}">
+                            ${status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Restore focus if element was focused before update
+            if (activeId) {
+                const elementToFocus = document.getElementById(activeId);
+                if (elementToFocus) {
+                    elementToFocus.focus();
+                }
+            }
+        }
+
+        function getStatusFromPercentage(percentage) {
+            if (percentage < tankConfig.lowLevelPercentage) return 'Low';
+            if (percentage > tankConfig.overfillPercentage) return 'Critical';
+            if (percentage > tankConfig.preAlarmPercentage) return 'High';
+            return 'Normal';
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'Normal': return 'bg-green-100 text-green-800';
+                case 'Low': return 'bg-yellow-100 text-yellow-800';
+                case 'High': return 'bg-orange-100 text-orange-800';
+                case 'Critical': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Input handlers that don't trigger full table refresh
+        function handleTankConfigInput(tankId, field, value) {
+            if (!tankConfig.tanks[tankId]) {
+                tankConfig.tanks[tankId] = {};
+            }
+            tankConfig.tanks[tankId][field] = parseFloat(value) || 0;
+
+            // Update only the percentage and status for this tank without full refresh
+            updateTankRowStatus(tankId);
+        }
+
+        function handleTankNameInput(tankId, name) {
+            // Store the name change locally (could be saved to server later)
+            console.log(`Tank ${tankId} name changed to: ${name}`);
+        }
+
+        // Full update handlers (called on blur/change)
+        function updateTankConfig(tankId, field, value) {
+            if (!tankConfig.tanks[tankId]) {
+                tankConfig.tanks[tankId] = {};
+            }
+            tankConfig.tanks[tankId][field] = parseFloat(value) || 0;
+
+            // Only update the specific row, not the entire table
+            updateTankRowStatus(tankId);
+            addLog(`Tank ${tankId} ${field} updated to ${value}`, 'info');
+        }
+
+        function updateTankName(tankId, name) {
+            // This would need to be implemented on the server side
+            console.log(`Update tank ${tankId} name to: ${name}`);
+            addLog(`Tank ${tankId} name updated to: ${name}`, 'info');
+        }
+
+        // Update only the status and percentage for a specific tank row
+        function updateTankRowStatus(tankId) {
+            const tank = currentTanks.find(t => t.id === tankId);
+            if (!tank) return;
+
+            const config = tankConfig.tanks[tankId] || {
+                maxHeight: 1500,
+                allowedHeight: 1400
+            };
+
+            const percentage = config.allowedHeight > 0 ? (tank.currentLevel / config.allowedHeight * 100) : 0;
+            const status = getStatusFromPercentage(percentage);
+
+            // Find the row and update only the percentage and status cells
+            const rows = document.querySelectorAll('#tankConfigTable tr');
+            rows.forEach(row => {
+                const nameInput = row.querySelector(`input[id="tankName_${tankId}"]`);
+                if (nameInput) {
+                    // This is the correct row, update percentage and status
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 6) {
+                        // Update percentage cell (index 4)
+                        cells[4].textContent = `${percentage.toFixed(1)}%`;
+
+                        // Update status cell (index 5)
+                        cells[5].innerHTML = `
+                            <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}">
+                                ${status}
+                            </span>
+                        `;
+                    }
+                }
+            });
+        }
+
+        function saveTankConfiguration() {
+            const saveButton = document.getElementById('saveTankConfig');
+            const originalText = saveButton.textContent;
+
+            // Show saving state
+            saveButton.textContent = 'Saving...';
+            saveButton.disabled = true;
+            saveButton.style.backgroundColor = '#6b7280';
+
+            // Update global alarm settings
+            tankConfig.preAlarmPercentage = parseFloat(document.getElementById('preAlarmPercentage').value) || 86;
+            tankConfig.overfillPercentage = parseFloat(document.getElementById('overfillPercentage').value) || 97.5;
+            tankConfig.lowLevelPercentage = parseFloat(document.getElementById('lowLevelPercentage').value) || 10;
+
+            // Save to server
+            fetch('/api/tank-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(tankConfig)
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Show success state
+                saveButton.textContent = '✅ Saved!';
+                saveButton.style.backgroundColor = '#10b981';
+                addLog('Tank configuration saved successfully', 'success');
+                updateTankConfigTable();
+
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                    saveButton.style.backgroundColor = '';
+                }, 2000);
+            })
+            .catch(error => {
+                // Show error state
+                saveButton.textContent = '❌ Error';
+                saveButton.style.backgroundColor = '#ef4444';
+                console.error('Failed to save tank configuration:', error);
+                addLog('Failed to save tank configuration', 'error');
+
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                    saveButton.style.backgroundColor = '';
+                }, 3000);
+            });
+        }
+
+        function resetTankConfiguration() {
+            tankConfig = {
+                preAlarmPercentage: 86,
+                overfillPercentage: 97.5,
+                lowLevelPercentage: 10,
+                tanks: {}
+            };
+            document.getElementById('preAlarmPercentage').value = 86;
+            document.getElementById('overfillPercentage').value = 97.5;
+            document.getElementById('lowLevelPercentage').value = 10;
+            updateTankConfigTable();
+            addLog('Tank configuration reset to defaults', 'info');
+        }
+
+        // Load available ports
+        async function loadPorts() {
+            try {
+                const response = await fetch('/api/ports');
+                const ports = await response.json();
+                
+                elements.portSelect.innerHTML = '<option value="">Select a port...</option>';
+                ports.forEach(port => {
+                    const option = document.createElement('option');
+                    option.value = port.path;
+                    option.textContent = `${port.path} - ${port.friendlyName}`;
+                    elements.portSelect.appendChild(option);
+                });
+                
+                addLog(`Found ${ports.length} available ports`);
+            } catch (error) {
+                addLog(`Error loading ports: ${error.message}`, 'error');
+            }
+        }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                currentConfig = await response.json();
+                
+                // Update form fields
+                elements.portSelect.value = currentConfig.selectedPort || '';
+                elements.baudRate.value = currentConfig.baudRate;
+                elements.dataBits.value = currentConfig.dataBits;
+                elements.stopBits.value = currentConfig.stopBits;
+                elements.parity.value = currentConfig.parity;
+                elements.dataFormat.value = currentConfig.dataFormat;
+                elements.tankCount.value = currentConfig.tankCount;
+                elements.autoConnect.checked = currentConfig.autoConnect;
+
+                // Update CSV file fields
+                if (currentConfig.csvFile) {
+                    elements.csvFilePath.value = currentConfig.csvFile.filePath || '';
+                    elements.importInterval.value = (currentConfig.csvFile.importInterval || 30000) / 1000;
+                    elements.csvDelimiter.value = currentConfig.csvFile.delimiter || ',';
+                    elements.csvHasHeaders.checked = currentConfig.csvFile.hasHeaders !== false;
+                    elements.autoDiscoverColumns.checked = currentConfig.csvFile.autoDiscoverColumns !== false;
+
+                    // Update vertical format settings
+                    elements.isVerticalFormat.checked = currentConfig.csvFile.isVerticalFormat || false;
+                    elements.linesPerRecord.value = currentConfig.csvFile.linesPerRecord || 4;
+
+                    // Update data quality settings
+                    elements.autoDetectDataEnd.checked = currentConfig.csvFile.autoDetectDataEnd !== false;
+                    elements.skipOutliers.checked = currentConfig.csvFile.skipOutliers !== false;
+                    elements.maxRecords.value = currentConfig.csvFile.maxRecords || 0;
+
+                    if (currentConfig.csvFile.temperatureRange) {
+                        elements.tempRangeMin.value = currentConfig.csvFile.temperatureRange.min || 0;
+                        elements.tempRangeMax.value = currentConfig.csvFile.temperatureRange.max || 50;
+                    }
+
+                    // Update column mapping
+                    if (currentConfig.csvFile.columnMapping) {
+                        const mapping = currentConfig.csvFile.columnMapping;
+                        elements.mapTankId.value = mapping.id || '';
+                        elements.mapTankName.value = mapping.name || '';
+                        elements.mapLevel.value = mapping.level || '';
+                        elements.mapMaxCapacity.value = mapping.maxCapacity || '';
+                        elements.mapMinLevel.value = mapping.minLevel || '';
+                        elements.mapMaxLevel.value = mapping.maxLevel || '';
+                        elements.mapUnit.value = mapping.unit || '';
+                        elements.mapLocation.value = mapping.location || '';
+                    }
+
+                    // Update line mapping for vertical format
+                    if (currentConfig.csvFile.lineMapping) {
+                        updateLineMappingUI();
+                    }
+                }
+
+                // Show/hide CSV config based on data format
+                toggleCsvConfig();
+                
+                addLog('Configuration loaded');
+            } catch (error) {
+                addLog(`Error loading config: ${error.message}`, 'error');
+            }
+        }
+
+        // Save configuration
+        async function saveConfig() {
+            try {
+                const config = {
+                    selectedPort: elements.portSelect.value,
+                    baudRate: parseInt(elements.baudRate.value),
+                    dataBits: parseInt(elements.dataBits.value),
+                    stopBits: parseInt(elements.stopBits.value),
+                    parity: elements.parity.value,
+                    dataFormat: elements.dataFormat.value,
+                    tankCount: parseInt(elements.tankCount.value),
+                    autoConnect: elements.autoConnect.checked,
+                    csvFile: {
+                        enabled: elements.dataFormat.value === 'csvfile',
+                        filePath: elements.csvFilePath.value,
+                        importInterval: parseInt(elements.importInterval.value) * 1000,
+                        hasHeaders: elements.csvHasHeaders.checked,
+                        delimiter: elements.csvDelimiter.value,
+                        autoDiscoverColumns: elements.autoDiscoverColumns.checked,
+                        isVerticalFormat: elements.isVerticalFormat.checked,
+                        linesPerRecord: parseInt(elements.linesPerRecord.value),
+                        lineMapping: getLineMappingFromUI(),
+                        autoDetectDataEnd: elements.autoDetectDataEnd.checked,
+                        skipOutliers: elements.skipOutliers.checked,
+                        maxRecords: parseInt(elements.maxRecords.value) || 0,
+                        temperatureRange: {
+                            min: parseInt(elements.tempRangeMin.value) || 0,
+                            max: parseInt(elements.tempRangeMax.value) || 50
+                        },
+                        columnMapping: {
+                            id: elements.mapTankId.value,
+                            name: elements.mapTankName.value,
+                            level: elements.mapLevel.value,
+                            maxCapacity: elements.mapMaxCapacity.value,
+                            minLevel: elements.mapMinLevel.value,
+                            maxLevel: elements.mapMaxLevel.value,
+                            unit: elements.mapUnit.value,
+                            location: elements.mapLocation.value
+                        }
+                    }
+                };
+                
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    addLog('Configuration saved successfully', 'success');
+                    currentConfig = config;
+                } else {
+                    addLog('Error saving configuration', 'error');
+                }
+            } catch (error) {
+                addLog(`Error saving config: ${error.message}`, 'error');
+            }
+        }
+
+        // Connect to serial port
+        async function connect() {
+            try {
+                const response = await fetch('/api/connect', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('Connection initiated', 'success');
+                    updateStatus('connected');
+                } else {
+                    addLog('Failed to connect', 'error');
+                }
+            } catch (error) {
+                addLog(`Connection error: ${error.message}`, 'error');
+            }
+        }
+
+        // Disconnect from serial port
+        async function disconnect() {
+            try {
+                const response = await fetch('/api/disconnect', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('Disconnected successfully', 'success');
+                    updateStatus('disconnected');
+                } else {
+                    addLog('Failed to disconnect', 'error');
+                }
+            } catch (error) {
+                addLog(`Disconnect error: ${error.message}`, 'error');
+            }
+        }
+
+        // Check connection status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+
+                updateStatus(status.connected ? 'connected' : 'disconnected');
+            } catch (error) {
+                updateStatus('error');
+            }
+        }
+
+        // Toggle configuration visibility
+        function toggleCsvConfig() {
+            const dataFormat = elements.dataFormat.value;
+            const isCsvFile = dataFormat === 'csvfile';
+            const isFlexible = dataFormat === 'flexible';
+
+            elements.csvFileConfig.style.display = isCsvFile ? 'block' : 'none';
+            elements.flexibleFileConfig.style.display = isFlexible ? 'block' : 'none';
+
+            if (isFlexible) {
+                loadFlexibleSources();
+            }
+        }
+
+        // Validate CSV file
+        async function validateCsvFile() {
+            const filePath = elements.csvFilePath.value.trim();
+            if (!filePath) {
+                addLog('❌ Please enter a file path', 'error');
+                return;
+            }
+
+            // Update button state
+            const validateBtn = elements.validateFile;
+            const originalText = validateBtn.textContent;
+            validateBtn.textContent = 'Validating...';
+            validateBtn.disabled = true;
+            validateBtn.className = validateBtn.className.replace('bg-blue-600 hover:bg-blue-700', 'bg-gray-400');
+
+            addLog(`🔍 Validating file: ${filePath}`, 'info');
+
+            try {
+                // For vertical format files, use a simpler validation approach
+                if (elements.isVerticalFormat.checked) {
+                    addLog(`📁 Validating vertical format file...`, 'info');
+
+                    // Try to read the file using current server config
+                    const response = await fetch('/api/connect', { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.success && result.connected) {
+                        addLog(`✅ File path is accessible by server`, 'success');
+                        addLog(`📊 Vertical format with ${elements.linesPerRecord.value} lines per record`, 'info');
+
+                        // Show line mapping info
+                        const mapping = getLineMappingFromUI();
+                        const mappedFields = Object.values(mapping).filter(field => field !== 'ignore');
+                        addLog(`📋 Mapped fields: ${mappedFields.join(', ')}`, 'info');
+
+                        // Update button to success state
+                        validateBtn.className = validateBtn.className.replace('bg-gray-400', 'bg-green-600 hover:bg-green-700');
+                        validateBtn.textContent = '✅ Valid';
+
+                        // Reset button after 3 seconds
+                        setTimeout(() => {
+                            validateBtn.className = validateBtn.className.replace('bg-green-600 hover:bg-green-700', 'bg-blue-600 hover:bg-blue-700');
+                            validateBtn.textContent = originalText;
+                            validateBtn.disabled = false;
+                        }, 3000);
+
+                        return; // Skip the flexible API for vertical format
+                    } else {
+                        throw new Error('Server cannot access the file path');
+                    }
+                }
+
+                // For horizontal format files, use flexible validation
+                const extension = filePath.toLowerCase().split('.').pop();
+                let format = 'txt'; // default
+                if (extension === 'csv') format = 'csv';
+                else if (extension === 'json') format = 'json';
+                else if (extension === 'xml') format = 'xml';
+                else if (extension === 'txt') format = 'txt';
+
+                addLog(`📁 Detected format: ${format.toUpperCase()}`, 'info');
+
+                // Use the flexible validation endpoint
+                const response = await fetch(`/api/flexible/validate?path=${encodeURIComponent(filePath)}&format=${format}`);
+                const result = await response.json();
+
+                // Only process result if we got one (not for vertical format early return)
+                if (result) {
+                    if (result.success) {
+                        addLog(`✅ File validated successfully!`, 'success');
+                        addLog(`📊 Found ${result.data.length} records with ${result.columns.length} columns`, 'success');
+                        addLog(`📋 Columns: ${result.columns.join(', ')}`, 'info');
+
+                        // Update column options for mapping
+                        updateColumnOptions(result.columns);
+                    } else {
+                        addLog(`❌ File validation failed: ${result.error}`, 'error');
+                        throw new Error(result.error);
+                    }
+                }
+
+                // Update button to success state
+                validateBtn.className = validateBtn.className.replace('bg-gray-400', 'bg-green-600 hover:bg-green-700');
+                validateBtn.textContent = '✅ Valid';
+
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    validateBtn.className = validateBtn.className.replace('bg-green-600 hover:bg-green-700', 'bg-blue-600 hover:bg-blue-700');
+                    validateBtn.textContent = originalText;
+                }, 3000);
+            } catch (error) {
+                addLog(`❌ Validation error: ${error.message}`, 'error');
+
+                // Update button to error state
+                validateBtn.className = validateBtn.className.replace('bg-gray-400', 'bg-red-600 hover:bg-red-700');
+                validateBtn.textContent = '❌ Error';
+
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    validateBtn.className = validateBtn.className.replace('bg-red-600 hover:bg-red-700', 'bg-blue-600 hover:bg-blue-700');
+                    validateBtn.textContent = originalText;
+                }, 3000);
+            } finally {
+                // Re-enable button
+                validateBtn.disabled = false;
+            }
+        }
+
+        // Update column mapping options
+        function updateColumnOptions(columns) {
+            const selects = [
+                elements.mapTankId, elements.mapTankName, elements.mapLevel,
+                elements.mapMaxCapacity, elements.mapMinLevel, elements.mapMaxLevel,
+                elements.mapUnit, elements.mapLocation
+            ];
+
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select column...</option>';
+
+                columns.forEach(column => {
+                    const option = document.createElement('option');
+                    option.value = column;
+                    option.textContent = column;
+                    if (column === currentValue) option.selected = true;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        // Test CSV import
+        async function testCsvImport() {
+            const filePath = elements.csvFilePath.value.trim();
+            if (!filePath) {
+                addLog('❌ Please enter a file path first', 'error');
+                return;
+            }
+
+            // Update button state
+            const testBtn = elements.testImport;
+            const originalText = testBtn.textContent;
+            testBtn.textContent = 'Testing...';
+            testBtn.disabled = true;
+            testBtn.className = testBtn.className.replace('bg-green-600 hover:bg-green-700', 'bg-gray-400');
+
+            addLog(`🧪 Testing import from: ${filePath}`, 'info');
+
+            try {
+                // For vertical format, use the current server configuration
+                if (elements.isVerticalFormat.checked) {
+                    addLog(`📁 Testing vertical format import...`, 'info');
+
+                    // Save current config first
+                    await saveConfig();
+
+                    // Connect to trigger data import
+                    const connectResponse = await fetch('/api/connect', { method: 'POST' });
+                    const connectResult = await connectResponse.json();
+
+                    if (connectResult.success) {
+                        addLog(`✅ Connected to data source`, 'success');
+                        addLog(`⏳ Waiting for data processing...`, 'info');
+
+                        // Wait longer and retry multiple times
+                        let tanks = null;
+                        let attempts = 0;
+                        const maxAttempts = 10;
+
+                        while (attempts < maxAttempts && (!tanks || tanks.length === 0)) {
+                            attempts++;
+                            addLog(`🔄 Attempt ${attempts}/${maxAttempts} - Checking for data...`, 'info');
+
+                            // Wait between attempts
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+
+                            try {
+                                const tanksResponse = await fetch('/api/tanks');
+
+                                if (tanksResponse.ok) {
+                                    const result = await tanksResponse.json();
+                                    if (Array.isArray(result) && result.length > 0) {
+                                        tanks = result;
+                                        break;
+                                    }
+                                } else if (tanksResponse.status === 503) {
+                                    // Service unavailable - data not ready yet
+                                    addLog(`⏳ Data not ready yet, retrying...`, 'info');
+                                } else {
+                                    const errorResult = await tanksResponse.json();
+                                    addLog(`⚠️ API error: ${errorResult.message}`, 'warning');
+                                }
+                            } catch (fetchError) {
+                                addLog(`⚠️ Fetch error: ${fetchError.message}`, 'warning');
+                            }
+                        }
+
+                        if (tanks && tanks.length > 0) {
+                            addLog(`✅ Import test successful!`, 'success');
+                            addLog(`📊 Imported ${tanks.length} tanks`, 'success');
+                            displayCsvPreview(tanks.slice(0, 5)); // Show first 5 tanks
+
+                            // Update button to success state
+                            testBtn.className = testBtn.className.replace('bg-gray-400', 'bg-green-600 hover:bg-green-700');
+                            testBtn.textContent = '✅ Success';
+                        } else {
+                            throw new Error(`No tank data received after ${maxAttempts} attempts. Check if file exists and has valid data.`);
+                        }
+                    } else {
+                        throw new Error(connectResult.message || 'Failed to connect to data source');
+                    }
+
+                    return; // Skip the flexible API for vertical format
+                }
+
+                // For horizontal format files, use flexible API
+                const config = {
+                    filePath: filePath,
+                    delimiter: elements.csvDelimiter.value,
+                    hasHeaders: elements.csvHasHeaders.checked,
+                    isVerticalFormat: false,
+                    columnMapping: {
+                        id: elements.mapTankId.value,
+                        name: elements.mapTankName.value,
+                        level: elements.mapLevel.value,
+                        maxCapacity: elements.mapMaxCapacity.value,
+                        minLevel: elements.mapMinLevel.value,
+                        maxLevel: elements.mapMaxLevel.value,
+                        unit: elements.mapUnit.value,
+                        location: elements.mapLocation.value
+                    }
+                };
+
+                // Detect format based on file extension
+                const extension = filePath.toLowerCase().split('.').pop();
+                let format = 'csv'; // default to csv for horizontal
+                if (extension === 'csv') format = 'csv';
+                else if (extension === 'json') format = 'json';
+                else format = 'csv'; // treat txt as csv for horizontal format
+
+                addLog(`📁 Using format: ${format.toUpperCase()}`, 'info');
+
+                const response = await fetch('/api/flexible/test-mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: filePath, format: format, mapping: config })
+                });
+
+                const result = await response.json();
+
+                // Only process result if we got one (not for vertical format early return)
+                if (result) {
+                    if (result.success && result.tanks) {
+                        addLog(`✅ Import test successful!`, 'success');
+                        addLog(`📊 Imported ${result.tanks.length} tanks`, 'success');
+                        displayCsvPreview(result.tanks.slice(0, 5)); // Show first 5 tanks
+
+                        // Update button to success state
+                        testBtn.className = testBtn.className.replace('bg-gray-400', 'bg-green-600 hover:bg-green-700');
+                        testBtn.textContent = '✅ Success';
+                    } else {
+                        addLog(`❌ Import test failed: ${result.error || 'Unknown error'}`, 'error');
+                        throw new Error(result.error || 'Import test failed');
+                    }
+                }
+            } catch (error) {
+                addLog(`❌ Test import error: ${error.message}`, 'error');
+
+                // Update button to error state
+                testBtn.className = testBtn.className.replace('bg-gray-400', 'bg-red-600 hover:bg-red-700');
+                testBtn.textContent = '❌ Error';
+            } finally {
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    // Reset from any state back to original
+                    testBtn.className = 'bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors';
+                    testBtn.textContent = originalText;
+                    testBtn.disabled = false;
+                }, 3000);
+            }
+        }
+
+        // Display CSV preview
+        function displayCsvPreview(tanks) {
+            if (!tanks || tanks.length === 0) {
+                elements.csvPreview.innerHTML = '<p class="text-gray-500 text-sm">No data to preview</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'w-full text-sm border-collapse';
+
+            // Header
+            const header = table.createTHead();
+            const headerRow = header.insertRow();
+            ['ID', 'Name', 'Level', 'Capacity', 'Unit', 'Status', 'Location'].forEach(text => {
+                const th = document.createElement('th');
+                th.className = 'border border-gray-300 px-2 py-1 bg-gray-100 text-left';
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+
+            // Body
+            const tbody = table.createTBody();
+            tanks.forEach(tank => {
+                const row = tbody.insertRow();
+                [
+                    tank.id, tank.name, `${tank.currentLevel} ${tank.unit}`,
+                    `${tank.maxCapacity} ${tank.unit}`, tank.unit, tank.status, tank.location
+                ].forEach(text => {
+                    const td = row.insertCell();
+                    td.className = 'border border-gray-300 px-2 py-1';
+                    td.textContent = text;
+                });
+            });
+
+            elements.csvPreview.innerHTML = '';
+            elements.csvPreview.appendChild(table);
+        }
+
+        // Load flexible file sources
+        async function loadFlexibleSources() {
+            try {
+                const response = await fetch('/api/flexible/sources');
+                const sources = await response.json();
+
+                if (sources.length === 0) {
+                    elements.flexibleSourcesList.innerHTML = `
+                        <div class="text-center py-4">
+                            <p class="text-gray-500 mb-3">No data sources configured yet</p>
+                            <a href="/flexible-settings" target="_blank"
+                               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                🚀 Configure Your First Data Source
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    elements.flexibleSourcesList.innerHTML = sources.map(source => `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 rounded-full ${source.lastUpdate ? 'bg-green-500' : 'bg-gray-400'}"></div>
+                                <div>
+                                    <div class="font-medium text-gray-800">${source.id}</div>
+                                    <div class="text-sm text-gray-600">${source.path}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-medium text-gray-800">${source.tankCount} tanks</div>
+                                <div class="text-xs text-gray-500">
+                                    ${source.lastUpdate ? new Date(source.lastUpdate).toLocaleTimeString() : 'Not active'}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading flexible sources:', error);
+                elements.flexibleSourcesList.innerHTML = `
+                    <div class="text-center py-4 text-red-600">
+                        <p>Error loading data sources</p>
+                        <p class="text-sm">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // File browser function
+        async function browseForFile() {
+            try {
+                // Create a hidden file input
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.txt,.csv,.json';
+                fileInput.style.display = 'none';
+
+                fileInput.onchange = function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        // For web browsers, we can only get the file name, not full path
+                        // In Electron, this could be enhanced to get full path
+                        elements.csvFilePath.value = file.name;
+                        addLog(`Selected file: ${file.name}`, 'success');
+
+                        // Auto-detect file type and update settings
+                        const extension = file.name.toLowerCase().split('.').pop();
+                        if (extension === 'json') {
+                            elements.dataFormat.value = 'json';
+                        } else {
+                            elements.dataFormat.value = 'csvfile';
+                        }
+
+                        toggleCsvConfig();
+                    }
+                };
+
+                document.body.appendChild(fileInput);
+                fileInput.click();
+                document.body.removeChild(fileInput);
+
+            } catch (error) {
+                addLog(`Error browsing for file: ${error.message}`, 'error');
+            }
+        }
+
+        // File browser function
+        async function browseForFile() {
+            try {
+                // Try Electron file dialog first
+                if (window.tankMonitorAPI?.showOpenDialog) {
+                    const result = await window.tankMonitorAPI.showOpenDialog({
+                        title: 'Select Data File',
+                        filters: [
+                            { name: 'Data Files', extensions: ['txt', 'csv', 'json'] },
+                            { name: 'Text Files', extensions: ['txt'] },
+                            { name: 'CSV Files', extensions: ['csv'] },
+                            { name: 'JSON Files', extensions: ['json'] }
+                        ]
+                    });
+
+                    if (result.success && result.filePath) {
+                        elements.csvFilePath.value = result.filePath;
+                        addLog(`Selected file: ${result.filePath}`, 'success');
+
+                        // Auto-detect file type and update settings
+                        const extension = result.filePath.toLowerCase().split('.').pop();
+                        if (extension === 'json') {
+                            elements.dataFormat.value = 'json';
+                        } else {
+                            elements.dataFormat.value = 'csvfile';
+                        }
+
+                        toggleCsvConfig();
+                        return;
+                    }
+                }
+
+                // Fallback to web file input
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.txt,.csv,.json';
+                fileInput.style.display = 'none';
+
+                fileInput.onchange = function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        // Get full path if available (Electron) or file name as fallback (web)
+                        const fullPath = file.path || file.name;
+                        elements.csvFilePath.value = fullPath;
+                        addLog(`Selected file: ${fullPath}`, 'success');
+
+                        // Auto-detect file type and update settings
+                        const extension = file.name.toLowerCase().split('.').pop();
+                        if (extension === 'json') {
+                            elements.dataFormat.value = 'json';
+                        } else {
+                            elements.dataFormat.value = 'csvfile';
+                        }
+
+                        toggleCsvConfig();
+                    }
+                };
+
+                document.body.appendChild(fileInput);
+                fileInput.click();
+                document.body.removeChild(fileInput);
+
+            } catch (error) {
+                addLog(`Error browsing for file: ${error.message}`, 'error');
+            }
+        }
+
+        // Vertical format helper functions
+        function updateLineMappingUI() {
+            const container = elements.lineMappingContainer;
+            const linesPerRecord = parseInt(elements.linesPerRecord.value) || 4;
+
+            // Clear existing inputs
+            container.innerHTML = '';
+
+            // Create line mapping inputs
+            for (let i = 0; i < linesPerRecord; i++) {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2';
+
+                div.innerHTML = `
+                    <span class="text-sm text-gray-600 w-16">Line ${i + 1}:</span>
+                    <select class="line-mapping-select flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md" data-line="${i}">
+                        <option value="">-- Select field --</option>
+                        <option value="id">Tank ID</option>
+                        <option value="name">Tank Name</option>
+                        <option value="level">Current Level</option>
+                        <option value="maxCapacity">Max Capacity</option>
+                        <option value="minLevel">Min Level</option>
+                        <option value="maxLevel">Max Level</option>
+                        <option value="temperature">Temperature</option>
+                        <option value="pressure">Pressure</option>
+                        <option value="status">Status</option>
+                        <option value="unit">Unit</option>
+                        <option value="location">Location</option>
+                        <option value="ignore">Ignore this line</option>
+                    </select>
+                `;
+
+                container.appendChild(div);
+            }
+
+            // Set existing values if available
+            if (currentConfig.csvFile && currentConfig.csvFile.lineMapping) {
+                const lineMapping = currentConfig.csvFile.lineMapping;
+                container.querySelectorAll('.line-mapping-select').forEach(select => {
+                    const lineIndex = select.getAttribute('data-line');
+                    if (lineMapping[lineIndex]) {
+                        select.value = lineMapping[lineIndex];
+                    }
+                });
+            }
+        }
+
+        function getLineMappingFromUI() {
+            const mapping = {};
+            elements.lineMappingContainer.querySelectorAll('.line-mapping-select').forEach(select => {
+                const lineIndex = select.getAttribute('data-line');
+                const value = select.value;
+                if (value && value !== '') {
+                    mapping[lineIndex] = value;
+                }
+            });
+            return mapping;
+        }
+
+        function toggleVerticalFormat() {
+            const isVertical = elements.isVerticalFormat.checked;
+            elements.lineMappingSection.style.display = isVertical ? 'block' : 'none';
+            elements.csvHasHeaders.disabled = isVertical;
+
+            // Hide/show column mapping section
+            const columnMappingSection = document.getElementById('columnMappingSection');
+            if (columnMappingSection) {
+                columnMappingSection.style.display = isVertical ? 'none' : 'block';
+            }
+
+            if (isVertical) {
+                elements.csvHasHeaders.checked = false;
+                updateLineMappingUI();
+            }
+        }
+
+        // Event listeners
+        elements.refreshPorts.addEventListener('click', loadPorts);
+        elements.saveConfig.addEventListener('click', saveConfig);
+        elements.connectBtn.addEventListener('click', connect);
+        elements.disconnectBtn.addEventListener('click', disconnect);
+        elements.testConnection.addEventListener('click', checkStatus);
+
+        // CSV file event listeners
+        elements.dataFormat.addEventListener('change', toggleCsvConfig);
+        elements.validateFile.addEventListener('click', validateCsvFile);
+        elements.browseFile.addEventListener('click', browseForFile);
+        elements.testImport.addEventListener('click', testCsvImport);
+
+        // Vertical format event listeners
+        elements.isVerticalFormat.addEventListener('change', toggleVerticalFormat);
+        elements.linesPerRecord.addEventListener('change', updateLineMappingUI);
+
+        // Branding functions
+        async function loadBranding() {
+            try {
+                const response = await fetch('/api/branding');
+                const branding = response.ok ? await response.json() : {};
+
+                elements.appName.value = branding.appName || 'Tank Monitoring System';
+                elements.appSlogan.value = branding.appSlogan || 'Real-time tank level monitoring dashboard';
+                elements.primaryColor.value = branding.primaryColor || '#2563eb';
+
+                if (branding.logoUrl) {
+                    displayLogo(branding.logoUrl);
+                    elements.removeLogo.style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('Failed to load branding:', error);
+                addLog('Failed to load branding settings', 'error');
+            }
+        }
+
+        async function saveBranding() {
+            try {
+                // Get current branding to preserve logo
+                const currentResponse = await fetch('/api/branding');
+                const currentBranding = currentResponse.ok ? await currentResponse.json() : {};
+
+                const branding = {
+                    appName: elements.appName.value || 'Tank Monitoring System',
+                    appSlogan: elements.appSlogan.value || 'Real-time tank level monitoring dashboard',
+                    primaryColor: elements.primaryColor.value || '#2563eb'
+                };
+
+                // Preserve existing logo
+                if (currentBranding.logoUrl) {
+                    branding.logoUrl = currentBranding.logoUrl;
+                }
+
+                const response = await fetch('/api/branding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(branding)
+                });
+
+                if (response.ok) {
+                    addLog('Branding saved successfully', 'success');
+                    alert('Branding saved successfully! Refresh the dashboard to see changes.');
+                } else {
+                    addLog('Failed to save branding', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to save branding:', error);
+                addLog('Failed to save branding', 'error');
+            }
+        }
+
+        async function resetBranding() {
+            if (confirm('Reset branding to defaults?')) {
+                try {
+                    const defaultBranding = {
+                        appName: 'Tank Monitoring System',
+                        appSlogan: 'Real-time tank level monitoring dashboard',
+                        primaryColor: '#2563eb'
+                    };
+
+                    const response = await fetch('/api/branding', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(defaultBranding)
+                    });
+
+                    if (response.ok) {
+                        elements.appName.value = 'Tank Monitoring System';
+                        elements.appSlogan.value = 'Real-time tank level monitoring dashboard';
+                        elements.primaryColor.value = '#2563eb';
+                        elements.logoPreview.innerHTML = '<span class="text-gray-400 text-xs">No Logo</span>';
+                        elements.removeLogo.style.display = 'none';
+                        addLog('Branding reset to defaults', 'success');
+                        alert('Branding reset to defaults! Refresh the dashboard to see changes.');
+                    } else {
+                        addLog('Failed to reset branding', 'error');
+                    }
+                } catch (error) {
+                    console.error('Failed to reset branding:', error);
+                    addLog('Failed to reset branding', 'error');
+                }
+            }
+        }
+
+        function setPrimaryColor(color) {
+            elements.primaryColor.value = color;
+        }
+
+        // Smart logo display function
+        function displayLogo(logoUrl) {
+            const img = new Image();
+            img.onload = function() {
+                const aspectRatio = this.width / this.height;
+                const isSquare = aspectRatio >= 0.9 && aspectRatio <= 1.1;
+
+                if (isSquare) {
+                    // Square logo - use rounded corners but not fully round
+                    elements.logoPreview.innerHTML = `<img src="${logoUrl}" alt="Logo" class="w-12 h-12 rounded-lg object-contain" style="border: 1px solid rgba(0,0,0,0.1);">`;
+                } else {
+                    // Round or other aspect ratio - use full rounding
+                    elements.logoPreview.innerHTML = `<img src="${logoUrl}" alt="Logo" class="w-12 h-12 rounded-full object-cover">`;
+                }
+            };
+            img.onerror = function() {
+                elements.logoPreview.innerHTML = '<span class="text-gray-400 text-xs">Invalid Image</span>';
+            };
+            img.src = logoUrl;
+        }
+
+        // Logo upload handling
+        elements.logoUpload.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const logoUrl = e.target.result;
+                    displayLogo(logoUrl);
+                    elements.removeLogo.style.display = 'inline-block';
+
+                    try {
+                        // Get current branding and add logo
+                        const currentResponse = await fetch('/api/branding');
+                        const branding = currentResponse.ok ? await currentResponse.json() : {};
+                        branding.logoUrl = logoUrl;
+
+                        const response = await fetch('/api/branding', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(branding)
+                        });
+
+                        if (response.ok) {
+                            addLog('Logo uploaded successfully', 'success');
+                        } else {
+                            addLog('Failed to save logo', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Failed to save logo:', error);
+                        addLog('Failed to save logo', 'error');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        elements.removeLogo.addEventListener('click', async function() {
+            elements.logoPreview.innerHTML = '<span class="text-gray-400 text-xs">No Logo</span>';
+            elements.removeLogo.style.display = 'none';
+            elements.logoUpload.value = '';
+
+            try {
+                // Get current branding and remove logo
+                const currentResponse = await fetch('/api/branding');
+                const branding = currentResponse.ok ? await currentResponse.json() : {};
+                delete branding.logoUrl;
+
+                const response = await fetch('/api/branding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(branding)
+                });
+
+                if (response.ok) {
+                    addLog('Logo removed successfully', 'success');
+                } else {
+                    addLog('Failed to remove logo', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to remove logo:', error);
+                addLog('Failed to remove logo', 'error');
+            }
+        });
+
+        // Security functions
+        function loadSecurity() {
+            const hasPassword = localStorage.getItem('tankmon_settings_password');
+            elements.enablePassword.checked = !!hasPassword;
+            togglePasswordSettings();
+
+            if (hasPassword) {
+                elements.removePassword.style.display = 'inline-block';
+            }
+        }
+
+        function togglePasswordSettings() {
+            elements.passwordSettings.style.display = elements.enablePassword.checked ? 'grid' : 'none';
+        }
+
+        function savePassword() {
+            if (!elements.enablePassword.checked) {
+                localStorage.removeItem('tankmon_settings_password');
+                elements.removePassword.style.display = 'none';
+                alert('Password protection disabled.');
+                return;
+            }
+
+            const newPassword = elements.newPassword.value;
+            const confirmPassword = elements.confirmPassword.value;
+
+            if (!newPassword) {
+                alert('Please enter a password.');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert('Passwords do not match.');
+                return;
+            }
+
+            if (newPassword.length < 4) {
+                alert('Password must be at least 4 characters long.');
+                return;
+            }
+
+            // Simple hash (not secure, but sufficient for local protection)
+            const hashedPassword = btoa(newPassword);
+            localStorage.setItem('tankmon_settings_password', hashedPassword);
+            elements.removePassword.style.display = 'inline-block';
+            elements.newPassword.value = '';
+            elements.confirmPassword.value = '';
+            alert('Password saved successfully!');
+        }
+
+        function removePassword() {
+            if (confirm('Remove password protection?')) {
+                localStorage.removeItem('tankmon_settings_password');
+                elements.enablePassword.checked = false;
+                elements.removePassword.style.display = 'none';
+                togglePasswordSettings();
+                alert('Password protection removed.');
+            }
+        }
+
+        // Event listeners for branding and security
+        elements.saveBranding.addEventListener('click', saveBranding);
+        elements.resetBranding.addEventListener('click', resetBranding);
+        elements.enablePassword.addEventListener('change', togglePasswordSettings);
+        elements.savePassword.addEventListener('click', savePassword);
+        elements.removePassword.addEventListener('click', removePassword);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            addLog('Settings page loaded');
+            await loadPorts();
+            await loadConfig();
+            await checkStatus();
+
+            // Initialize vertical format UI
+            toggleVerticalFormat();
+
+            // Initialize tank configuration
+            loadTankConfiguration();
+            loadCurrentTanks();
+
+            // Initialize branding and security
+            loadBranding();
+            loadSecurity();
+
+            // Tank configuration event listeners
+            document.getElementById('saveTankConfig').addEventListener('click', saveTankConfiguration);
+            document.getElementById('resetTankConfig').addEventListener('click', resetTankConfiguration);
+
+            // Check status periodically
+            setInterval(checkStatus, 5000);
+
+            // Update tank data periodically (but don't refresh table if user is editing)
+            setInterval(() => {
+                // Only update if no input field is currently focused
+                const activeElement = document.activeElement;
+                const isEditingTankConfig = activeElement &&
+                    (activeElement.id.startsWith('tankName_') ||
+                     activeElement.id.startsWith('maxHeight_') ||
+                     activeElement.id.startsWith('allowedHeight_'));
+
+                if (!isEditingTankConfig) {
+                    loadCurrentTanks();
+                }
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

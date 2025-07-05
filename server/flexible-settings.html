@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Monitoring - Flexible Data Sources</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 30px;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .source-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+        }
+        
+        .source-card.active {
+            border-color: #28a745;
+            background: #f8fff8;
+        }
+        
+        .source-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .source-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .mapping-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .mapping-item label {
+            min-width: 120px;
+            margin-bottom: 0;
+        }
+        
+        .validation-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .validation-success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .validation-error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .sample-data {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .sample-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .sample-table th,
+        .sample-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        .sample-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: #374151;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .file-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .file-input-group input {
+            flex: 1;
+        }
+
+        .browse-btn {
+            padding: 10px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .browse-btn:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        /* File Browser Styles */
+        .file-browser {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 8px;
+            background: white;
+        }
+
+        .current-path {
+            padding: 12px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .file-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-item:hover {
+            background: #f9fafb;
+        }
+
+        .file-item.directory {
+            color: #3b82f6;
+        }
+
+        .file-item.file {
+            color: #374151;
+        }
+
+        .no-files {
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .error {
+            padding: 12px;
+            background: #fef2f2;
+            color: #dc2626;
+            border-radius: 4px;
+            margin: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Flexible Data Sources</h1>
+            <p>Configure multiple data sources for tank monitoring with automatic format detection</p>
+        </div>
+        
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('sources')">Data Sources</button>
+                <button class="tab" onclick="showTab('validator')">File Validator</button>
+                <button class="tab" onclick="showTab('mapping')">Field Mapping</button>
+                <button class="tab" onclick="showTab('monitor')">Live Monitor</button>
+            </div>
+            
+            <!-- Data Sources Tab -->
+            <div id="sources" class="tab-content active">
+                <div class="alert alert-info">
+                    <strong>💡 Flexible File Import:</strong> Supports CSV, JSON, XML, TXT, and TSV files with automatic format detection. 
+                    Configure multiple data sources and map fields to tank properties including temperature, pressure, and status.
+                </div>
+                
+                <div class="form-group">
+                    <button class="btn" onclick="addNewSource()">➕ Add New Data Source</button>
+                </div>
+                
+                <div id="sourcesList">
+                    <!-- Sources will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- File Validator Tab -->
+            <div id="validator" class="tab-content">
+                <div class="alert alert-info">
+                    <strong>🔍 File Validator:</strong> Test and validate your data files before adding them as sources. 
+                    Automatically detects format, columns, and suggests field mappings.
+                </div>
+                
+                <div class="form-group">
+                    <label for="validateFilePath">File Path:</label>
+                    <input type="text" id="validateFilePath" placeholder="/path/to/your/data/file.csv">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="validateFormat">Format (optional):</label>
+                        <select id="validateFormat">
+                            <option value="">Auto-detect</option>
+                            <option value="csv">CSV</option>
+                            <option value="json">JSON</option>
+                            <option value="xml">XML</option>
+                            <option value="txt">Text</option>
+                            <option value="tsv">TSV</option>
+                            <option value="fixed-width">Fixed Width</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button class="btn" onclick="validateFile()">🔍 Validate File</button>
+                    </div>
+                </div>
+                
+                <div id="validationResult"></div>
+            </div>
+            
+            <!-- Field Mapping Tab -->
+            <div id="mapping" class="tab-content">
+                <div class="alert alert-info">
+                    <strong>🗺️ Field Mapping:</strong> Map your data columns to tank properties. 
+                    Supports extended fields like temperature, pressure, humidity, and custom fields.
+                </div>
+                
+                <div id="availableFields">
+                    <!-- Available tank fields will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Live Monitor Tab -->
+            <div id="monitor" class="tab-content">
+                <div class="alert alert-info">
+                    <strong>📊 Live Monitor:</strong> Real-time status of all configured data sources.
+                </div>
+                
+                <div id="monitorStatus">
+                    <!-- Live status will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSources = [];
+        let availableFields = {};
+        
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'sources') {
+                loadSources();
+            } else if (tabName === 'mapping') {
+                loadAvailableFields();
+            } else if (tabName === 'monitor') {
+                loadMonitorStatus();
+            }
+        }
+        
+        // Load data sources
+        async function loadSources() {
+            try {
+                const response = await fetch('/api/flexible/sources');
+                currentSources = await response.json();
+                renderSources();
+            } catch (error) {
+                console.error('Error loading sources:', error);
+            }
+        }
+        
+        // Render sources list
+        function renderSources() {
+            const container = document.getElementById('sourcesList');
+            
+            if (currentSources.length === 0) {
+                container.innerHTML = '<p>No data sources configured. Click "Add New Data Source" to get started.</p>';
+                return;
+            }
+            
+            container.innerHTML = currentSources.map(source => `
+                <div class="source-card ${source.lastUpdate ? 'active' : ''}">
+                    <div class="source-header">
+                        <h3>${source.id}</h3>
+                        <span class="source-status ${source.lastUpdate ? 'status-active' : 'status-inactive'}">
+                            ${source.lastUpdate ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <p><strong>Type:</strong> ${source.type}</p>
+                    <p><strong>Path:</strong> ${source.path}</p>
+                    <p><strong>Format:</strong> ${source.format}</p>
+                    <p><strong>Tanks:</strong> ${source.tankCount}</p>
+                    ${source.lastUpdate ? `<p><strong>Last Update:</strong> ${new Date(source.lastUpdate).toLocaleString()}</p>` : ''}
+                    ${source.errors.length > 0 ? `<p><strong>Recent Errors:</strong> ${source.errors.length}</p>` : ''}
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-secondary" onclick="editSource('${source.id}')">✏️ Edit</button>
+                        <button class="btn btn-danger" onclick="deleteSource('${source.id}')">🗑️ Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Add new source
+        function addNewSource() {
+            showAddSourceModal();
+        }
+
+        // Show add source modal
+        function showAddSourceModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Add New Data Source</h3>
+                        <button class="close-btn" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="sourceId">Source ID:</label>
+                            <input type="text" id="sourceId" placeholder="my-tanks" value="my-tanks">
+                        </div>
+                        <div class="form-group">
+                            <label for="filePath">Data File:</label>
+                            <div class="file-input-group">
+                                <input type="text" id="filePath" placeholder="Select a file..." readonly>
+                                <button type="button" onclick="browseFiles()" class="browse-btn">Browse Files</button>
+                            </div>
+                            <div id="fileBrowser" class="file-browser" style="display: none;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="format">Format:</label>
+                            <select id="format">
+                                <option value="auto">Auto-detect</option>
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                                <option value="xml">XML</option>
+                                <option value="txt">Text</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+                        <button onclick="createDataSource()" class="btn-primary">Add Source</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Browse files
+        function browseFiles() {
+            const browser = document.getElementById('fileBrowser');
+            browser.style.display = 'block';
+            loadDirectoryContents('/home/martin/Ontwikkeling/tankmon/project');
+        }
+
+        // Load directory contents
+        function loadDirectoryContents(path) {
+            fetch(`/api/flexible/browse?path=${encodeURIComponent(path)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const browser = document.getElementById('fileBrowser');
+                    if (data.error) {
+                        browser.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                        return;
+                    }
+
+                    let html = `<div class="current-path">📁 ${path}</div>`;
+
+                    // Add parent directory if not at root
+                    if (path !== '/') {
+                        const parentPath = path.split('/').slice(0, -1).join('/') || '/';
+                        html += `<div class="file-item directory" onclick="loadDirectoryContents('${parentPath}')">
+                            📁 .. (parent directory)
+                        </div>`;
+                    }
+
+                    // Add directories
+                    data.directories.forEach(dir => {
+                        const fullPath = path + '/' + dir;
+                        html += `<div class="file-item directory" onclick="loadDirectoryContents('${fullPath}')">
+                            📁 ${dir}
+                        </div>`;
+                    });
+
+                    // Add files (filter for data files)
+                    data.files.filter(file => {
+                        const ext = file.toLowerCase().split('.').pop();
+                        return ['csv', 'json', 'xml', 'txt', 'tsv'].includes(ext);
+                    }).forEach(file => {
+                        const fullPath = path + '/' + file;
+                        const ext = file.split('.').pop().toLowerCase();
+                        const icon = ext === 'csv' ? '📊' : ext === 'json' ? '📋' : ext === 'xml' ? '📄' : '📝';
+                        html += `<div class="file-item file" onclick="selectFile('${fullPath}')">
+                            ${icon} ${file}
+                        </div>`;
+                    });
+
+                    if (data.directories.length === 0 && data.files.length === 0) {
+                        html += '<div class="no-files">No data files found in this directory</div>';
+                    }
+
+                    browser.innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById('fileBrowser').innerHTML = `<div class="error">Error loading directory: ${error.message}</div>`;
+                });
+        }
+
+        // Select file
+        function selectFile(filePath) {
+            document.getElementById('filePath').value = filePath;
+            document.getElementById('fileBrowser').style.display = 'none';
+        }
+
+        // Close modal
+        function closeModal() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Create data source from modal
+        function createDataSource() {
+            const sourceId = document.getElementById('sourceId').value.trim();
+            const filePath = document.getElementById('filePath').value.trim();
+            const format = document.getElementById('format').value;
+
+            if (!sourceId) {
+                alert('Please enter a source ID');
+                return;
+            }
+
+            if (!filePath) {
+                alert('Please select a file');
+                return;
+            }
+
+            // Create basic source configuration
+            const sourceConfig = {
+                id: sourceId,
+                type: 'file',
+                path: filePath,
+                format: format,
+                encoding: 'utf8',
+                polling: false,
+                pollInterval: 30000,
+                mapping: {
+                    id: 'tank_id',
+                    name: 'tank_name',
+                    level: 'level',
+                    maxCapacity: 'max_capacity',
+                    temperature: 'temperature',
+                    pressure: 'pressure',
+                    status: 'status'
+                }
+            };
+
+            // Add the source
+            fetch('/api/flexible/sources', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sourceConfig)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(`✅ Data source "${sourceId}" added successfully!`);
+                    loadSources();
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            })
+            .catch(error => {
+                alert(`❌ Error adding source: ${error.message}`);
+            });
+        }
+
+        // Edit source
+        function editSource(sourceId) {
+            alert(`Edit functionality for "${sourceId}" would open a detailed configuration form here.`);
+        }
+
+        // Delete source
+        function deleteSource(sourceId) {
+            if (!confirm(`Are you sure you want to delete data source "${sourceId}"?`)) {
+                return;
+            }
+
+            fetch(`/api/flexible/sources/${sourceId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(`✅ Data source "${sourceId}" deleted successfully!`);
+                    loadSources();
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            })
+            .catch(error => {
+                alert(`❌ Error deleting source: ${error.message}`);
+            });
+        }
+
+        // Validate file
+        async function validateFile() {
+            const filePath = document.getElementById('validateFilePath').value;
+            const format = document.getElementById('validateFormat').value;
+            
+            if (!filePath) {
+                alert('Please enter a file path');
+                return;
+            }
+            
+            try {
+                const params = new URLSearchParams({ path: filePath });
+                if (format) params.append('format', format);
+                
+                const response = await fetch(`/api/flexible/validate?${params}`);
+                const result = await response.json();
+                
+                displayValidationResult(result);
+            } catch (error) {
+                displayValidationResult({ error: error.message });
+            }
+        }
+        
+        // Display validation result
+        function displayValidationResult(result) {
+            const container = document.getElementById('validationResult');
+            
+            if (result.error) {
+                container.innerHTML = `
+                    <div class="validation-result validation-error">
+                        <h4>❌ Validation Failed</h4>
+                        <p>${result.error}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const sampleTable = result.sampleData.length > 0 ? `
+                <div class="sample-data">
+                    <h5>Sample Data (first 5 rows):</h5>
+                    <table class="sample-table">
+                        <thead>
+                            <tr>${result.columns.map(col => `<th>${col.name} (${col.type})</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${result.sampleData.map(row => `
+                                <tr>${result.columns.map(col => `<td>${row[col.name] || ''}</td>`).join('')}</tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : '';
+            
+            container.innerHTML = `
+                <div class="validation-result validation-success">
+                    <h4>✅ Validation Successful</h4>
+                    <p><strong>Format:</strong> ${result.format}</p>
+                    <p><strong>Columns:</strong> ${result.columns.length}</p>
+                    <p><strong>Total Rows:</strong> ${result.totalRows}</p>
+                    <p><strong>Suggested Mappings:</strong> ${Object.keys(result.suggestedMapping).length} fields</p>
+                    ${sampleTable}
+                </div>
+            `;
+        }
+        
+        // Load available fields
+        async function loadAvailableFields() {
+            try {
+                const response = await fetch('/api/flexible/fields');
+                availableFields = await response.json();
+                renderAvailableFields();
+            } catch (error) {
+                console.error('Error loading fields:', error);
+            }
+        }
+        
+        // Render available fields
+        function renderAvailableFields() {
+            const container = document.getElementById('availableFields');
+            
+            const fieldGroups = {
+                'Core Fields': ['id', 'name', 'level'],
+                'Capacity Fields': ['maxCapacity', 'minLevel', 'maxLevel'],
+                'Environmental Fields': ['temperature', 'pressure', 'humidity'],
+                'Status Fields': ['status', 'alarmState'],
+                'Metadata Fields': ['unit', 'location', 'type', 'lastUpdated'],
+                'Custom Fields': ['custom1', 'custom2', 'custom3']
+            };
+            
+            container.innerHTML = Object.entries(fieldGroups).map(([groupName, fields]) => `
+                <div style="margin-bottom: 30px;">
+                    <h4>${groupName}</h4>
+                    <div class="mapping-grid">
+                        ${fields.map(field => `
+                            <div class="mapping-item">
+                                <label>${field}:</label>
+                                <span>${availableFields[field]?.description || 'No description'}</span>
+                                <span style="color: #666; font-size: 0.9rem;">(${availableFields[field]?.type || 'unknown'})</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Load monitor status
+        async function loadMonitorStatus() {
+            try {
+                const response = await fetch('/api/flexible/sources');
+                const sources = await response.json();
+                renderMonitorStatus(sources);
+            } catch (error) {
+                console.error('Error loading monitor status:', error);
+            }
+        }
+        
+        // Render monitor status
+        function renderMonitorStatus(sources) {
+            const container = document.getElementById('monitorStatus');
+            
+            if (sources.length === 0) {
+                container.innerHTML = '<p>No data sources configured for monitoring.</p>';
+                return;
+            }
+            
+            container.innerHTML = sources.map(source => `
+                <div class="source-card ${source.lastUpdate ? 'active' : ''}">
+                    <h4>${source.id}</h4>
+                    <div class="form-row">
+                        <div>
+                            <p><strong>Status:</strong> ${source.lastUpdate ? '🟢 Active' : '🔴 Inactive'}</p>
+                            <p><strong>Type:</strong> ${source.type}</p>
+                            <p><strong>Format:</strong> ${source.format}</p>
+                        </div>
+                        <div>
+                            <p><strong>Tanks:</strong> ${source.tankCount}</p>
+                            <p><strong>Polling:</strong> ${source.polling ? `Yes (${source.pollInterval}ms)` : 'No'}</p>
+                            ${source.lastUpdate ? `<p><strong>Last Update:</strong> ${new Date(source.lastUpdate).toLocaleString()}</p>` : ''}
+                        </div>
+                    </div>
+                    ${source.errors.length > 0 ? `
+                        <div style="margin-top: 15px;">
+                            <h5>Recent Errors:</h5>
+                            ${source.errors.slice(-3).map(error => `
+                                <p style="color: #dc3545; font-size: 0.9rem;">
+                                    ${new Date(error.timestamp).toLocaleTimeString()}: ${error.error}
+                                </p>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSources();
+        });
+        
+        // Auto-refresh monitor every 10 seconds
+        setInterval(() => {
+            if (document.getElementById('monitor').classList.contains('active')) {
+                loadMonitorStatus();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

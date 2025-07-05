@@ -1,0 +1,10 @@
+{
+  "type": "module",
+  "name": "tank-monitoring-server",
+  "version": "1.0.0",
+  "description": "Tank monitoring system server",
+  "main": "index.js",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

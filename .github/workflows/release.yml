@@ -37,19 +37,19 @@ jobs:
       
     - name: Build Electron app (Windows)
       if: matrix.os == 'windows-latest'
-      run: npm run electron:dist
+      run: npm run electron:dist -- --publish=never
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Build Electron app (Linux)
       if: matrix.os == 'ubuntu-latest'
-      run: npm run electron:dist
+      run: npm run electron:dist -- --publish=never
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Build Electron app (macOS)
       if: matrix.os == 'macos-latest'
-      run: npm run electron:dist
+      run: npm run electron:dist -- --publish=never
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -114,3 +114,37 @@ jobs:
           macos-build/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-updates:
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Publish to GitHub Releases for auto-updater
+      run: |
+        # Copy artifacts to dist-electron for publishing
+        mkdir -p dist-electron
+        cp -r windows-build/* dist-electron/ 2>/dev/null || true
+        cp -r linux-build/* dist-electron/ 2>/dev/null || true
+        cp -r macos-build/* dist-electron/ 2>/dev/null || true
+
+        # Publish updates
+        npx electron-builder --publish=always
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

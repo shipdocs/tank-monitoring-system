@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, shell, ipcMain, dialog } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -12,6 +13,91 @@ const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
 let serverProcess;
+
+// Configure auto-updater (will be called after window creation)
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  addLog('INFO', 'UPDATER', 'Checking for updates...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  addLog('INFO', 'UPDATER', `Update available: ${info.version}`);
+
+  // Show notification to user
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: `A new version (${info.version}) is available!`,
+      detail: 'The update will be downloaded in the background. You will be notified when it\'s ready to install.',
+      buttons: ['OK']
+    });
+  }
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  addLog('INFO', 'UPDATER', 'Update not available');
+});
+
+autoUpdater.on('error', (err) => {
+  addLog('ERROR', 'UPDATER', `Update error: ${err.message}`);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  const percent = Math.round(progressObj.percent);
+  addLog('INFO', 'UPDATER', `Download progress: ${percent}%`);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  addLog('INFO', 'UPDATER', `Update downloaded: ${info.version}`);
+
+  // Show restart dialog
+  if (mainWindow) {
+    const response = dialog.showMessageBoxSync(mainWindow, {
+      type: 'info',
+      title: 'Update Ready',
+      message: `Update ${info.version} has been downloaded and is ready to install.`,
+      detail: 'The application will restart to apply the update.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+      cancelId: 1
+    });
+
+    if (response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  }
+});
+
+// Manual update check function
+function checkForUpdatesManually() {
+  addLog('INFO', 'UPDATER', 'Manual update check initiated');
+
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Checking for Updates',
+      message: 'Checking for updates...',
+      detail: 'Please wait while we check for the latest version.',
+      buttons: ['OK']
+    });
+  }
+
+  autoUpdater.checkForUpdatesAndNotify().catch(err => {
+    addLog('ERROR', 'UPDATER', `Manual update check failed: ${err.message}`);
+
+    if (mainWindow) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Update Check Failed',
+        message: 'Failed to check for updates',
+        detail: `Error: ${err.message}\n\nPlease check your internet connection and try again.`,
+        buttons: ['OK']
+      });
+    }
+  });
+}
 
 // Debug logging system
 const debugLogs = [];
@@ -146,6 +232,13 @@ function createWindow() {
     // Focus on window
     if (isDev) {
       mainWindow.focus();
+    }
+
+    // Start auto-updater after window is ready (only in production)
+    if (!isDev) {
+      setTimeout(() => {
+        autoUpdater.checkForUpdatesAndNotify();
+      }, 5000); // Wait 5 seconds after startup
     }
   });
 
@@ -1013,6 +1106,12 @@ function createMenu() {
           }
         },
         { type: 'separator' },
+        {
+          label: 'Check for Updates',
+          click: () => {
+            checkForUpdatesManually();
+          }
+        },
         {
           label: 'About Tank Monitoring System',
           click: () => {

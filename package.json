@@ -5,9 +5,17 @@
   "description": "Real-time tank monitoring system with CSV file import and serial communication",
   "author": "Martin (shipdocs)",
   "license": "SEE LICENSE IN LICENSE",
+  "keywords": ["tank-monitoring", "maritime", "electron", "real-time", "csv", "serial-port"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shipdocs/tank-monitoring-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shipdocs/tank-monitoring-system/issues"
+  },
+  "homepage": "https://github.com/shipdocs/tank-monitoring-system#readme",
   "type": "module",
   "main": "electron/main.js",
-  "homepage": "./",
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "vite",

@@ -138,4 +138,19 @@ The system supports flexible CSV file import with auto-discovery:
 
 ## License
 
-Private project - All rights reserved.
+This project is dual-licensed:
+
+### Non-Commercial Use
+For personal, educational, and non-commercial use, this software is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License**.
+
+You are free to:
+- Use the software for personal projects
+- Modify and adapt the code
+- Share with others (with attribution)
+
+### Commercial Use
+For commercial use, including business operations, commercial products, or removing attribution requirements, a separate commercial license is required.
+
+**Contact for commercial licensing:** [your-email@example.com]
+
+See the [LICENSE](LICENSE) file for full details.

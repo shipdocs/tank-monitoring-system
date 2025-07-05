@@ -86,7 +86,7 @@
       "dist/**/*",
       "electron/**/*",
       "server/**/*",
-      "node_modules/**/*"
+      "!node_modules/**/*"
     ],
     "extraResources": [
       {
@@ -102,25 +102,6 @@
         "to": "dist",
         "filter": [
           "**/*"
-        ]
-      },
-      {
-        "from": "node_modules",
-        "to": "server/node_modules",
-        "filter": [
-          "**/*",
-          "!electron/**/*",
-          "!electron-builder/**/*",
-          "!@electron/**/*",
-          "!vite/**/*",
-          "!@vitejs/**/*",
-          "!tailwindcss/**/*",
-          "!autoprefixer/**/*",
-          "!postcss/**/*",
-          "!typescript/**/*",
-          "!@types/**/*",
-          "!nodemon/**/*",
-          "!electron-reload/**/*"
         ]
       }
     ],

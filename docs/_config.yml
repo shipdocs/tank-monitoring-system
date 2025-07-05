@@ -1,0 +1,40 @@
+title: Tank Monitoring System
+description: Professional maritime tank monitoring system with real-time data visualization
+url: "https://shipdocs.github.io"
+baseurl: "/tank-monitoring-system"
+
+# GitHub Pages settings
+plugins:
+  - jekyll-sitemap
+  - jekyll-feed
+
+# SEO settings
+author: Martin (shipdocs)
+twitter:
+  username: shipdocs
+  card: summary_large_image
+
+# Social links
+github_username: shipdocs
+repository: shipdocs/tank-monitoring-system
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+# Exclude files
+exclude:
+  - README.md
+  - LICENSE
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .sass-cache
+  - .jekyll-cache
+  - .jekyll-metadata
+
+# Include files
+include:
+  - _pages

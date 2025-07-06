@@ -131,59 +131,7 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
   }
 };
 
-// Convert line mapping to column mapping for server compatibility
-const convertLineMappingToColumnMapping = (dataSource: DataSourceConfig) => {
-  const defaultMapping = {
-    id: 'tank_id',
-    name: 'tank_name',
-    level: 'level',
-    maxCapacity: 'max_capacity',
-    minLevel: 'min_level',
-    maxLevel: 'max_level',
-    unit: 'unit',
-    location: 'location'
-  };
 
-  if (!dataSource.lineMapping || !dataSource.isVerticalFormat) {
-    return defaultMapping;
-  }
-
-  // For vertical format, we'll use line positions as column names
-  const mapping = { ...defaultMapping };
-  Object.entries(dataSource.lineMapping).forEach(([lineIndex, fieldName]) => {
-    if (fieldName && fieldName !== 'ignore') {
-      const columnName = `line_${lineIndex}`;
-      switch (fieldName) {
-        case 'id':
-          mapping.id = columnName;
-          break;
-        case 'name':
-          mapping.name = columnName;
-          break;
-        case 'level':
-          mapping.level = columnName;
-          break;
-        case 'maxCapacity':
-          mapping.maxCapacity = columnName;
-          break;
-        case 'minLevel':
-          mapping.minLevel = columnName;
-          break;
-        case 'maxLevel':
-          mapping.maxLevel = columnName;
-          break;
-        case 'unit':
-          mapping.unit = columnName;
-          break;
-        case 'location':
-          mapping.location = columnName;
-          break;
-      }
-    }
-  });
-
-  return mapping;
-};
 
 // API functions for server communication
 export const saveServerConfig = async (config: ServerConfig): Promise<boolean> => {

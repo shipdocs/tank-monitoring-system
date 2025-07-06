@@ -339,6 +339,15 @@ export function startIntegratedServer(isDev = false) {
       
       // API Routes
       app.get('/api/status', (req, res) => {
+        const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+
+        if (!checkRateLimit(clientIp, '/api/status')) {
+          return res.status(429).json({
+            error: 'Too many requests',
+            message: 'Rate limit exceeded. Please try again later.'
+          });
+        }
+
         const isConnected = currentConfig.csvFile.enabled && currentConfig.csvFile.filePath ?
           isFileMonitoringActive : false;
 

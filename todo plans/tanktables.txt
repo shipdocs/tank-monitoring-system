@@ -1,0 +1,14 @@
+Dus we hebben nu nivo's en temperatuur van de beschikbare tanks.
+Ik heb ook tanktabellen van al die tanks, die kunnen in pdf zijn, af in andere soorten bestanden.
+Die tabellen bevatten de volgende informatie:
+- Tank ID
+- Tank Naam
+- Maximum Niveau (mm)
+- voor elke centimeter een waarde in liters, dus wat er in de tank zit qua volume, die moeten we interpoleren en opslaan in de tankconfig
+- als we dan een invoer scherm hebben voor de densiteit van het product per productgroep, dan kunnen we ook het gewicht berekenen per tank
+als we dan de ASTM 54B tabellen hebben of kunnen vinden dan kunnen we uitrekenen wat de massa is.
+Die astm 54b tabellen zijn om een acxtuele dichtheid te berekenen of om op te zoeken.
+Dan kunnen we ook het gewicht berekenen per tank. en weerfgeven hoeveel m3 er in de tank zit.en hoeveel m3 per uur we pompem of laden.
+Dan kunnen hoefen we niet weer te geven hoeveel milimeter per tijdseenheid we lossen of laden, maar keurig m3 per uur.of metric tons per uur.
+
+Ook kunnen we dan aangeven hoeveel ton we moeten lossen en uitrekenen hoe lang het nog duurt en op welke dag/tijd we klaar zijn.

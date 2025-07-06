@@ -141,6 +141,11 @@ const CONFIG_FILE = path.join(
   '.tank-monitor-config.json'
 );
 
+const TANK_CONFIG_FILE = path.join(
+  process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : process.env.HOME),
+  '.tank-monitor-tank-config.json'
+);
+
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
@@ -150,6 +155,27 @@ function loadConfig() {
     }
   } catch (error) {
     addLog('ERROR', 'CONFIG', `Failed to load config: ${error.message}`);
+  }
+}
+
+function loadTankConfig() {
+  try {
+    if (fs.existsSync(TANK_CONFIG_FILE)) {
+      const data = fs.readFileSync(TANK_CONFIG_FILE, 'utf8');
+      tankConfiguration = { ...tankConfiguration, ...JSON.parse(data) };
+      addLog('INFO', 'CONFIG', 'Tank configuration loaded');
+    }
+  } catch (error) {
+    addLog('ERROR', 'CONFIG', `Failed to load tank config: ${error.message}`);
+  }
+}
+
+function saveTankConfig() {
+  try {
+    fs.writeFileSync(TANK_CONFIG_FILE, JSON.stringify(tankConfiguration, null, 2));
+    addLog('INFO', 'CONFIG', 'Tank configuration saved');
+  } catch (error) {
+    addLog('ERROR', 'CONFIG', `Failed to save tank config: ${error.message}`);
   }
 }
 
@@ -163,11 +189,18 @@ function saveConfig() {
 }
 
 // Tank status helper function (for mm-based measurements)
-function getStatus(level, maxHeight = 1500) {
+function getStatus(level, maxHeight = 4545) {
   const percentage = (level / maxHeight) * 100;
-  if (percentage < 2) return 'critical'; // Less than 2%
-  if (percentage < 10) return 'low'; // Less than 10%
-  if (percentage > 95) return 'high'; // More than 95%
+
+  // Use configured alarm thresholds
+  const lowLevelThreshold = tankConfiguration.lowLevelPercentage || 10;
+  const preAlarmThreshold = tankConfiguration.preAlarmPercentage || 86;
+  const overfillThreshold = tankConfiguration.overfillPercentage || 97.5;
+
+  if (percentage < 2) return 'critical'; // Less than 2% (empty)
+  if (percentage < lowLevelThreshold) return 'low'; // Below low level threshold
+  if (percentage >= overfillThreshold) return 'critical'; // Above overfill threshold
+  if (percentage >= preAlarmThreshold) return 'high'; // Above pre-alarm threshold
   return 'normal';
 }
 
@@ -185,13 +218,21 @@ function parseVerticalFormatData(fileContent, config) {
     const recordLines = lines.slice(i, i + linesPerRecord);
     if (recordLines.length < linesPerRecord) break;
 
+    const tankId = `tank_${tanks.length + 1}`;
+
+    // Get tank configuration from settings, with fallback to defaults
+    const tankConfig = tankConfiguration.tanks[tankId] || {
+      maxHeight: 4545,  // Use configured value instead of hardcoded 1500
+      allowedHeight: 4545  // Use configured value instead of hardcoded 1400
+    };
+
     const tank = {
-      id: `tank_${tanks.length + 1}`,
+      id: tankId,
       name: `Tank ${String.fromCharCode(65 + tanks.length)}`, // Tank A, Tank B, etc.
       currentLevel: 0,
-      maxCapacity: 1500, // Default max height in mm
+      maxCapacity: tankConfig.maxHeight, // Use configured max height
       minLevel: 50,
-      maxLevel: 1400, // Default max allowed height in mm
+      maxLevel: tankConfig.allowedHeight, // Use configured allowed height
       unit: 'mm',
       status: 'normal',
       lastUpdated: new Date().toISOString(),
@@ -208,7 +249,7 @@ function parseVerticalFormatData(fileContent, config) {
         if (fieldName === 'level') {
           tank.currentLevel = parseFloat(value) || 0;
           tank.level = tank.currentLevel; // Also set level for compatibility
-          // Update status based on new level
+          // Update status based on new level using configured max capacity
           tank.status = getStatus(tank.currentLevel, tank.maxCapacity);
         } else if (fieldName === 'temperature') {
           tank.temperature = parseFloat(value) || 0;
@@ -232,14 +273,21 @@ function generateEmptyTanks() {
 
   for (let i = 1; i <= 12; i++) {
     const group = i >= 1 && i <= 6 ? 'BB' : i >= 7 && i <= 12 ? 'SB' : 'CENTER';
+    const tankId = i;
+
+    // Get tank configuration from settings, with fallback to defaults
+    const tankConfig = tankConfiguration.tanks[tankId] || {
+      maxHeight: 4545,  // Use configured value instead of hardcoded 1500
+      allowedHeight: 4545  // Use configured value instead of hardcoded 1400
+    };
 
     tanks.push({
       id: i,
       name: `Tank ${String.fromCharCode(64 + i)}`, // Tank A, Tank B, etc.
       currentLevel: 0, // Empty tanks
-      maxCapacity: 1500, // Default max height in mm
+      maxCapacity: tankConfig.maxHeight, // Use configured max height
       minLevel: 50,
-      maxLevel: 1400, // Default max allowed height in mm
+      maxLevel: tankConfig.allowedHeight, // Use configured allowed height
       unit: 'mm',
       status: 'critical', // Empty tanks are critical
       lastUpdated: timestamp,
@@ -304,6 +352,7 @@ export function startIntegratedServer(isDev = false) {
       
       // Load configuration
       loadConfig();
+      loadTankConfig();
       
       // Create Express app
       app = express();
@@ -408,7 +457,8 @@ export function startIntegratedServer(isDev = false) {
       app.post('/api/tank-config', (req, res) => {
         try {
           tankConfiguration = { ...tankConfiguration, ...req.body };
-          addLog('INFO', 'CONFIG', 'Tank configuration updated');
+          saveTankConfig(); // Persist to disk
+          addLog('INFO', 'CONFIG', 'Tank configuration updated and saved');
           res.json({ success: true, message: 'Tank configuration saved' });
         } catch (error) {
           addLog('ERROR', 'CONFIG', `Failed to save tank configuration: ${error.message}`);

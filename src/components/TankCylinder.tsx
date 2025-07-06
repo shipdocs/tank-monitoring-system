@@ -98,7 +98,12 @@ export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
 
           {/* Level Percentage Text */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-bold text-white drop-shadow-lg">
+            <span
+              className="text-lg font-bold text-white"
+              style={{
+                textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000'
+              }}
+            >
               {Math.max(0, percentage).toFixed(0)}%
             </span>
           </div>

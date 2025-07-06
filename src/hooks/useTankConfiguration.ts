@@ -6,7 +6,6 @@ import {
   loadTankConfiguration,
   saveTankConfiguration,
   applyTankConfiguration,
-  updateTankPosition,
   updateTankName,
   exportConfiguration,
   importConfiguration,
@@ -127,7 +126,6 @@ export const useTankConfiguration = (originalTanks: Tank[]) => {
 
   const resetConfiguration = useCallback(() => {
     if (originalTanks.length > 0) {
-      const defaultConfig = loadTankConfiguration(originalTanks);
       // Clear localStorage
       localStorage.removeItem('tank-monitoring-config');
       // Reset to default

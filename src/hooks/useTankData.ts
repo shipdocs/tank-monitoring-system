@@ -43,7 +43,7 @@ export const useTankData = () => {
 
           setTankData(prev => {
             // Calculate trends by comparing with previous data
-            const tanksWithTrends = data.map((newTank: any) => {
+            const tanksWithTrends = data.map((newTank: Tank) => {
               const prevTank = prev.tanks.find(t => t.id === newTank.id);
               const previousLevel = prevTank?.currentLevel || newTank.currentLevel;
               const { trend, trendValue } = calculateTrend(newTank.currentLevel, previousLevel);

@@ -248,7 +248,7 @@ export const getServerConfig = async (): Promise<ServerConfig | null> => {
   }
 };
 
-export const getServerStatus = async (): Promise<any> => {
+export const getServerStatus = async (): Promise<unknown> => {
   try {
     const response = await fetch('http://localhost:3001/api/status');
 

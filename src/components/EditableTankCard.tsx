@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Tank } from '../types/tank';
-import { AlertTriangle, Droplets, Clock, TrendingUp, TrendingDown, Minus, Edit2, GripVertical } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Edit2, GripVertical } from 'lucide-react';
 
 interface EditableTankCardProps {
   tank: Tank;
   onRename: (tankId: number, newName: string) => void;
-  dragHandleProps?: any;
+  dragHandleProps?: Record<string, unknown>;
 }
 
 export const EditableTankCard: React.FC<EditableTankCardProps> = ({ 
@@ -42,15 +42,6 @@ export const EditableTankCard: React.FC<EditableTankCardProps> = ({
       case 'unloading': return <TrendingDown className="w-4 h-4 text-red-600" />;
       case 'stable': return <Minus className="w-4 h-4 text-gray-500" />;
       default: return <Minus className="w-4 h-4 text-gray-400" />;
-    }
-  };
-
-  const getTrendColor = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return 'text-green-600 bg-green-50';
-      case 'unloading': return 'text-red-600 bg-red-50';
-      case 'stable': return 'text-gray-600 bg-gray-50';
-      default: return 'text-gray-500 bg-gray-50';
     }
   };
 

@@ -45,13 +45,26 @@ function updateElectronBuilderVersion(newVersion) {
   // Update version in main.js for about dialog
   const mainJsPath = 'electron/main.js';
   let mainJs = readFileSync(mainJsPath, 'utf8');
-  
-  // Update version in about dialog
+
+  // Update all version references in main.js
+  // 1. Version X.X.X - Latest Release
   mainJs = mainJs.replace(
-    /Version \d+\.\d+\.\d+/g,
-    `Version ${newVersion}`
+    /Version \d+\.\d+\.\d+ - Latest Release/g,
+    `Version ${newVersion} - Latest Release`
   );
-  
+
+  // 2. Version X.X.X - Initial Release (keep as 1.0.0)
+  mainJs = mainJs.replace(
+    /Version \d+\.\d+\.\d+ - Initial Release/g,
+    `Version 1.0.0 - Initial Release`
+  );
+
+  // 3. Version X.X.X (standalone)
+  mainJs = mainJs.replace(
+    /<p style="font-size: 20px; font-weight: bold; margin-bottom: 30px;">Version \d+\.\d+\.\d+<\/p>/g,
+    `<p style="font-size: 20px; font-weight: bold; margin-bottom: 30px;">Version ${newVersion}</p>`
+  );
+
   writeFileSync(mainJsPath, mainJs);
   console.log(`✅ Updated electron/main.js version to ${newVersion}`);
 }

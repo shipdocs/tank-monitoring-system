@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tank } from '../types/tank';
-import { AlertTriangle, Droplets, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface TankCardProps {
   tank: Tank;

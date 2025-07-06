@@ -6,7 +6,7 @@ interface ConnectionStatusProps {
   lastSync: Date;
 }
 
-export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, lastSync }) => {
+export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
   const getStatusIcon = () => {
     switch (status) {
       case 'connected':

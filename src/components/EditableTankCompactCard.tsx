@@ -5,7 +5,7 @@ import { Edit2, GripVertical } from 'lucide-react';
 interface EditableTankCompactCardProps {
   tank: Tank;
   onRename: (tankId: number, newName: string) => void;
-  dragHandleProps?: any;
+  dragHandleProps?: Record<string, unknown>;
 }
 
 export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = ({ 

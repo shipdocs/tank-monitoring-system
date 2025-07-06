@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SidebarViewControls } from './SidebarViewControls';
 import { DefaultLayoutSettings } from './DefaultLayoutSettings';
 import { ViewMode } from '../types/tank';
-import { Settings, X, ChevronRight, Download, Upload, RotateCcw, PanelRightOpen, LayoutDashboard } from 'lucide-react';
+import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard } from 'lucide-react';
 
 interface ControlsSidebarProps {
   currentView: ViewMode;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { VesselTemplate } from '../../types/vessel';
 import { Tank } from '../../types/tank';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from '@dnd-kit/core';
-import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Users, Ship } from 'lucide-react';
@@ -67,7 +67,7 @@ const SortableTankItem: React.FC<SortableTankItemProps> = ({ tank, isAssigned })
 };
 
 interface DroppableGroupProps {
-  group: any;
+  group: Omit<import('../../types/vessel').TankGroup, 'id' | 'tanks'>;
   assignedTanks: Tank[];
   onDrop: (tankId: string, groupId: string) => void;
 }

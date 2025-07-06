@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { TankCard } from './components/TankCard';
-import { ConnectionStatus } from './components/ConnectionStatus';
-import { AlarmSummary } from './components/AlarmSummary';
 import { SortableTankGrid } from './components/SortableTankGrid';
 import { ControlsSidebar } from './components/ControlsSidebar';
 import { VesselConfigurationWizard } from './components/wizard/VesselConfigurationWizard';
-import { ServerStatusIndicator } from './components/ServerStatusIndicator';
 import { CollapsibleHeader } from './components/CollapsibleHeader';
 import { useTankData } from './hooks/useTankData';
 import { useDatabaseTankConfiguration } from './hooks/useDatabaseTankConfiguration';
@@ -13,12 +9,11 @@ import { useDatabaseVesselConfiguration } from './hooks/useDatabaseVesselConfigu
 import { useDefaultLayout } from './hooks/useDefaultLayout';
 import { useAppBranding } from './hooks/useAppBranding';
 import { ViewMode } from './types/tank';
-import { Gauge, Settings, Ship } from 'lucide-react';
 
 function App() {
   const tankData = useTankData();
   const { defaultLayout, saveDefaultLayout } = useDefaultLayout();
-  const { branding, saveBranding } = useAppBranding();
+  const { branding } = useAppBranding();
   const [viewMode, setViewMode] = useState<ViewMode>(defaultLayout);
   const [showWizard, setShowWizard] = useState(false);
   const {
@@ -31,8 +26,6 @@ function App() {
     migrateFromLocalStorage: migrateTankConfig,
   } = useDatabaseTankConfiguration(tankData.tanks);
   const {
-    currentVessel,
-    vessels,
     setActiveVessel,
     migrateFromLocalStorage: migrateVesselConfig,
   } = useDatabaseVesselConfiguration();

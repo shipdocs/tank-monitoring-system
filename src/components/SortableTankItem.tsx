@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Tank, ViewMode } from '../types/tank';
-import { TankCard } from './TankCard';
-import { TankListItem } from './TankListItem';
-import { TankCompactCard } from './TankCompactCard';
-import { TankCylinder } from './TankCylinder';
 import { EditableTankCard } from './EditableTankCard';
 import { EditableTankListItem } from './EditableTankListItem';
 import { EditableTankCompactCard } from './EditableTankCompactCard';
 import { EditableTankCylinder } from './EditableTankCylinder';
-import { EditableCompactTankCard } from './EditableCompactTankCard';
 
 interface SortableTankItemProps {
   tank: Tank;

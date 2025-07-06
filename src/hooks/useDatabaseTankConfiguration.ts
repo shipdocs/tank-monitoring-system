@@ -30,7 +30,7 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
   // Load configuration from database on mount
   useEffect(() => {
     loadConfiguration();
-  }, []);
+  }, [loadConfiguration]);
 
   // Apply configuration when tanks or configuration changes
   useEffect(() => {

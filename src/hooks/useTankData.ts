@@ -6,7 +6,7 @@ import { Tank, TankData } from '../types/tank';
 // Helper function to calculate trend
 const calculateTrend = (currentLevel: number, previousLevel: number): { trend: Tank['trend'], trendValue: number } => {
   const difference = currentLevel - previousLevel;
-  const threshold = 0.5; // Minimum change to consider as trend
+  const threshold = 3.0; // Minimum change to consider as trend (3mm to account for ship movement)
 
   if (Math.abs(difference) < threshold) {
     return { trend: 'stable', trendValue: 0 };

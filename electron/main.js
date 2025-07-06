@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, shell, ipcMain, dialog } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import pkg from 'electron-updater';
+const { autoUpdater } = pkg;
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';

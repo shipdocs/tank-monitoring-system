@@ -313,7 +313,7 @@ const parseJsonFormat = (data: unknown): Tank[] => {
         maxCapacity: parseFloat(item.maxCapacity || 1000),
         minLevel: parseFloat(item.minLevel || 50),
         maxLevel: parseFloat(item.maxLevel || 950),
-        unit: item.unit || 'L',
+        unit: item.unit || 'mm',
         status: item.status || 'normal',
         lastUpdated: new Date(item.lastUpdated || Date.now()),
         location: item.location || '',

@@ -162,11 +162,12 @@ function saveConfig() {
   }
 }
 
-// Tank status helper function
-function getStatus(level) {
-  if (level < 25) return 'critical';
-  if (level < 50) return 'low';
-  if (level > 950) return 'high';
+// Tank status helper function (for mm-based measurements)
+function getStatus(level, maxHeight = 1500) {
+  const percentage = (level / maxHeight) * 100;
+  if (percentage < 2) return 'critical'; // Less than 2%
+  if (percentage < 10) return 'low'; // Less than 10%
+  if (percentage > 95) return 'high'; // More than 95%
   return 'normal';
 }
 
@@ -188,10 +189,10 @@ function parseVerticalFormatData(fileContent, config) {
       id: `tank_${tanks.length + 1}`,
       name: `Tank ${String.fromCharCode(65 + tanks.length)}`, // Tank A, Tank B, etc.
       currentLevel: 0,
-      maxCapacity: 1000,
+      maxCapacity: 1500, // Default max height in mm
       minLevel: 50,
-      maxLevel: 950,
-      unit: 'L',
+      maxLevel: 1400, // Default max allowed height in mm
+      unit: 'mm',
       status: 'normal',
       lastUpdated: new Date().toISOString(),
       location: `Position ${tanks.length + 1}`,
@@ -207,6 +208,8 @@ function parseVerticalFormatData(fileContent, config) {
         if (fieldName === 'level') {
           tank.currentLevel = parseFloat(value) || 0;
           tank.level = tank.currentLevel; // Also set level for compatibility
+          // Update status based on new level
+          tank.status = getStatus(tank.currentLevel, tank.maxCapacity);
         } else if (fieldName === 'temperature') {
           tank.temperature = parseFloat(value) || 0;
         } else if (fieldName === 'name') {
@@ -234,10 +237,10 @@ function generateEmptyTanks() {
       id: i,
       name: `Tank ${String.fromCharCode(64 + i)}`, // Tank A, Tank B, etc.
       currentLevel: 0, // Empty tanks
-      maxCapacity: 1000,
+      maxCapacity: 1500, // Default max height in mm
       minLevel: 50,
-      maxLevel: 950,
-      unit: 'L',
+      maxLevel: 1400, // Default max allowed height in mm
+      unit: 'mm',
       status: 'critical', // Empty tanks are critical
       lastUpdated: timestamp,
       location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,

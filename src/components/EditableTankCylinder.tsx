@@ -16,7 +16,8 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Calculate percentage based on configured max height, not max capacity
+  const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const getStatusColor = (status: Tank['status']) => {
@@ -125,15 +126,15 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
         {/* Tank Body */}
         <div className="relative w-16 h-32 bg-gray-200 border-l-2 border-r-2 border-gray-400">
           {/* Liquid Level */}
-          <div 
+          <div
             className={`absolute bottom-0 left-0 right-0 transition-all duration-500 ${getLevelColor(tank.status)}`}
-            style={{ height: `${Math.min(percentage, 100)}%` }}
+            style={{ height: `${Math.max(0, Math.min(percentage, 100))}%` }}
           ></div>
-          
+
           {/* Level Percentage Text */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-xs font-bold text-white drop-shadow-lg">
-              {percentage.toFixed(0)}%
+              {Math.max(0, percentage).toFixed(0)}%
             </span>
           </div>
         </div>
@@ -148,7 +149,7 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
           {tank.currentLevel.toFixed(0)} mm
         </div>
         <div className="text-xs text-gray-500">
-          {percentage.toFixed(1)}%
+          {Math.max(0, percentage).toFixed(1)}%
         </div>
         {tank.temperature !== undefined && (
           <div className="text-xs text-blue-600 font-medium">

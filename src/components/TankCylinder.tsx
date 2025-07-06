@@ -7,7 +7,8 @@ interface TankCylinderProps {
 }
 
 export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Calculate percentage based on configured max height, not max capacity
+  const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const getStatusColor = (status: Tank['status']) => {
@@ -77,13 +78,13 @@ export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
           {/* Liquid Level */}
           <div
             className={`absolute bottom-0 left-0 right-0 transition-all duration-500 ${getLevelColor(tank.status)}`}
-            style={{ height: `${Math.min(percentage, 100)}%` }}
+            style={{ height: `${Math.max(0, Math.min(percentage, 100))}%` }}
           ></div>
 
           {/* Level Percentage Text */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-lg font-bold text-white drop-shadow-lg">
-              {percentage.toFixed(0)}%
+              {Math.max(0, percentage).toFixed(0)}%
             </span>
           </div>
         </div>

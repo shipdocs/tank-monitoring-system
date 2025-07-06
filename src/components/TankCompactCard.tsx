@@ -35,7 +35,8 @@ export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Calculate percentage based on configured max height, not max capacity
+  const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
 
   return (
@@ -68,16 +69,16 @@ export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
         </div>
         
         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div 
+          <div
             className={`h-full transition-all duration-500 ${getStatusColor(tank.status)}`}
-            style={{ width: `${Math.min(percentage, 100)}%` }}
+            style={{ width: `${Math.max(0, Math.min(percentage, 100))}%` }}
           ></div>
         </div>
         
         <div className="flex justify-between text-xs text-gray-500">
-          <span>0</span>
-          <span>{percentage.toFixed(0)}%</span>
-          <span>{tank.maxCapacity}</span>
+          <span>0 mm</span>
+          <span>{Math.max(0, percentage).toFixed(0)}%</span>
+          <span>{tank.maxCapacity} mm</span>
         </div>
         
         <div className="text-xs text-gray-500 text-center truncate">

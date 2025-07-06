@@ -54,7 +54,8 @@ export const TankListItem: React.FC<TankListItemProps> = ({ tank }) => {
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Calculate percentage based on configured max height, not max capacity
+  const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
 
   return (
@@ -77,12 +78,12 @@ export const TankListItem: React.FC<TankListItemProps> = ({ tank }) => {
             <div className="flex-1 max-w-xs">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Level</span>
-                <span>{percentage.toFixed(1)}%</span>
+                <span>{Math.max(0, percentage).toFixed(1)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div 
+                <div
                   className={`h-full transition-all duration-500 ${getStatusColor(tank.status)}`}
-                  style={{ width: `${Math.min(percentage, 100)}%` }}
+                  style={{ width: `${Math.max(0, Math.min(percentage, 100))}%` }}
                 ></div>
               </div>
             </div>

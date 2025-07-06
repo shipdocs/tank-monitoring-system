@@ -54,7 +54,8 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Calculate percentage based on configured max height, not max capacity
+  const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
 
   return (
@@ -90,7 +91,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
           <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden shadow-inner">
             <div
               className={`h-full transition-all duration-700 ease-out ${getStatusColor(tank.status)} relative`}
-              style={{ width: `${Math.min(percentage, 100)}%` }}
+              style={{ width: `${Math.max(0, Math.min(percentage, 100))}%` }}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white opacity-30"></div>
             </div>

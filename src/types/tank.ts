@@ -1,11 +1,11 @@
 export interface Tank {
   id: number;
   name: string;
-  currentLevel: number;
-  maxCapacity: number;
-  minLevel: number;
-  maxLevel: number;
-  unit: string;
+  currentLevel: number; // Current level in mm
+  maxCapacity: number; // Maximum height in mm (not liters!)
+  minLevel: number; // Minimum level in mm
+  maxLevel: number; // Maximum level in mm
+  unit: string; // Always 'mm' for height-based measurements
   status: 'normal' | 'low' | 'high' | 'critical';
   lastUpdated: Date;
   location: string;

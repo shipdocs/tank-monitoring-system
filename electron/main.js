@@ -387,7 +387,12 @@ async function exportLogsToFile() {
   }
 }
 
-// Generate HTML for logs display
+/**
+ * Generates an HTML string displaying the last 200 debug log entries with styled formatting.
+ * 
+ * The output includes log level highlighting, timestamps, source, and message fields, as well as controls for refreshing and scrolling. Intended for use in a dedicated debug logs window within the application.
+ * @return {string} HTML content representing the formatted debug logs.
+ */
 function generateLogsHtml() {
   const logsHtml = debugLogs.slice(-200).map(log => {
     const levelClass = log.level === 'ERROR' ? 'error' :
@@ -523,7 +528,11 @@ function generateLogsHtml() {
   `;
 }
 
-// Create settings window
+/**
+ * Opens the settings window as a modal child of the main application window.
+ *
+ * Prevents multiple instances by focusing the existing settings window if already open. Loads the settings page from the integrated server and handles external links by opening them in the default browser.
+ */
 function createSettingsWindow() {
   // Don't create multiple settings windows
   if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -578,7 +587,11 @@ function createSettingsWindow() {
   });
 }
 
-// Create help window with different content
+/**
+ * Opens a modal help window displaying HTML content for the specified help topic.
+ * 
+ * @param {string} type - The help topic to display (e.g., "getting-started", "requirements", "troubleshooting", "changelog", "about").
+ */
 function createHelpWindow(type) {
   const helpWindow = new BrowserWindow({
     width: 800,
@@ -951,7 +964,11 @@ function getHelpContent(type) {
   }
 }
 
-// Create application menu
+/**
+ * Creates and sets the application menu with platform-specific options and handlers for settings, help, logs, updates, and window controls.
+ *
+ * The menu includes File, View, Window, and Help sections, and adapts its structure for macOS conventions.
+ */
 function createMenu() {
   const template = [
     {

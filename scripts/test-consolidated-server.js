@@ -11,7 +11,10 @@ import https from 'https';
 
 console.log('🔍 Testing Consolidated Server Implementation...\n');
 
-// Test 1: Validate integrated server configuration
+/**
+ * Validates the integrated server configuration by checking for required API endpoints, connection status tracking, and broadcast functionality in `electron/integrated-server.js`.
+ * @returns {boolean} True if all required elements are present; false otherwise.
+ */
 function testIntegratedServerConfig() {
   console.log('🔧 Testing integrated server configuration...');
   
@@ -65,7 +68,12 @@ function testIntegratedServerConfig() {
   }
 }
 
-// Test 2: Validate Electron main.js settings window
+/**
+ * Validates the implementation of the Electron settings window in main.js.
+ *
+ * Checks for the existence of the settings window variable, the createSettingsWindow function, integration of the settings window in the menu, and ensures that external browser opening for settings has been removed. Logs results and returns true if all checks pass, false otherwise.
+ * @returns {boolean} True if the Electron settings window implementation meets all requirements; false otherwise.
+ */
 function testElectronSettingsWindow() {
   console.log('\n⚡ Testing Electron settings window implementation...');
   
@@ -109,7 +117,10 @@ function testElectronSettingsWindow() {
   }
 }
 
-// Test 3: Validate wizard configuration mapping
+/**
+ * Validates that the wizard configuration mapping in `serverConfig.ts` supports vertical format, required fields, line mapping, and correct data format mapping.
+ * @returns {boolean} True if all required configuration features are present and correct; false otherwise.
+ */
 function testWizardConfigMapping() {
   console.log('\n🧙 Testing wizard configuration mapping...');
   
@@ -164,7 +175,10 @@ function testWizardConfigMapping() {
   }
 }
 
-// Test 4: Validate settings.html exists in electron folder
+/**
+ * Checks that `electron/settings.html` exists, is sufficiently complete, and contains all required elements.
+ * @returns {boolean} True if the file is present, large enough, and includes all essential elements; false otherwise.
+ */
 function testSettingsHtmlLocation() {
   console.log('\n📄 Testing settings.html location...');
   
@@ -206,7 +220,12 @@ function testSettingsHtmlLocation() {
   }
 }
 
-// Test 5: Check for potential conflicts
+/**
+ * Checks for potential conflicts between standalone and integrated server implementations.
+ *
+ * Reads project configuration and server files to detect if the development script still uses the standalone server and whether both server implementations coexist. Logs warnings if conflicts are found, which may be acceptable during a transition period.
+ * @returns {boolean} True if the check completes without errors, false otherwise.
+ */
 function testForConflicts() {
   console.log('\n⚠️  Testing for potential conflicts...');
   
@@ -244,7 +263,11 @@ function testForConflicts() {
   }
 }
 
-// Run all tests
+/**
+ * Executes all consolidated server validation tests, logs a summary of results, and exits the process with an appropriate status code.
+ *
+ * Runs five main tests covering server configuration, Electron settings window integration, wizard configuration mapping, settings HTML validation, and conflict detection. Provides next-step instructions if all tests pass.
+ */
 async function runTests() {
   const results = [];
   

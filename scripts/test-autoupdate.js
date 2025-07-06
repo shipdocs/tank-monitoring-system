@@ -11,7 +11,12 @@ import https from 'https';
 
 console.log('🔍 Testing Auto-Update Configuration...\n');
 
-// Test 1: Validate package.json configuration
+/**
+ * Validates the auto-update configuration in package.json and package-lock.json.
+ *
+ * Checks for version consistency between package.json and package-lock.json, ensures the presence of the electron-updater dependency, and verifies that the build.publish configuration targets the correct GitHub repository. Logs detailed errors for any issues found.
+ * @return {boolean} True if all configuration checks pass; otherwise, false.
+ */
 function testPackageJsonConfig() {
   console.log('📦 Testing package.json configuration...');
   
@@ -62,7 +67,13 @@ function testPackageJsonConfig() {
   }
 }
 
-// Test 2: Check GitHub repository and releases
+/**
+ * Checks the GitHub repository for the latest release and verifies the presence of update files.
+ *
+ * Connects to the GitHub API to retrieve the latest release of the `shipdocs/tank-monitoring-system` repository. Validates that the repository is accessible, a release exists, and that the release contains update files matching `latest*.yml`. Logs detailed messages for missing releases, API errors, or absent update files.
+ *
+ * @returns {Promise<boolean>} Resolves to `true` if the repository, release, and update files are valid; otherwise, `false`.
+ */
 function testGitHubRepository() {
   return new Promise((resolve) => {
     console.log('\n🐙 Testing GitHub repository...');
@@ -137,7 +148,13 @@ function testGitHubRepository() {
   });
 }
 
-// Test 3: Validate main.js auto-updater implementation
+/**
+ * Validates the auto-updater implementation in `electron/main.js`.
+ *
+ * Checks for the import of `electron-updater`, presence of all required auto-updater event handlers, invocation of `checkForUpdatesAndNotify`, and existence of a development mode check. Logs detailed messages about missing elements or errors encountered during validation.
+ *
+ * @returns {boolean} `true` if all required elements are present; otherwise, `false`.
+ */
 function testMainJsImplementation() {
   console.log('\n⚡ Testing main.js auto-updater implementation...');
   
@@ -194,7 +211,12 @@ function testMainJsImplementation() {
   }
 }
 
-// Test 4: Check workflow configuration
+/**
+ * Validates the GitHub Actions workflow configuration for auto-update publishing.
+ *
+ * Checks that the workflow file `.github/workflows/release.yml` includes the `--publish=always` flag and the `GH_TOKEN` environment variable, both required for generating and publishing update files to GitHub releases.
+ * @returns {boolean} `true` if the workflow is correctly configured; otherwise, `false`.
+ */
 function testWorkflowConfiguration() {
   console.log('\n🔄 Testing GitHub Actions workflow...');
   
@@ -227,7 +249,11 @@ function testWorkflowConfiguration() {
   }
 }
 
-// Run all tests
+/**
+ * Executes all auto-update configuration tests and reports the results.
+ *
+ * Runs each validation test sequentially, summarizes the outcomes, provides next-step recommendations, and exits the process with a success or failure code based on the test results.
+ */
 async function runTests() {
   const results = [];
   

@@ -52,6 +52,10 @@ let lastTankData = [];
 let connectedClients = new Set();
 let isFileMonitoringActive = false;
 
+/**
+ * Adds a timestamped log entry to the debug log store and outputs it to the console.
+ * Maintains a maximum number of stored logs by removing the oldest entries when necessary.
+ */
 function addLog(level, category, message) {
   const log = {
     timestamp: new Date().toISOString(),
@@ -227,7 +231,13 @@ function generateEmptyTanks() {
   return tanks;
 }
 
-// Broadcast data to all connected WebSocket clients
+/**
+ * Sends the latest tank data and connection status to all connected WebSocket clients.
+ * 
+ * Updates the stored tank data and broadcasts a message containing tank information, last synchronization time, and current connection status.
+ * 
+ * @param {Array<Object>} tanks - The array of tank data objects to broadcast.
+ */
 function broadcastTankData(tanks) {
   // Store the latest tank data for API endpoint
   lastTankData = tanks;
@@ -248,7 +258,10 @@ function broadcastTankData(tanks) {
   });
 }
 
-// Broadcast connection status
+/**
+ * Sends the current connection status to all connected WebSocket clients.
+ * @param {string} status - The connection status to broadcast (e.g., 'connected', 'disconnected').
+ */
 function broadcastStatus(status) {
   const message = JSON.stringify({
     type: 'status',
@@ -264,6 +277,14 @@ function broadcastStatus(status) {
 
 
 
+/**
+ * Starts the integrated Electron server, initializing the Express HTTP server and WebSocket server, and sets up all API endpoints for configuration, tank data, branding, security, and connection management.
+ *
+ * Loads configuration, serves static files, manages WebSocket connections for real-time tank data updates, and starts file monitoring if a data source is configured. Provides endpoints for retrieving and updating configuration, tank settings, branding, security, and debug logs, as well as for connecting and disconnecting the data source. If no data source is configured, generates empty tank data.
+ *
+ * @param {boolean} [isDev=false] - Whether to run in development mode (affects static file path resolution).
+ * @returns {Promise<{app: import('express').Express, server: import('http').Server, wss: import('ws').WebSocketServer}>} Resolves with the Express app, HTTP server, and WebSocket server instances when the server is started.
+ */
 export function startIntegratedServer(isDev = false) {
   return new Promise((resolve, reject) => {
     try {
@@ -582,6 +603,11 @@ export function startIntegratedServer(isDev = false) {
   });
 }
 
+/**
+ * Starts monitoring the configured CSV or vertical format file for tank data updates.
+ *
+ * Initializes the appropriate file monitoring process based on the current configuration. When new tank data is detected, it limits the data to the configured tank count, stores it, and broadcasts updates to connected WebSocket clients. Updates and broadcasts the connection status accordingly.
+ */
 function startFileMonitoring() {
   if (!currentConfig.csvFile.filePath) {
     addLog('INFO', 'MONITOR', 'No CSV file configured');

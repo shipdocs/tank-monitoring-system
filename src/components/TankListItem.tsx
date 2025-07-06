@@ -36,10 +36,25 @@ export const TankListItem: React.FC<TankListItemProps> = ({ tank }) => {
     }
   };
 
-  const getTrendColor = (trend: Tank['trend']) => {
+  const getTrendColor = (trend: Tank['trend'], speed: number = 0) => {
+    // Determine intensity based on speed
+    const getIntensity = (speed: number) => {
+      if (speed < 50) return 'light';
+      if (speed < 150) return 'normal';
+      return 'intense';
+    };
+
+    const intensity = getIntensity(speed);
+
     switch (trend) {
-      case 'loading': return 'text-green-600 bg-green-50';
-      case 'unloading': return 'text-red-600 bg-red-50';
+      case 'loading':
+        if (intensity === 'light') return 'text-green-500 bg-green-50';
+        if (intensity === 'normal') return 'text-green-600 bg-green-100';
+        return 'text-green-700 bg-green-200';
+      case 'unloading':
+        if (intensity === 'light') return 'text-red-500 bg-red-50';
+        if (intensity === 'normal') return 'text-red-600 bg-red-100';
+        return 'text-red-700 bg-red-200';
       case 'stable': return 'text-gray-600 bg-gray-50';
       default: return 'text-gray-500 bg-gray-50';
     }
@@ -125,12 +140,12 @@ export const TankListItem: React.FC<TankListItemProps> = ({ tank }) => {
         {/* Trend Indicator */}
         {tank.trend && (
           <div className="flex justify-center mt-2">
-            <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium ${getTrendColor(tank.trend)}`}>
+            <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium ${getTrendColor(tank.trend, tank.trendValue || 0)}`}>
               {getTrendIcon(tank.trend)}
               <span>{getTrendText(tank.trend)}</span>
               {tank.trendValue && tank.trendValue > 0 && (
-                <span className="text-xs">
-                  {tank.trendValue.toFixed(1)} {tank.unit}/min
+                <span className="text-xs font-mono font-semibold">
+                  {tank.trend === 'loading' ? '+' : tank.trend === 'unloading' ? '-' : '±'}{tank.trendValue.toFixed(0)} mm/min
                 </span>
               )}
             </div>

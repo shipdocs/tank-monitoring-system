@@ -1,19 +1,20 @@
 import { app, BrowserWindow, Menu, shell, ipcMain, dialog } from 'electron';
-import pkg from 'electron-updater';
-const { autoUpdater } = pkg;
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { autoUpdater } = require('electron-updater');
 import path from 'path';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import http from 'http';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
+import http from 'http';
+import { startIntegratedServer, stopIntegratedServer, getDebugLogs } from './integrated-server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
-let serverProcess;
+let serverInstance = null; // Integrated server instance
 
 // Configure auto-updater (will be called after window creation)
 
@@ -238,7 +239,9 @@ function createWindow() {
     // Start auto-updater after window is ready (only in production)
     if (!isDev) {
       setTimeout(() => {
-        autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.checkForUpdatesAndNotify().catch(err => {
+          addLog('ERROR', 'UPDATER', `Update error: ${err.message}`);
+        });
       }, 5000); // Wait 5 seconds after startup
     }
   });
@@ -267,167 +270,36 @@ function createWindow() {
   });
 }
 
-// Start the backend server
-function startServer() {
+// Start the integrated server
+async function startServer() {
   if (isDev) {
     console.log('Development mode: Server should be started manually with npm run dev:backend');
     return;
   }
 
   try {
-    // In packaged app, server files are in resources/server
-    const isPackaged = app.isPackaged;
-    let serverPath;
-    let serverCwd;
-    let nodeModulesPath;
-
-    if (isPackaged) {
-      // In packaged app: resources/server/index.js
-      serverPath = path.join(process.resourcesPath, 'server', 'index.js');
-      serverCwd = path.join(process.resourcesPath, 'server');
-      nodeModulesPath = path.join(process.resourcesPath, '..', 'node_modules');
-    } else {
-      // In development: ../server/index.js
-      serverPath = path.join(__dirname, '../server/index.js');
-      serverCwd = path.join(__dirname, '..');
-      nodeModulesPath = path.join(__dirname, '..', 'node_modules');
-    }
-
-    addLog('INFO', 'SERVER', '=== Server Startup Debug Info ===');
-    addLog('INFO', 'SERVER', `Platform: ${process.platform}`);
-    addLog('INFO', 'SERVER', `App packaged: ${isPackaged}`);
-    addLog('INFO', 'SERVER', `Server path: ${serverPath}`);
-    addLog('INFO', 'SERVER', `Server working directory: ${serverCwd}`);
-    addLog('INFO', 'SERVER', `Node modules path: ${nodeModulesPath}`);
-    addLog('INFO', 'SERVER', `Process resourcesPath: ${process.resourcesPath}`);
+    addLog('INFO', 'SERVER', 'Starting integrated server...');
+    serverInstance = await startIntegratedServer(isDev);
+    addLog('INFO', 'SERVER', 'Integrated server started successfully');
     
-    // Check if server file exists
-    if (!fs.existsSync(serverPath)) {
-      addLog('ERROR', 'SERVER', `Server file does not exist at: ${serverPath}`);
-      return;
-    }
-    addLog('INFO', 'SERVER', 'Server file exists: ✓');
-
-    // Check if node_modules exist in server directory
-    const serverNodeModules = path.join(serverCwd, 'node_modules');
-    if (!fs.existsSync(serverNodeModules)) {
-      console.warn('WARNING: node_modules not found in server directory:', serverNodeModules);
-      console.log('Checking app-level node_modules...');
-      
-      // Check if app-level node_modules exist
-      if (!fs.existsSync(nodeModulesPath)) {
-        console.error('ERROR: App-level node_modules not found at:', nodeModulesPath);
-      } else {
-        console.log('App-level node_modules found: ✓');
-      }
-    } else {
-      console.log('Server node_modules exist: ✓');
-    }
-
-    // Check for critical server dependencies
-    const criticalDeps = ['express', 'ws', 'cors', 'chokidar'];
-    criticalDeps.forEach(dep => {
-      const depPath1 = path.join(serverNodeModules, dep);
-      const depPath2 = path.join(nodeModulesPath, dep);
-      
-      if (fs.existsSync(depPath1)) {
-        console.log(`Dependency '${dep}' found in server node_modules: ✓`);
-      } else if (fs.existsSync(depPath2)) {
-        console.log(`Dependency '${dep}' found in app node_modules: ✓`);
-      } else {
-        console.error(`ERROR: Critical dependency '${dep}' not found!`);
-      }
-    });
-
-    // Use different spawn options for Windows vs other platforms
-    const isWindows = process.platform === 'win32';
-    
-    // Windows needs special handling for ES modules and paths
-    let nodeExecutable = 'node';
-    let nodeArgs = [];
-    
-    if (isWindows) {
-      // On Windows, use the full path to node.exe if available
-      const nodeExePath = process.execPath.replace('electron.exe', 'node.exe');
-      if (fs.existsSync(nodeExePath)) {
-        nodeExecutable = nodeExePath;
-        console.log('Using bundled node.exe:', nodeExePath);
-      }
-      nodeArgs = ['--experimental-modules', '--no-warnings', serverPath];
-    } else {
-      nodeArgs = [serverPath];
-    }
-
-    console.log('Node executable:', nodeExecutable);
-    console.log('Node arguments:', nodeArgs.join(' '));
-    console.log('Starting server process...');
-
-    // Set up environment variables
-    const serverEnv = {
-      ...process.env,
-      NODE_ENV: 'production',
-      NODE_PATH: `${nodeModulesPath}${path.delimiter}${path.join(serverCwd, 'node_modules')}`,
-      ELECTRON_RUN_AS_NODE: '1' // This helps with some Windows issues
-    };
-
-    console.log('Server NODE_PATH:', serverEnv.NODE_PATH);
-
-    serverProcess = spawn(nodeExecutable, nodeArgs, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: serverCwd,
-      env: serverEnv,
-      shell: isWindows, // Use shell on Windows for better compatibility
-      windowsHide: true // Hide console window on Windows
-    });
-
-    // Log server output
-    serverProcess.stdout.on('data', (data) => {
-      const output = data.toString().trim();
-      addLog('INFO', 'SERVER', output);
-    });
-
-    serverProcess.stderr.on('data', (data) => {
-      const error = data.toString().trim();
-      addLog('ERROR', 'SERVER', error);
-
-      // Show user-friendly error for common issues
-      if (error.includes('EADDRINUSE')) {
-        addLog('ERROR', 'DIAGNOSIS', 'Port already in use. Another instance might be running.');
-      } else if (error.includes('Cannot use import statement') || error.includes('SyntaxError')) {
-        addLog('ERROR', 'DIAGNOSIS', 'ES Module error. This might be a Node.js compatibility issue.');
-      } else if (error.includes('Cannot find module')) {
-        const moduleMatch = error.match(/Cannot find module '([^']+)'/);
-        if (moduleMatch) {
-          addLog('ERROR', 'DIAGNOSIS', `Missing module '${moduleMatch[1]}'. The dependency was not bundled correctly.`);
-        }
-      }
-    });
-
-    serverProcess.on('error', (error) => {
-      addLog('ERROR', 'SERVER', `Failed to start server process: ${error.message}`);
-      addLog('ERROR', 'SERVER', `Error details: code=${error.code}, errno=${error.errno}, syscall=${error.syscall}, path=${error.path}`);
-    });
-
-    serverProcess.on('exit', (code) => {
-      addLog('INFO', 'SERVER', `Server process exited with code ${code}`);
-      if (code !== 0) {
-        addLog('ERROR', 'SERVER', 'Server exited abnormally. Check the logs above for details.');
-      }
-    });
-
-    addLog('INFO', 'SERVER', `Backend server started with PID: ${serverProcess.pid}`);
-    addLog('INFO', 'SERVER', '=== End Server Startup Debug Info ===');
+    // Server is now running in the same process!
+    // No need for spawn, process management, etc.
   } catch (error) {
-    console.error('Error in startServer function:', error);
-    console.error('Stack trace:', error.stack);
+    addLog('ERROR', 'SERVER', `Failed to start integrated server: ${error.message}`);
+    console.error('Server startup error:', error);
   }
 }
 
-// Stop the backend server
-function stopServer() {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
+// Stop the integrated server
+async function stopServer() {
+  if (serverInstance) {
+    try {
+      await stopIntegratedServer();
+      serverInstance = null;
+      addLog('INFO', 'SERVER', 'Integrated server stopped');
+    } catch (error) {
+      addLog('ERROR', 'SERVER', `Error stopping server: ${error.message}`);
+    }
   }
 }
 

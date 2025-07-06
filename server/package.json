@@ -1,10 +1,27 @@
 {
-  "type": "module",
   "name": "tank-monitoring-server",
   "version": "1.0.0",
   "description": "Tank monitoring system server",
-  "main": "index.js",
+  "main": "server-standalone.js",
+  "type": "module",
   "engines": {
     "node": ">=16.0.0"
-  }
+  },
+  "pkg": {
+    "scripts": [
+      "index.js",
+      "fileMonitor.js", 
+      "fileParser.js"
+    ],
+    "assets": [
+      "package.json"
+    ],
+    "targets": [
+      "node18-linux-x64",
+      "node18-win-x64",
+      "node18-macos-x64"
+    ],
+    "outputPath": "../dist-server-bin"
+  },
+  "bin": "server-standalone.js"
 }

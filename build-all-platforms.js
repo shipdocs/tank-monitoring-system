@@ -14,9 +14,9 @@ console.log('🚀 Building Tank Monitoring System for all platforms...\n');
 console.log('📦 Building React application...');
 try {
   execSync('npm run build', { stdio: 'inherit' });
-  console.log('✅ React build completed\n');
+  console.log('✅ Build completed\n');
 } catch (error) {
-  console.error('❌ React build failed:', error.message);
+  console.error('❌ Build failed:', error.message);
   process.exit(1);
 }
 

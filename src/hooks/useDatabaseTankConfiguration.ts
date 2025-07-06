@@ -27,21 +27,6 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
   const [configuredTanks, setConfiguredTanks] = useState<Tank[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load configuration from database on mount
-  useEffect(() => {
-    loadConfiguration();
-  }, [loadConfiguration]);
-
-  // Apply configuration when tanks or configuration changes
-  useEffect(() => {
-    if (configuration && tanks.length > 0) {
-      const applied = applyTankConfiguration(tanks, configuration);
-      setConfiguredTanks(applied);
-    } else {
-      setConfiguredTanks(tanks);
-    }
-  }, [tanks, configuration]);
-
   const loadConfiguration = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -60,6 +45,21 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
       setIsLoading(false);
     }
   }, []);
+
+  // Load configuration from database on mount
+  useEffect(() => {
+    loadConfiguration();
+  }, [loadConfiguration]);
+
+  // Apply configuration when tanks or configuration changes
+  useEffect(() => {
+    if (configuration && tanks.length > 0) {
+      const applied = applyTankConfiguration(tanks, configuration);
+      setConfiguredTanks(applied);
+    } else {
+      setConfiguredTanks(tanks);
+    }
+  }, [tanks, configuration]);
 
   const saveConfiguration = useCallback((config: AppConfiguration) => {
     try {

@@ -24,8 +24,10 @@
         <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h2 class="text-xl font-bold text-gray-900 mb-4">🔒 Settings Access</h2>
             <p class="text-gray-600 mb-4">This settings page is password protected. Please enter the password to continue.</p>
-            <input type="password" id="passwordInput" placeholder="Enter password"
-                   class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4">
+            <form id="passwordForm" onsubmit="return false;">
+                <input type="password" id="passwordInput" placeholder="Enter password"
+                       class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4">
+            </form>
             <div class="flex space-x-3">
                 <button id="passwordSubmit" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
                     Access Settings
@@ -529,19 +531,21 @@
                         <label for="enablePassword" class="text-sm font-medium text-gray-700">Enable password protection for settings</label>
                     </div>
 
-                    <div id="passwordSettings" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display: none;">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                            <input type="password" id="newPassword" placeholder="Enter password"
-                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
+                    <form id="passwordSettingsForm" onsubmit="return false;">
+                        <div id="passwordSettings" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display: none;">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                                <input type="password" id="newPassword" placeholder="Enter password"
+                                       class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-                            <input type="password" id="confirmPassword" placeholder="Confirm password"
-                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                                <input type="password" id="confirmPassword" placeholder="Confirm password"
+                                       class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
                         </div>
-                    </div>
+                    </form>
 
                     <div class="mt-4">
                         <button id="savePassword" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
@@ -797,49 +801,56 @@
             tbody.innerHTML = '';
 
             currentTanks.forEach(tank => {
-                const config = tankConfig.tanks[tank.id] || {
+                // Handle both old and new tank data structures
+                const tankId = tank.id || tank.tankId || 'unknown';
+                const tankName = tank.name || `Tank ${tankId}`;
+                const currentLevel = tank.currentLevel || tank.level || 0;
+                const maxCapacity = tank.maxCapacity || 1000;
+                const unit = tank.unit || 'L';
+
+                const config = tankConfig.tanks[tankId] || {
                     maxHeight: 1500,
                     allowedHeight: 1400
                 };
 
-                const percentage = config.allowedHeight > 0 ? (tank.currentLevel / config.allowedHeight * 100) : 0;
+                const percentage = config.allowedHeight > 0 ? (currentLevel / config.allowedHeight * 100) : 0;
                 const status = getStatusFromPercentage(percentage);
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="border border-gray-300 px-3 py-2">
                         <input type="text"
-                               id="tankName_${tank.id}"
-                               value="${tank.name}"
-                               onchange="updateTankName(${tank.id}, this.value)"
-                               oninput="handleTankNameInput(${tank.id}, this.value)"
+                               id="tankName_${tankId}"
+                               value="${tankName}"
+                               onchange="updateTankName('${tankId}', this.value)"
+                               oninput="handleTankNameInput('${tankId}', this.value)"
                                class="w-full p-1 border border-gray-300 rounded text-sm">
                     </td>
                     <td class="border border-gray-300 px-3 py-2">
                         <input type="number"
-                               id="maxHeight_${tank.id}"
+                               id="maxHeight_${tankId}"
                                value="${config.maxHeight}"
                                min="0"
                                step="1"
-                               onchange="updateTankConfig(${tank.id}, 'maxHeight', this.value)"
-                               oninput="handleTankConfigInput(${tank.id}, 'maxHeight', this.value)"
+                               onchange="updateTankConfig('${tankId}', 'maxHeight', this.value)"
+                               oninput="handleTankConfigInput('${tankId}', 'maxHeight', this.value)"
                                class="w-full p-1 border border-gray-300 rounded text-sm">
                     </td>
                     <td class="border border-gray-300 px-3 py-2">
                         <input type="number"
-                               id="allowedHeight_${tank.id}"
+                               id="allowedHeight_${tankId}"
                                value="${config.allowedHeight}"
                                min="0"
                                step="1"
-                               onchange="updateTankConfig(${tank.id}, 'allowedHeight', this.value)"
-                               oninput="handleTankConfigInput(${tank.id}, 'allowedHeight', this.value)"
+                               onchange="updateTankConfig('${tankId}', 'allowedHeight', this.value)"
+                               oninput="handleTankConfigInput('${tankId}', 'allowedHeight', this.value)"
                                class="w-full p-1 border border-gray-300 rounded text-sm">
                     </td>
                     <td class="border border-gray-300 px-3 py-2 text-center">
-                        ${tank.currentLevel.toFixed(0)} mm
+                        ${(currentLevel || 0).toFixed(0)} ${unit}
                     </td>
                     <td class="border border-gray-300 px-3 py-2 text-center">
-                        ${percentage.toFixed(1)}%
+                        ${(percentage || 0).toFixed(1)}%
                     </td>
                     <td class="border border-gray-300 px-3 py-2 text-center">
                         <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}">

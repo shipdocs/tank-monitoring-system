@@ -616,8 +616,8 @@ async function connectDataSource() {
 
   // Serial port mode
   if (!SerialPort) {
-    console.log('SerialPort not available, starting demo mode');
-    startDemoMode();
+    console.log('SerialPort not available, generating empty tanks');
+    generateEmptyTanks();
     return true;
   }
 
@@ -746,6 +746,41 @@ function stopCsvFileMonitoring() {
 }
 
 
+
+// Generate empty tank data
+function generateEmptyTanks() {
+  const tanks = [];
+  const timestamp = new Date().toISOString();
+
+  for (let i = 1; i <= 12; i++) {
+    const group = i >= 1 && i <= 6 ? 'BB' : i >= 7 && i <= 12 ? 'SB' : 'CENTER';
+
+    tanks.push({
+      id: i,
+      name: `Tank ${String.fromCharCode(64 + i)}`, // Tank A, Tank B, etc.
+      currentLevel: 0, // Empty tanks
+      maxCapacity: 1000,
+      minLevel: 50,
+      maxLevel: 950,
+      unit: 'L',
+      status: 'critical', // Empty tanks are critical
+      lastUpdated: timestamp,
+      location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,
+      group: group,
+      temperature: 20 // Default temperature
+    });
+  }
+
+  // Store the empty tank data
+  lastTankData = tanks;
+
+  // Broadcast initial empty data
+  broadcastTankData(tanks);
+
+  console.log('📊 Generated 12 empty tanks - no data source configured');
+
+  return tanks;
+}
 
 // Disconnect data source
 function disconnectDataSource() {
@@ -1146,10 +1181,23 @@ function setupFileMonitor() {
   fileMonitor.on('data', (event) => {
     console.log(`Received data from source ${event.source}: ${event.tanks.length} tanks`);
 
+    // Get the configured tank count limit
+    const tankCountLimit = currentConfig.tankCount || 12;
+
+    // Limit the tank data to the configured count
+    let tanks = event.tanks || [];
+    if (tanks.length > tankCountLimit) {
+      tanks = tanks.slice(0, tankCountLimit);
+      console.log(`Limited tank data from ${event.tanks.length} to ${tankCountLimit} tanks`);
+    }
+
+    // Store the limited tank data
+    lastTankData = tanks;
+
     // Broadcast to WebSocket clients
     const message = JSON.stringify({
       type: 'tankData',
-      data: event.tanks,
+      data: tanks,
       source: event.source,
       timestamp: new Date().toISOString()
     });
@@ -1246,7 +1294,7 @@ async function init() {
     }, 1000);
   } else if (!SerialPort) {
     setTimeout(() => {
-      startDemoMode();
+      generateEmptyTanks();
     }, 1000);
   } else if (currentConfig.autoConnect && currentConfig.selectedPort) {
     setTimeout(() => {

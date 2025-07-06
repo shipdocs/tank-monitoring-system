@@ -6,7 +6,7 @@ import { TankAssignmentStep } from './TankAssignmentStep';
 import { WizardSummary } from './WizardSummary';
 import { VesselType, VesselTemplate, WizardState, DataSourceConfig } from '../../types/vessel';
 import { Tank } from '../../types/tank';
-import { useVesselConfiguration } from '../../hooks/useVesselConfiguration';
+import { useDatabaseVesselConfiguration } from '../../hooks/useDatabaseVesselConfiguration';
 import { loadTanksFromDataSource } from '../../utils/dataSourceParser';
 import { applyWizardConfigToServer } from '../../utils/serverConfig';
 import { ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
@@ -22,7 +22,7 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
   onComplete,
   onCancel
 }) => {
-  const { createVesselFromTemplate, assignTankToGroup } = useVesselConfiguration();
+  const { createVesselFromTemplate, assignTankToGroup } = useDatabaseVesselConfiguration();
 
   const [wizardState, setWizardState] = useState<WizardState>({
     step: 1

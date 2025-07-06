@@ -902,7 +902,7 @@ function getHelpContent(type) {
             <h1>🆕 What's New in Tank Monitoring System</h1>
 
             <div class="success">
-              <h2>Version 2.0.0 - Latest Release</h2>
+              <h2>Version 2.0.1 - Latest Release</h2>
               <p><strong>Release Date:</strong> ${new Date().toLocaleDateString()}</p>
             </div>
 
@@ -987,7 +987,7 @@ function getHelpContent(type) {
           <head><title>About</title>${baseStyle}</head>
           <body style="text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
             <h1 style="font-size: 32px; margin-bottom: 20px;">Tank Monitoring System</h1>
-            <p style="font-size: 20px; font-weight: bold; margin-bottom: 30px;">Version 2.0.0</p>
+            <p style="font-size: 20px; font-weight: bold; margin-bottom: 30px;">Version 2.0.1</p>
 
             <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin: 30px auto; max-width: 500px;">
               <h2>🚢 Professional Maritime Tank Monitoring</h2>

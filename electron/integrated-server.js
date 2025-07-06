@@ -52,6 +52,36 @@ let lastTankData = [];
 let connectedClients = new Set();
 let isFileMonitoringActive = false;
 
+// Simple rate limiting for file system access
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
+
+function checkRateLimit(ip, endpoint) {
+  const key = `${ip}:${endpoint}`;
+  const now = Date.now();
+
+  if (!rateLimitMap.has(key)) {
+    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+
+  const limit = rateLimitMap.get(key);
+
+  if (now > limit.resetTime) {
+    // Reset the limit
+    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+
+  if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  limit.count++;
+  return true;
+}
+
 function addLog(level, category, message) {
   const log = {
     timestamp: new Date().toISOString(),
@@ -462,17 +492,7 @@ export function startIntegratedServer(isDev = false) {
         }
       });
 
-      // Tank data endpoint
-      app.get('/api/tanks', (req, res) => {
-        if (lastTankData && lastTankData.length > 0) {
-          res.json(lastTankData);
-        } else {
-          res.status(503).json({
-            error: 'No tank data available',
-            message: 'Data source not connected or no data received yet'
-          });
-        }
-      });
+
 
       // Serve settings page
       app.get('/settings', (req, res) => {
@@ -486,6 +506,15 @@ export function startIntegratedServer(isDev = false) {
 
       // Serve settings page
       app.get('/settings', (req, res) => {
+        const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+
+        if (!checkRateLimit(clientIp, '/settings')) {
+          return res.status(429).json({
+            error: 'Too many requests',
+            message: 'Rate limit exceeded. Please try again later.'
+          });
+        }
+
         const settingsPath = path.join(__dirname, 'settings.html');
         if (fs.existsSync(settingsPath)) {
           res.sendFile(settingsPath);
@@ -496,6 +525,15 @@ export function startIntegratedServer(isDev = false) {
 
       // Serve flexible settings page
       app.get('/flexible-settings', (req, res) => {
+        const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+
+        if (!checkRateLimit(clientIp, '/flexible-settings')) {
+          return res.status(429).json({
+            error: 'Too many requests',
+            message: 'Rate limit exceeded. Please try again later.'
+          });
+        }
+
         const flexibleSettingsPath = path.join(__dirname, '..', 'server', 'flexible-settings.html');
         if (fs.existsSync(flexibleSettingsPath)) {
           res.sendFile(flexibleSettingsPath);
@@ -586,6 +624,7 @@ function startFileMonitoring() {
   if (!currentConfig.csvFile.filePath) {
     addLog('INFO', 'MONITOR', 'No CSV file configured');
     isFileMonitoringActive = false;
+    broadcastStatus('disconnected');
     return;
   }
 

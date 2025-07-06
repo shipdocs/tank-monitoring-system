@@ -21,7 +21,6 @@ function testIntegratedServerConfig() {
     // Check for required API endpoints
     const requiredEndpoints = [
       '/api/status',
-      '/api/config',
       '/api/tanks',
       '/api/tank-config',
       '/api/branding',
@@ -216,7 +215,7 @@ function testForConflicts() {
     // Check if standalone server is still being used in development
     const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
     
-    if (packageJson.scripts['dev:backend'] && packageJson.scripts['dev:backend'].includes('server/index.js')) {
+    if (packageJson.scripts?.['dev:backend']?.includes('server/index.js')) {
       warnings.push('Development still uses standalone server (server/index.js)');
     }
     

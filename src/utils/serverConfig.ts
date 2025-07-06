@@ -90,7 +90,7 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
           filePath: dataSource.filePath || '',
           importInterval: dataSource.importInterval || 30000,
           hasHeaders: dataSource.hasHeaders ?? false, // Default false for txt files
-          delimiter: dataSource.delimiter || ' ', // Default space for txt files
+          delimiter: dataSource.delimiter || (dataSource.type === 'txt-file' ? ' ' : ','), // Default space for txt files, comma for others
           isVerticalFormat: dataSource.isVerticalFormat || false,
           linesPerRecord: dataSource.linesPerRecord || 4,
           lineMapping: dataSource.lineMapping || {},

@@ -113,7 +113,7 @@ jobs:
         fi
         
     - name: Create Pre-Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.version.outputs.tag_name }}
         name: "🧪 Testing Build ${{ steps.version.outputs.version }}"

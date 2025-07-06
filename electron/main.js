@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
+let settingsWindow = null; // Settings window instance
 let serverInstance = null; // Integrated server instance
 
 // Configure auto-updater (will be called after window creation)
@@ -522,6 +523,61 @@ function generateLogsHtml() {
   `;
 }
 
+// Create settings window
+function createSettingsWindow() {
+  // Don't create multiple settings windows
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 1000,
+    minHeight: 600,
+    parent: mainWindow,
+    modal: false,
+    show: false,
+    resizable: true,
+    icon: path.join(__dirname, 'icon.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      preload: path.join(__dirname, 'preload.cjs'),
+      webSecurity: true
+    },
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
+  });
+
+  // Load settings page from integrated server
+  settingsWindow.loadURL('http://localhost:3001/settings');
+
+  settingsWindow.once('ready-to-show', () => {
+    settingsWindow.show();
+    addLog('INFO', 'WINDOW', 'Settings window opened');
+  });
+
+  // Handle window closed
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
+    addLog('INFO', 'WINDOW', 'Settings window closed');
+  });
+
+  // Add error handling
+  settingsWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Settings window failed to load:', errorCode, errorDescription);
+    addLog('ERROR', 'WINDOW', `Settings window failed to load: ${errorDescription}`);
+  });
+
+  // Handle external links
+  settingsWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+}
+
 // Create help window with different content
 function createHelpWindow(type) {
   const helpWindow = new BrowserWindow({
@@ -904,7 +960,7 @@ function createMenu() {
         {
           label: 'Settings',
           click: () => {
-            shell.openExternal('http://localhost:3001/settings');
+            createSettingsWindow();
           }
         },
         { type: 'separator' },

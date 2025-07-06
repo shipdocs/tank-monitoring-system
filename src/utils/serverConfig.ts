@@ -31,6 +31,10 @@ interface ServerConfig {
     isVerticalFormat?: boolean;
     linesPerRecord?: number;
     lineMapping?: Record<number, string>;
+    autoDetectDataEnd?: boolean;
+    skipOutliers?: boolean;
+    maxRecords?: number;
+    temperatureRange?: { min: number; max: number };
   };
 }
 
@@ -85,13 +89,26 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
           enabled: true,
           filePath: dataSource.filePath || '',
           importInterval: dataSource.importInterval || 30000,
-          hasHeaders: dataSource.hasHeaders ?? true,
-          delimiter: dataSource.delimiter || ',',
+          hasHeaders: dataSource.hasHeaders ?? false, // Default false for txt files
+          delimiter: dataSource.delimiter || ' ', // Default space for txt files
           isVerticalFormat: dataSource.isVerticalFormat || false,
           linesPerRecord: dataSource.linesPerRecord || 4,
           lineMapping: dataSource.lineMapping || {},
-          // Convert line mapping to column mapping for server
-          columnMapping: convertLineMappingToColumnMapping(dataSource)
+          autoDetectDataEnd: dataSource.autoDetectDataEnd ?? true,
+          skipOutliers: dataSource.skipOutliers ?? true,
+          maxRecords: dataSource.maxRecords || 12,
+          temperatureRange: dataSource.temperatureRange || { min: 0, max: 50 },
+          // Keep original column mapping for compatibility
+          columnMapping: {
+            id: '',
+            name: '',
+            level: '',
+            maxCapacity: '',
+            minLevel: '',
+            maxLevel: '',
+            unit: '',
+            location: ''
+          }
         }
       };
 

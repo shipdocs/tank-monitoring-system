@@ -1,0 +1,161 @@
+name: Pre-release Build
+
+on:
+  push:
+    branches: 
+      - 'feature/*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Pre-release version (e.g., 1.0.2-beta.1)'
+        required: true
+        default: '1.0.2-beta.1'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  pre-release:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Update version for manual input
+      if: github.event_name == 'workflow_dispatch'
+      run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
+      
+    - name: Build application
+      run: npm run build
+      
+    - name: Build Electron app (Windows)
+      if: matrix.os == 'windows-latest'
+      run: npm run electron:dist -- --publish=never
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Electron app (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: npm run electron:dist -- --publish=never
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Electron app (macOS)
+      if: matrix.os == 'macos-latest'
+      run: npm run electron:dist -- --publish=never
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+        
+    - name: Upload Windows artifacts
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-pre-release
+        path: |
+          dist-electron/*.exe
+          dist-electron/*.exe.blockmap
+          
+    - name: Upload Linux artifacts
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-pre-release
+        path: |
+          dist-electron/*.AppImage
+          
+    - name: Upload macOS artifacts
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-pre-release
+        path: |
+          dist-electron/*.dmg
+
+  create-pre-release:
+    needs: pre-release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "tag_name=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          # Extract version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=v${VERSION}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create Pre-Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.tag_name }}
+        name: "🧪 Testing Build ${{ steps.version.outputs.version }}"
+        draft: false
+        prerelease: true  # 🔑 BELANGRIJKSTE SETTING - voorkomt auto-updates!
+        generate_release_notes: true
+        body: |
+          ## 🧪 Testing Build - Server Consolidatie
+          
+          **⚠️ Dit is een testing build - niet voor productie gebruik!**
+          
+          ### 🚀 Nieuwe Functionaliteit
+          - ✅ **Settings binnen Electron** - Geen externe browser meer nodig
+          - ✅ **Geconsolideerde server** - Wizard en settings werken samen
+          - ✅ **Verbeterde connection status** - Correct "connected" voor vertical format
+          - ✅ **Betere configuratie mapping** - Wizard → settings synchronisatie
+          
+          ### 🔧 Technische Wijzigingen
+          - Server consolidatie (standalone + integrated → integrated only)
+          - Settings window implementatie in Electron
+          - Verbeterde wizard configuratie mapping
+          - Connection status logic reparatie
+          - Real-time status broadcasting
+          
+          ### 📋 Test Instructies
+          1. **Download** de juiste versie voor jouw platform
+          2. **Installeer** (bestaande installaties worden NIET automatisch geüpdatet)
+          3. **Test wizard** → configureer vertical format bestand
+          4. **Test settings** → File → Settings (moet binnen Electron openen)
+          5. **Controleer status** → moet "connected" tonen bij actieve file monitoring
+          
+          ### 🐛 Feedback
+          Rapporteer problemen in de GitHub Issues met label `testing-build`.
+          
+          ---
+          **Build Info:**
+          - Branch: `${{ github.ref_name }}`
+          - Commit: `${{ github.sha }}`
+          - Workflow: Pre-release
+        files: |
+          windows-pre-release/*
+          linux-pre-release/*
+          macos-pre-release/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

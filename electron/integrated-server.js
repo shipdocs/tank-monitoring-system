@@ -26,9 +26,31 @@ let fileMonitor;
 const debugLogs = [];
 const MAX_LOGS = 200;
 
+// Tank configuration storage
+let tankConfiguration = {
+  preAlarmPercentage: 86,
+  overfillPercentage: 97.5,
+  lowLevelPercentage: 10,
+  tanks: {}
+};
+
+// App branding storage
+let appBranding = {
+  appName: 'Tank Monitoring System',
+  appSlogan: 'Real-time tank level monitoring dashboard',
+  primaryColor: '#2563eb'
+};
+
+// Security settings storage
+let securitySettings = {
+  passwordProtected: false,
+  password: ''
+};
+
 // Tank data storage
 let lastTankData = [];
 let connectedClients = new Set();
+let isFileMonitoringActive = false;
 
 function addLog(level, category, message) {
   const log = {
@@ -215,8 +237,22 @@ function broadcastTankData(tanks) {
     data: {
       tanks,
       lastSync: new Date().toISOString(),
-      connectionStatus: 'connected' // Show connected for demo mode
+      connectionStatus: isFileMonitoringActive ? 'connected' : 'disconnected'
     }
+  });
+
+  connectedClients.forEach(client => {
+    if (client.readyState === client.OPEN) {
+      client.send(message);
+    }
+  });
+}
+
+// Broadcast connection status
+function broadcastStatus(status) {
+  const message = JSON.stringify({
+    type: 'status',
+    data: { connectionStatus: status, lastSync: new Date().toISOString() }
   });
 
   connectedClients.forEach(client => {
@@ -273,7 +309,16 @@ export function startIntegratedServer(isDev = false) {
       
       // API Routes
       app.get('/api/status', (req, res) => {
-        res.json({ 
+        const isConnected = currentConfig.csvFile.enabled && currentConfig.csvFile.filePath ?
+          isFileMonitoringActive : false;
+
+        res.json({
+          connected: isConnected,
+          selectedPort: currentConfig.selectedPort,
+          csvFileEnabled: currentConfig.csvFile.enabled,
+          csvFilePath: currentConfig.csvFile.filePath,
+          dataSource: currentConfig.csvFile.enabled ? 'csvfile' : 'serial',
+          lastSync: new Date().toISOString(),
           status: 'online',
           version: '2.0.0',
           debugLogs: debugLogs.length
@@ -301,44 +346,108 @@ export function startIntegratedServer(isDev = false) {
         res.json(debugLogs);
       });
 
+      // Tank data endpoint
+      app.get('/api/tanks', (req, res) => {
+        if (lastTankData && lastTankData.length > 0) {
+          res.json(lastTankData);
+        } else {
+          res.status(503).json({
+            error: 'No tank data available',
+            message: 'Data source not connected or no data received yet'
+          });
+        }
+      });
+
       // Tank configuration endpoints
       app.get('/api/tank-config', (req, res) => {
-        const tankConfig = {
-          preAlarmPercentage: 86,
-          overfillPercentage: 97.5,
-          lowLevelPercentage: 10,
-          tanks: {}
-        };
-        res.json(tankConfig);
+        res.json(tankConfiguration);
       });
 
       app.post('/api/tank-config', (req, res) => {
-        // Tank configuration would be saved here
-        res.json({ success: true, message: 'Tank configuration saved' });
+        try {
+          tankConfiguration = { ...tankConfiguration, ...req.body };
+          addLog('INFO', 'CONFIG', 'Tank configuration updated');
+          res.json({ success: true, message: 'Tank configuration saved' });
+        } catch (error) {
+          addLog('ERROR', 'CONFIG', `Failed to save tank configuration: ${error.message}`);
+          res.status(500).json({ success: false, message: 'Failed to save configuration' });
+        }
       });
 
       // App branding endpoints
       app.get('/api/branding', (req, res) => {
-        const branding = {
-          appName: 'Tank Monitoring System',
-          appSlogan: 'Real-time tank level monitoring dashboard',
-          primaryColor: '#2563eb'
-        };
-        res.json(branding);
+        res.json(appBranding);
       });
 
       app.post('/api/branding', (req, res) => {
-        // Branding would be saved here
-        res.json({ success: true, message: 'Branding saved' });
+        try {
+          appBranding = { ...appBranding, ...req.body };
+          addLog('INFO', 'CONFIG', 'App branding updated');
+          res.json({ success: true, message: 'Branding saved' });
+        } catch (error) {
+          addLog('ERROR', 'CONFIG', `Failed to save branding: ${error.message}`);
+          res.status(500).json({ success: false, message: 'Failed to save branding' });
+        }
+      });
+
+      // Security endpoints
+      app.get('/api/security', (req, res) => {
+        // Don't send the actual password, just the protection status
+        res.json({
+          passwordProtected: securitySettings.passwordProtected
+        });
+      });
+
+      app.post('/api/security', (req, res) => {
+        try {
+          securitySettings = { ...securitySettings, ...req.body };
+          addLog('INFO', 'CONFIG', 'Security settings updated');
+          res.json({ success: true, message: 'Security settings saved' });
+        } catch (error) {
+          addLog('ERROR', 'CONFIG', `Failed to save security settings: ${error.message}`);
+          res.status(500).json({ success: false, message: 'Failed to save security settings' });
+        }
+      });
+
+      app.post('/api/security/verify', (req, res) => {
+        const { password } = req.body;
+        if (!securitySettings.passwordProtected || password === securitySettings.password) {
+          res.json({ success: true, message: 'Access granted' });
+        } else {
+          res.status(401).json({ success: false, message: 'Invalid password' });
+        }
       });
 
       // Connection endpoints
-      app.post('/api/connect', (req, res) => {
-        res.json({ success: true, connected: true });
+      app.post('/api/connect', async (req, res) => {
+        try {
+          if (currentConfig.csvFile.enabled && currentConfig.csvFile.filePath) {
+            startFileMonitoring();
+            addLog('INFO', 'CONNECTION', 'File monitoring started');
+            res.json({ success: true, connected: true });
+          } else {
+            addLog('WARN', 'CONNECTION', 'No data source configured');
+            res.json({ success: false, connected: false, message: 'No data source configured' });
+          }
+        } catch (error) {
+          addLog('ERROR', 'CONNECTION', `Connection failed: ${error.message}`);
+          res.json({ success: false, connected: false, error: error.message });
+        }
       });
 
       app.post('/api/disconnect', (req, res) => {
-        res.json({ success: true, connected: false });
+        try {
+          if (fileMonitor) {
+            fileMonitor.stop();
+            addLog('INFO', 'CONNECTION', 'File monitoring stopped');
+          }
+          isFileMonitoringActive = false;
+          broadcastStatus('disconnected');
+          res.json({ success: true, connected: false });
+        } catch (error) {
+          addLog('ERROR', 'CONNECTION', `Disconnect failed: ${error.message}`);
+          res.json({ success: false, error: error.message });
+        }
       });
       
       app.post('/api/test-csv', async (req, res) => {
@@ -368,6 +477,16 @@ export function startIntegratedServer(isDev = false) {
       // Serve settings page
       app.get('/settings', (req, res) => {
         const settingsPath = path.join(__dirname, '..', 'server', 'settings.html');
+        if (fs.existsSync(settingsPath)) {
+          res.sendFile(settingsPath);
+        } else {
+          res.status(404).send('Settings page not found');
+        }
+      });
+
+      // Serve settings page
+      app.get('/settings', (req, res) => {
+        const settingsPath = path.join(__dirname, 'settings.html');
         if (fs.existsSync(settingsPath)) {
           res.sendFile(settingsPath);
         } else {
@@ -466,6 +585,7 @@ export function startIntegratedServer(isDev = false) {
 function startFileMonitoring() {
   if (!currentConfig.csvFile.filePath) {
     addLog('INFO', 'MONITOR', 'No CSV file configured');
+    isFileMonitoringActive = false;
     return;
   }
 
@@ -473,6 +593,8 @@ function startFileMonitoring() {
   if (currentConfig.csvFile.isVerticalFormat) {
     addLog('INFO', 'MONITOR', 'Using vertical format parser for file monitoring');
     startVerticalFormatMonitoring();
+    isFileMonitoringActive = true;
+    broadcastStatus('connected');
     return;
   }
 
@@ -522,6 +644,8 @@ function startFileMonitoring() {
   // Add the data source and start monitoring
   fileMonitor.addSource(dataSource);
   fileMonitor.start();
+  isFileMonitoringActive = true;
+  broadcastStatus('connected');
   addLog('INFO', 'MONITOR', `Started monitoring: ${currentConfig.csvFile.filePath}`);
 }
 

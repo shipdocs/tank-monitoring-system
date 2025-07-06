@@ -5,7 +5,7 @@ import { AlertTriangle, TrendingUp, TrendingDown, Minus, Edit2, GripVertical } f
 interface EditableCompactTankCardProps {
   tank: Tank;
   onRename: (tankId: number, newName: string) => void;
-  dragHandleProps?: any;
+  dragHandleProps?: Record<string, unknown>;
 }
 
 export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = ({ 

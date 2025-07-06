@@ -91,7 +91,7 @@ export interface DataSourceConfig {
   hasHeaders?: boolean;
   delimiter?: string;
   columnMapping?: Record<string, string>;
-  previewData?: any[];
+  previewData?: string[][];
   // Vertical format options
   isVerticalFormat?: boolean;
   linesPerRecord?: number;

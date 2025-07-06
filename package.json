@@ -83,10 +83,10 @@
       "output": "dist-electron"
     },
     "files": [
+      "!node_modules/**/*",
       "dist/**/*",
       "electron/**/*",
-      "server/**/*",
-      "!node_modules/**/*"
+      "server/**/*"
     ],
     "extraResources": [
       {

@@ -2,7 +2,6 @@ import React from 'react';
 import {
   DndContext,
   closestCenter,
-  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -12,7 +11,6 @@ import {
   DragStartEvent,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,

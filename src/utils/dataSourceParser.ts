@@ -9,14 +9,14 @@ const analyzeDataQuality = (records: string[][], config: DataSourceConfig) => {
   let validRecords = 0;
 
   // Find which line contains temperature data
-  const tempLineIndex = Object.entries(lineMapping).find(([_, field]) => field === 'temperature')?.[0];
-  const levelLineIndex = Object.entries(lineMapping).find(([_, field]) => field === 'level')?.[0];
+  const tempLineIndex = Object.entries(lineMapping).find(([, field]) => field === 'temperature')?.[0];
+  const levelLineIndex = Object.entries(lineMapping).find(([, field]) => field === 'level')?.[0];
 
   // Collect all temperature and level values for statistical analysis
   const temperatures: number[] = [];
   const levels: number[] = [];
 
-  records.forEach((record, recordIndex) => {
+  records.forEach((record) => {
     if (tempLineIndex !== undefined) {
       const tempValue = parseFloat(record[parseInt(tempLineIndex)]?.replace(',', '.') || '0');
       if (!isNaN(tempValue)) {
@@ -133,7 +133,7 @@ const parseVerticalFormat = (lines: string[], config: DataSourceConfig): Tank[] 
   }
 
   // Process each record
-  recordsToProcess.forEach((recordLines, recordIndex) => {
+  recordsToProcess.forEach((recordLines) => {
     
     // Create tank object from mapped lines
     const tank: Partial<Tank> = {
@@ -150,48 +150,55 @@ const parseVerticalFormat = (lines: string[], config: DataSourceConfig): Tank[] 
       }
       
       switch (fieldName) {
-        case 'id':
+        case 'id': {
           const parsedId = parseInt(value);
           if (!isNaN(parsedId)) {
             tank.id = parsedId;
           }
           break;
+        }
         case 'name':
           tank.name = value;
           break;
-        case 'level':
+        case 'level': {
           const level = parseFloat(value.replace(',', '.'));
           if (!isNaN(level)) {
             tank.currentLevel = level;
           }
           break;
-        case 'maxCapacity':
+        }
+        case 'maxCapacity': {
           const maxCap = parseFloat(value.replace(',', '.'));
           if (!isNaN(maxCap)) {
             tank.maxCapacity = maxCap;
           }
           break;
-        case 'minLevel':
+        }
+        case 'minLevel': {
           const minLvl = parseFloat(value.replace(',', '.'));
           if (!isNaN(minLvl)) {
             tank.minLevel = minLvl;
           }
           break;
-        case 'maxLevel':
+        }
+        case 'maxLevel': {
           const maxLvl = parseFloat(value.replace(',', '.'));
           if (!isNaN(maxLvl)) {
             tank.maxLevel = maxLvl;
           }
           break;
-        case 'temperature':
+        }
+        case 'temperature': {
           // Store as custom property for now
-          (tank as any).temperature = parseFloat(value.replace(',', '.'));
+          (tank as Tank & { temperature?: number }).temperature = parseFloat(value.replace(',', '.'));
           break;
-        case 'pressure':
+        }
+        case 'pressure': {
           // Store as custom property for now
-          (tank as any).pressure = parseFloat(value.replace(',', '.'));
+          (tank as Tank & { pressure?: number }).pressure = parseFloat(value.replace(',', '.'));
           break;
-        case 'status':
+        }
+        case 'status': {
           const statusValue = parseInt(value);
           if (statusValue === 0) {
             tank.status = 'normal';
@@ -203,6 +210,7 @@ const parseVerticalFormat = (lines: string[], config: DataSourceConfig): Tank[] 
             tank.status = 'critical';
           }
           break;
+        }
         case 'unit':
           tank.unit = value;
           break;
@@ -244,11 +252,10 @@ const parseHorizontalFormat = (lines: string[], config: DataSourceConfig): Tank[
   const tanks: Tank[] = [];
   const delimiter = config.delimiter || ',';
   const hasHeaders = config.hasHeaders || false;
-  const columnMapping = config.columnMapping || {};
-  
+
   const dataLines = hasHeaders ? lines.slice(1) : lines;
-  
-  dataLines.forEach((line, index) => {
+
+  dataLines.forEach((line) => {
     const columns = line.split(delimiter).map(col => col.trim());
     
     const tank: Partial<Tank> = {
@@ -283,18 +290,18 @@ const parseHorizontalFormat = (lines: string[], config: DataSourceConfig): Tank[
 };
 
 // Parse JSON format data
-const parseJsonFormat = (data: any): Tank[] => {
+const parseJsonFormat = (data: unknown): Tank[] => {
   try {
     let tanksData = data;
     
     // Handle different JSON structures
-    if (data.tanks && Array.isArray(data.tanks)) {
-      tanksData = data.tanks;
+    if ((data as { tanks?: unknown }).tanks && Array.isArray((data as { tanks: unknown[] }).tanks)) {
+      tanksData = (data as { tanks: unknown[] }).tanks;
     } else if (!Array.isArray(data)) {
       throw new Error('Invalid JSON data structure - expected array');
     }
-    
-    return tanksData.map((item: any, index: number) => {
+
+    return (tanksData as unknown[]).map((item: unknown, index: number) => {
       if (!item.id || !item.name || item.currentLevel === undefined) {
         throw new Error(`Missing required fields in JSON item ${index}: id, name, or currentLevel`);
       }

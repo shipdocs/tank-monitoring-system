@@ -192,7 +192,7 @@ export const importConfiguration = (file: File): Promise<TankConfiguration> => {
           version: CONFIG_VERSION,
           lastUpdated: new Date().toISOString(),
         });
-      } catch (error) {
+      } catch {
         reject(new Error('Failed to parse configuration file'));
       }
     };

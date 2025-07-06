@@ -1,5 +1,4 @@
-import { VesselConfiguration, TankGroup } from '../types/vessel';
-import { Tank } from '../types/tank';
+import { VesselConfiguration } from '../types/vessel';
 
 export interface TankReading {
   id: string;
@@ -241,7 +240,7 @@ export class TankStorage {
   }
 
   // Migration helpers
-  migrateFromLocalStorage(vesselData: any, tankConfigData: any): void {
+  migrateFromLocalStorage(vesselData: unknown, tankConfigData: unknown): void {
     try {
       // Migrate vessel configurations
       if (vesselData) {

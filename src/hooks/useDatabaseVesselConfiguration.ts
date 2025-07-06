@@ -53,15 +53,10 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
   const [currentVessel, setCurrentVessel] = useState<VesselConfiguration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load data from database on mount
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       // Load all vessels
       const allVessels = storage.getVessels();
       setVessels(allVessels);
@@ -82,6 +77,11 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
       setIsLoading(false);
     }
   }, []);
+
+  // Load data from database on mount
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const createVessel = useCallback((config: Omit<VesselConfiguration, 'id' | 'metadata'>) => {
     const id = `vessel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

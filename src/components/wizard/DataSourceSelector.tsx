@@ -3,11 +3,9 @@ import { DataSourceType, DataSourceConfig } from '../../types/vessel';
 import {
   Database,
   FileText,
-  Upload,
   Cable,
   FolderOpen,
-  CheckCircle,
-  AlertCircle
+  CheckCircle
 } from 'lucide-react';
 
 interface DataSourceSelectorProps {
@@ -77,7 +75,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
     maxRecords: selectedDataSource?.maxRecords || 0,
     temperatureRange: selectedDataSource?.temperatureRange || { min: 0, max: 50 }
   });
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [previewData, setPreviewData] = useState<string[][]>([]);
   const [isValidating, setIsValidating] = useState(false);
 
   const handleTypeSelect = (type: DataSourceType) => {
@@ -99,9 +97,9 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
 
   const handleFileSelect = async () => {
     // Try Electron file dialog first
-    if ((window as any).tankMonitorAPI?.showOpenDialog) {
+    if ((window as unknown as { tankMonitorAPI?: { showOpenDialog: (options: unknown) => Promise<{ success: boolean; filePath?: string }> } }).tankMonitorAPI?.showOpenDialog) {
       try {
-        const result = await (window as any).tankMonitorAPI.showOpenDialog({
+        const result = await (window as unknown as { tankMonitorAPI: { showOpenDialog: (options: unknown) => Promise<{ success: boolean; filePath?: string }> } }).tankMonitorAPI.showOpenDialog({
           title: 'Select Data File',
           filters: [
             { name: 'Data Files', extensions: ['txt', 'csv', 'json'] },
@@ -121,7 +119,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
           // Create a mock file object for validation
           const fileName = result.filePath.split(/[\\/]/).pop() || 'file';
           const mockFile = new File([''], fileName);
-          (mockFile as any).fullPath = result.filePath;
+          (mockFile as File & { fullPath?: string }).fullPath = result.filePath;
 
           // Skip validation for now - the server will handle the actual file reading
           const config: DataSourceConfig = {
@@ -157,7 +155,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         // Get full path if available (Electron) or use file name as fallback (web)
-        const fullPath = (file as any).path || file.name;
+        const fullPath = (file as File & { path?: string }).path || file.name;
         setFileConfig(prev => ({ ...prev, filePath: fullPath }));
         await validateFile(file);
       }
@@ -198,7 +196,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
 
           // Analyze data quality (simplified version)
           if (records.length > 0) {
-            const tempLineIndex = Object.entries(fileConfig.lineMapping).find(([_, field]) => field === 'temperature')?.[0];
+            const tempLineIndex = Object.entries(fileConfig.lineMapping).find(([, field]) => field === 'temperature')?.[0];
             let validRecords = 0;
             const outliers: number[] = [];
 
@@ -250,7 +248,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
       // Create the data source config
       const config: DataSourceConfig = {
         type: selectedType!,
-        filePath: (file as any).path || file.name, // Use full path if available
+        filePath: (file as File & { path?: string }).path || file.name, // Use full path if available
         importInterval: fileConfig.importInterval * 1000, // Convert to ms
         hasHeaders: fileConfig.hasHeaders,
         delimiter: fileConfig.delimiter,

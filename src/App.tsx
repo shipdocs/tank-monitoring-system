@@ -2,20 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { SortableTankGrid } from './components/SortableTankGrid';
 import { ControlsSidebar } from './components/ControlsSidebar';
 import { VesselConfigurationWizard } from './components/wizard/VesselConfigurationWizard';
+import { TankTableSetupWizard } from './components/TankTableSetupWizard';
+import { OperationsDashboard } from './components/OperationsDashboard';
 import { CollapsibleHeader } from './components/CollapsibleHeader';
 import { useTankData } from './hooks/useTankData';
 import { useDatabaseTankConfiguration } from './hooks/useDatabaseTankConfiguration';
 import { useDatabaseVesselConfiguration } from './hooks/useDatabaseVesselConfiguration';
 import { useDefaultLayout } from './hooks/useDefaultLayout';
 import { useAppBranding } from './hooks/useAppBranding';
+import { useTankTables } from './hooks/useTankTables';
 import { ViewMode } from './types/tank';
 
 function App() {
   const tankData = useTankData();
   const { defaultLayout, saveDefaultLayout } = useDefaultLayout();
   const { branding } = useAppBranding();
+  const { configuration } = useTankTables();
   const [viewMode, setViewMode] = useState<ViewMode>(defaultLayout);
   const [showWizard, setShowWizard] = useState(false);
+  const [showTankTableWizard, setShowTankTableWizard] = useState(false);
   const {
     configuredTanks,
     reorderTanks,
@@ -61,7 +66,62 @@ function App() {
           onVesselSetup={() => setShowWizard(true)}
         />
 
+        {/* Tank Table Setup Prompt */}
+        {!configuration && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-blue-900">Enhanced Tank Monitoring Available</h3>
+                <p className="text-blue-700 mt-1">
+                  Set up tank tables for volume, mass calculations, and flow rate monitoring.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTankTableWizard(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Setup Tank Tables
+              </button>
+            </div>
+          </div>
+        )}
 
+        {/* Enhanced Statistics */}
+        {configuration && (
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-sm font-medium text-gray-600">Total Volume</h3>
+              <p className="text-2xl font-bold text-blue-600">{tankData.totalVolume.toFixed(1)} m³</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-sm font-medium text-gray-600">Total Mass</h3>
+              <p className="text-2xl font-bold text-green-600">{tankData.totalMass.toFixed(1)} t</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-sm font-medium text-gray-600">Average Utilization</h3>
+              <p className="text-2xl font-bold text-purple-600">{tankData.averageUtilization.toFixed(1)}%</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-sm font-medium text-gray-600">Active Operations</h3>
+              <p className="text-2xl font-bold text-orange-600">{tankData.activeTanks}</p>
+            </div>
+          </div>
+        )}
+
+
+
+        {/* Operations Dashboard */}
+        {configuration && (
+          <div className="mb-8">
+            <OperationsDashboard
+              tanks={configuredTanks}
+              configuration={configuration}
+              totalVolume={tankData.totalVolume}
+              totalMass={tankData.totalMass}
+              activeTanks={tankData.activeTanks}
+            />
+          </div>
+        )}
 
         {/* Dashboard Layout */}
         <div className="mb-8">
@@ -70,6 +130,7 @@ function App() {
             viewMode={viewMode}
             onReorder={reorderTanks}
             onRename={renameTank}
+            showEnhancedData={!!configuration}
           />
         </div>
 
@@ -124,6 +185,21 @@ function App() {
             }}
             onCancel={() => setShowWizard(false)}
           />
+        )}
+
+        {/* Tank Table Setup Wizard */}
+        {showTankTableWizard && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <TankTableSetupWizard
+                onComplete={(config) => {
+                  console.log('Tank table configuration completed:', config);
+                  setShowTankTableWizard(false);
+                }}
+                onClose={() => setShowTankTableWizard(false)}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -26,6 +26,7 @@ interface SortableTankGridProps {
   viewMode: ViewMode;
   onReorder: (oldIndex: number, newIndex: number) => void;
   onRename: (tankId: number, newName: string) => void;
+  showEnhancedData?: boolean;
 }
 
 export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
@@ -33,6 +34,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
   viewMode,
   onReorder,
   onRename,
+  showEnhancedData = false,
 }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const tankGroups = groupTanks(tanks);
@@ -164,6 +166,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
                 tank={tank}
                 viewMode={viewMode}
                 onRename={onRename}
+                showEnhancedData={showEnhancedData}
               />
             ))}
           </div>
@@ -192,6 +195,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
                 tank={tank}
                 viewMode={viewMode}
                 onRename={onRename}
+                showEnhancedData={showEnhancedData}
               />
             ))}
           </div>
@@ -203,6 +207,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
                 tank={activeTank}
                 viewMode={viewMode}
                 onRename={onRename}
+                showEnhancedData={showEnhancedData}
               />
             </div>
           ) : null}
@@ -228,6 +233,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
               tank={activeTank}
               viewMode={viewMode}
               onRename={onRename}
+              showEnhancedData={showEnhancedData}
             />
           </div>
         ) : null}

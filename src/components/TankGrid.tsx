@@ -9,9 +9,10 @@ import { groupTanks } from '../utils/tankGrouping';
 interface TankGridProps {
   tanks: Tank[];
   viewMode: ViewMode;
+  showEnhancedData?: boolean;
 }
 
-export const TankGrid: React.FC<TankGridProps> = ({ tanks, viewMode }) => {
+export const TankGrid: React.FC<TankGridProps> = ({ tanks, viewMode, showEnhancedData = false }) => {
   const tankGroups = groupTanks(tanks);
 
   const getGridClasses = () => {
@@ -49,13 +50,13 @@ export const TankGrid: React.FC<TankGridProps> = ({ tanks, viewMode }) => {
       case 'single-row':
         return (
           <div key={tank.id} className="flex-shrink-0 w-80">
-            <TankCard tank={tank} />
+            <TankCard tank={tank} showEnhancedData={showEnhancedData} />
           </div>
         );
       case 'column':
         return <TankCylinder key={tank.id} tank={tank} />;
       default:
-        return <TankCard key={tank.id} tank={tank} />;
+        return <TankCard key={tank.id} tank={tank} showEnhancedData={showEnhancedData} />;
     }
   };
 

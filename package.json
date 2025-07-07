@@ -48,13 +48,17 @@
     "chokidar": "^4.0.3",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
+    "date-fns": "^4.1.0",
     "electron-updater": "^6.6.2",
     "express": "^4.18.2",
     "lucide-react": "^0.344.0",
+    "mathjs": "^14.5.3",
+    "pdf-parse": "^1.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "serialport": "^12.0.0",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
@@ -121,7 +125,9 @@
         }
       ],
       "icon": "electron/icon.ico",
-      "signingHashAlgorithms": ["sha256"],
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
       "timeStampServer": "http://timestamp.digicert.com"
     },
     "mac": {

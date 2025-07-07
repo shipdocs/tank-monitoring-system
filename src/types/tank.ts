@@ -1,3 +1,5 @@
+import { VolumeCalculationResult, MassCalculationResult, FlowRateData, ETACalculation } from './tankTable';
+
 export interface Tank {
   id: number;
   name: string;
@@ -15,6 +17,15 @@ export interface Tank {
   position?: number; // For sorting
   temperature?: number; // Temperature in Celsius
   group?: 'BB' | 'SB' | 'CENTER'; // Tank group (Backboard/Starboard/Center)
+
+  // Enhanced properties for tank table integration
+  tankTableId?: string; // Reference to tank table
+  volumeData?: VolumeCalculationResult; // Calculated volume data
+  massData?: MassCalculationResult; // Calculated mass data
+  flowRateData?: FlowRateData; // Flow rate calculations
+  etaData?: ETACalculation; // ETA calculations
+  groupId?: string; // Reference to tank group for density
+  productTypeId?: string; // Reference to product type
 }
 
 export interface TankGroup {

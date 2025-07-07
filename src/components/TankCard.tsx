@@ -1,12 +1,13 @@
 import React from 'react';
 import { Tank } from '../types/tank';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Droplets, Thermometer, Clock } from 'lucide-react';
 
 interface TankCardProps {
   tank: Tank;
+  showEnhancedData?: boolean;
 }
 
-export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
+export const TankCard: React.FC<TankCardProps> = ({ tank, showEnhancedData = false }) => {
   const getStatusColor = (status: Tank['status']) => {
     switch (status) {
       case 'normal': return 'bg-green-500';
@@ -145,6 +146,92 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
               <span className="text-xs font-mono font-semibold">
                 {tank.trend === 'loading' ? '+' : tank.trend === 'unloading' ? '-' : '±'}{tank.trendValue.toFixed(0)} mm/min
               </span>
+            )}
+          </div>
+        )}
+
+        {/* Enhanced Data Display */}
+        {showEnhancedData && (
+          <div className="space-y-3 border-t border-gray-200 pt-3">
+            {/* Volume and Mass */}
+            <div className="grid grid-cols-2 gap-3">
+              {tank.volumeData && (
+                <div className="bg-blue-50 p-2 rounded">
+                  <div className="flex items-center space-x-1 mb-1">
+                    <Droplets className="w-3 h-3 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-800">Volume</span>
+                  </div>
+                  <div className="text-sm font-bold text-blue-900">
+                    {tank.volumeData.volume.toFixed(1)} m³
+                  </div>
+                  <div className="text-xs text-blue-700">
+                    {tank.volumeData.volumeLiters.toFixed(0)}L
+                  </div>
+                </div>
+              )}
+
+              {tank.massData && (
+                <div className="bg-green-50 p-2 rounded">
+                  <div className="flex items-center space-x-1 mb-1">
+                    <span className="w-3 h-3 bg-green-600 rounded-full text-white text-xs flex items-center justify-center font-bold">M</span>
+                    <span className="text-xs font-medium text-green-800">Mass</span>
+                  </div>
+                  <div className="text-sm font-bold text-green-900">
+                    {tank.massData.mass.toFixed(1)} t
+                  </div>
+                  <div className="text-xs text-green-700">
+                    {tank.massData.density.toFixed(0)} kg/m³
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Flow Rate and ETA */}
+            {(tank.flowRateData || tank.etaData) && (
+              <div className="grid grid-cols-2 gap-3">
+                {tank.flowRateData && (
+                  <div className="bg-purple-50 p-2 rounded">
+                    <div className="text-xs font-medium text-purple-800 mb-1">Flow Rate</div>
+                    <div className="text-sm font-bold text-purple-900">
+                      {Math.abs(tank.flowRateData.volumeFlowRate).toFixed(1)} m³/h
+                    </div>
+                    <div className="text-xs text-purple-700">
+                      {(tank.flowRateData.confidence * 100).toFixed(0)}% confidence
+                    </div>
+                  </div>
+                )}
+
+                {tank.etaData && (
+                  <div className="bg-orange-50 p-2 rounded">
+                    <div className="text-xs font-medium text-orange-800 mb-1">ETA</div>
+                    <div className="text-sm font-bold text-orange-900">
+                      {(() => {
+                        const now = new Date();
+                        const diffMs = tank.etaData.estimatedCompletion.getTime() - now.getTime();
+                        const diffHours = diffMs / (1000 * 60 * 60);
+                        if (diffHours < 1) {
+                          return `${Math.round(diffMs / (1000 * 60))}min`;
+                        } else if (diffHours < 24) {
+                          return `${diffHours.toFixed(1)}h`;
+                        } else {
+                          return `${Math.floor(diffHours / 24)}d`;
+                        }
+                      })()}
+                    </div>
+                    <div className="text-xs text-orange-700">
+                      {(tank.etaData.confidence * 100).toFixed(0)}% confidence
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Temperature */}
+            {tank.temperature !== undefined && (
+              <div className="flex items-center justify-center space-x-2 bg-gray-50 p-2 rounded">
+                <Thermometer className="w-3 h-3 text-gray-600" />
+                <span className="text-sm text-gray-700">{tank.temperature}°C</span>
+              </div>
             )}
           </div>
         )}

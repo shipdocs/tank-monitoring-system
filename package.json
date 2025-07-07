@@ -1,7 +1,7 @@
 {
   "name": "tank-monitoring-system",
   "private": true,
-  "version": "1.0.2-beta.2",
+  "version": "1.1.0-beta.1",
   "description": "Real-time tank monitoring system with CSV file import and serial communication",
   "author": "Martin (shipdocs)",
   "license": "SEE LICENSE IN LICENSE",

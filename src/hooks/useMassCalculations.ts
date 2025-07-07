@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Tank } from '../types/tank';
 import { MassCalculationResult, TankGroup, ProductType, VolumeCalculationResult } from '../types/tankTable';
-import { calculateMass, calculateTotalMass, calculateMassDistribution, validateMassCalculation } from '../utils/massCalculator';
+import { calculateMassFromVolume, calculateTotalMass, calculateMassDistribution, validateMassCalculation } from '../utils/massCalculator';
 import { useTankTables } from './useTankTables';
 
 interface MassCalculationData {
@@ -109,7 +109,7 @@ export function useMassCalculations(): UseMassCalculationsReturn {
     const productType = getProductType(tank);
     const temperature = tank.temperature;
 
-    return calculateMass(volumeResult, tankGroup.density, temperature, productType);
+    return calculateMassFromVolume(volumeResult, tankGroup.density, temperature, productType);
   }, [getTankGroup, getProductType]);
 
   // Calculate masses for all tanks

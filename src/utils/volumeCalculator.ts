@@ -277,12 +277,16 @@ export function createVolumeLookupCache(
   stepSize: number = 1 // mm
 ): Map<number, VolumeCalculationResult> {
   const cache = new Map<number, VolumeCalculationResult>();
-  
-  for (let height = 0; height <= tankTable.maxLevel; height += stepSize) {
+
+  // Limit cache size to prevent memory issues
+  const maxCacheEntries = 10000; // Reasonable limit for desktop app
+  const actualStepSize = Math.max(stepSize, Math.ceil(tankTable.maxLevel / maxCacheEntries));
+
+  for (let height = 0; height <= tankTable.maxLevel; height += actualStepSize) {
     const result = calculateVolumeFromHeight(height, tankTable);
     cache.set(height, result);
   }
-  
+
   return cache;
 }
 

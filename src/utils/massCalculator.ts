@@ -4,7 +4,7 @@ import { calculateCorrectedDensity } from './astm54b';
 /**
  * Calculate mass from volume and density with optional temperature correction
  */
-export function calculateMass(
+export function calculateMassFromVolume(
   volumeResult: VolumeCalculationResult,
   baseDensity: number,
   temperature?: number,
@@ -26,6 +26,8 @@ export function calculateMass(
   }
   
   // Calculate mass in metric tons (volume in m³ * density in kg/m³ / 1000)
+  // volumeResult.volume is in m³, actualDensity is in kg/m³
+  // Result: kg, then convert to metric tons by dividing by 1000
   const mass = (volumeResult.volume * actualDensity) / 1000;
   
   return {
@@ -99,8 +101,11 @@ export function calculateDensityFromMassVolume(
   mass: number, // metric tons
   volume: number // m³
 ): number {
-  if (volume === 0) return 0;
-  
+  if (volume <= 0) {
+    console.warn('Cannot calculate density: volume must be greater than 0');
+    return 0;
+  }
+
   // Convert mass from tons to kg and calculate density
   return (mass * 1000) / volume;
 }

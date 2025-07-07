@@ -56,7 +56,7 @@ export function useTankTables(): UseTankTablesReturn {
   // Load data from storage on mount
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);

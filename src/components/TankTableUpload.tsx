@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle, X, Download } from 'lucide-react';
-import { TankTableParseResult, TankTable } from '../types/tankTable';
+import { Upload, FileText, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { TankTableParseResult } from '../types/tankTable';
 import { useTankTables } from '../hooks/useTankTables';
 
 interface TankTableUploadProps {

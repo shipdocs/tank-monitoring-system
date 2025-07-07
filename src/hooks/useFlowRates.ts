@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Tank } from '../types/tank';
 import { FlowRateData, VolumeCalculationResult, ETACalculation } from '../types/tankTable';
-import { calculateVolumeFlowRate, filterOutlierReadings, createFlowRateHistory, calculateAverageFlowRate, predictFutureVolume } from '../utils/flowRateCalculator';
+import { calculateVolumeFlowRate, filterOutlierReadings, calculateAverageFlowRate, predictFutureVolume } from '../utils/flowRateCalculator';
 import { calculateETA, calculateMultiTankETA, formatETA } from '../utils/etaCalculator';
 
 interface FlowRateReading {

@@ -59,7 +59,7 @@ export function useTankMapping(): UseTankMappingReturn {
   // Load mappings and configuration on mount
   useEffect(() => {
     loadMappingData();
-  }, []);
+  }, [loadMappingData]);
 
   const loadMappingData = useCallback(async () => {
     setIsLoading(true);

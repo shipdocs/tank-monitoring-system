@@ -1,4 +1,4 @@
-import { TankTable, VolumeCalculationResult, VolumeEntry } from '../types/tankTable';
+import { TankTable, VolumeCalculationResult } from '../types/tankTable';
 
 /**
  * Calculate volume from height using tank table with interpolation

@@ -11,14 +11,12 @@ interface SortableTankItemProps {
   tank: Tank;
   viewMode: ViewMode;
   onRename: (tankId: number, newName: string) => void;
-  showEnhancedData?: boolean;
 }
 
 export const SortableTankItem: React.FC<SortableTankItemProps> = ({
   tank,
   viewMode,
   onRename,
-  showEnhancedData = false,
 }) => {
   const {
     attributes,

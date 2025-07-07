@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Link, RefreshCw, CheckCircle, AlertTriangle, X, Zap, Eye } from 'lucide-react';
+import { Link, CheckCircle, AlertTriangle, X, Zap, Eye } from 'lucide-react';
 import { Tank } from '../types/tank';
-import { TankMapping, TankTable, AutoMappingSuggestion } from '../types/tankTable';
+import { TankMapping, AutoMappingSuggestion } from '../types/tankTable';
 import { useTankTables } from '../hooks/useTankTables';
 import { TankMappingStorage } from '../storage/TankMappingStorage';
 import { generateAutoMappingSuggestions, createMappingsFromSuggestions } from '../utils/tankMappingUtils';
@@ -25,7 +25,6 @@ export const TankMappingManager: React.FC<TankMappingManagerProps> = ({
   const [mappings, setMappings] = useState<TankMapping[]>([]);
   const [suggestions, setSuggestions] = useState<AutoMappingSuggestion[]>([]);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
-  const [selectedTankId, setSelectedTankId] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Load existing mappings on mount

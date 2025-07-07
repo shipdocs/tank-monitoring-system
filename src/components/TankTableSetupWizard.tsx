@@ -16,7 +16,7 @@ interface TankTableSetupWizardProps {
 
 type WizardStep = 'upload' | 'groups' | 'mapping' | 'validation' | 'complete';
 
-const STEPS: Array<{ id: WizardStep; title: string; description: string; icon: React.ComponentType<any> }> = [
+const STEPS: Array<{ id: WizardStep; title: string; description: string; icon: React.ComponentType<{ className?: string }> }> = [
   {
     id: 'upload',
     title: 'Upload Tank Tables',
@@ -67,7 +67,7 @@ export const TankTableSetupWizard: React.FC<TankTableSetupWizardProps> = ({
       // Complete wizard
       handleComplete();
     }
-  }, [currentStepIndex]);
+  }, [currentStepIndex, handleComplete]);
 
   const handlePrevious = useCallback(() => {
     const prevIndex = currentStepIndex - 1;
@@ -131,11 +131,12 @@ export const TankTableSetupWizard: React.FC<TankTableSetupWizardProps> = ({
         return uploadResults.some(result => result.success);
       case 'groups':
         return tankGroups.length > 0;
-      case 'mapping':
+      case 'mapping': {
         // Check if all tanks are mapped
         const totalTanks = tankData.tanks.length;
         const mappedTanks = mappings.length;
         return totalTanks > 0 && mappedTanks === totalTanks;
+      }
       case 'validation':
         return vesselName.trim().length > 0;
       default:

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Tank } from '../types/tank';
-import { TankTable, VolumeCalculationResult, TankGroup } from '../types/tankTable';
+import { TankTable, VolumeCalculationResult } from '../types/tankTable';
 import { calculateVolumeFromHeight, calculateTankUtilization, createVolumeLookupCache, getVolumeFromCache } from '../utils/volumeCalculator';
 import { getTankTableForDataSourceTank } from '../utils/tankMappingUtils';
 import { useTankTables } from './useTankTables';
@@ -46,7 +46,7 @@ interface UseVolumeCalculationsReturn {
 }
 
 export function useVolumeCalculations(): UseVolumeCalculationsReturn {
-  const { tankTables, tankGroups } = useTankTables();
+  const { tankTables } = useTankTables();
   const { mappings } = useTankMapping();
   const [volumeCalculations, setVolumeCalculations] = useState<Map<number, VolumeCalculationData>>(new Map());
   const [isCalculating, setIsCalculating] = useState(false);

@@ -143,7 +143,7 @@ export async function parseExcelTankTable(
     const warnings: string[] = [];
 
     // Try to detect if first row is header
-    const firstRow = jsonData[0] as any[];
+    const firstRow = jsonData[0] as unknown[];
     const hasHeader = firstRow.some(cell => 
       typeof cell === 'string' && 
       (cell.toLowerCase().includes('height') || 
@@ -155,7 +155,7 @@ export async function parseExcelTankTable(
 
     // Parse data rows
     for (let i = dataStartIndex; i < jsonData.length; i++) {
-      const row = jsonData[i] as any[];
+      const row = jsonData[i] as unknown[];
       
       if (!row || row.length < 2) {
         warnings.push(`Row ${i + 1}: Insufficient data, skipping`);
@@ -225,7 +225,8 @@ export async function parseExcelTankTable(
  * Note: This is a simplified implementation. In production, you'd need more sophisticated PDF parsing
  */
 export async function parsePDFTankTable(
-  file: File
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _file: File
 ): Promise<TankTableParseResult> {
   try {
     // For now, return a placeholder implementation
@@ -255,9 +256,10 @@ export async function parseTankTableFile(file: File): Promise<TankTableParseResu
   const extension = file.name.toLowerCase().split('.').pop();
   
   switch (extension) {
-    case 'csv':
+    case 'csv': {
       const csvContent = await file.text();
       return parseCSVTankTable(csvContent, file.name);
+    }
     
     case 'xlsx':
     case 'xls':

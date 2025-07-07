@@ -93,7 +93,7 @@ export const TankGroupManager: React.FC<TankGroupManagerProps> = ({
 
     saveTankGroup(group);
     handleCancel();
-  }, [formData, editingGroup, saveTankGroup]);
+  }, [formData, editingGroup, saveTankGroup, handleCancel]);
 
   // Cancel editing
   const handleCancel = useCallback(() => {

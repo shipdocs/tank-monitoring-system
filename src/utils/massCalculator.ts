@@ -1,35 +1,39 @@
 import { MassCalculationResult, VolumeCalculationResult, ProductType, TankGroup } from '../types/tankTable';
-import { calculateCorrectedDensity } from './astm54b';
 
 /**
  * Calculate mass from volume and density with optional temperature correction
  */
-export function calculateMassFromVolume(
+export async function calculateMassFromVolume(
   volumeResult: VolumeCalculationResult,
   baseDensity: number,
   temperature?: number,
   productType?: ProductType
-): MassCalculationResult {
+): Promise<MassCalculationResult> {
   let actualDensity = baseDensity;
   let temperatureCorrected = false;
   let astmCorrectionApplied = false;
-  
+
   // Apply temperature correction if temperature is available and product supports it
   if (temperature !== undefined && productType?.temperatureCorrection && productType.astmTable) {
-    const correctionResult = calculateCorrectedDensity(baseDensity, temperature, productType.astmTable);
-    
-    if (correctionResult.applied) {
-      actualDensity = correctionResult.correctedDensity;
-      temperatureCorrected = true;
-      astmCorrectionApplied = true;
+    try {
+      const { calculateCorrectedDensity } = await import('./astm54b');
+      const correctionResult = calculateCorrectedDensity(baseDensity, temperature, productType.astmTable);
+
+      if (correctionResult.applied) {
+        actualDensity = correctionResult.correctedDensity;
+        temperatureCorrected = true;
+        astmCorrectionApplied = true;
+      }
+    } catch (error) {
+      console.error('Failed to load ASTM correction functions:', error);
     }
   }
-  
+
   // Calculate mass in metric tons (volume in m³ * density in kg/m³ / 1000)
   // volumeResult.volume is in m³, actualDensity is in kg/m³
   // Result: kg, then convert to metric tons by dividing by 1000
   const mass = (volumeResult.volume * actualDensity) / 1000;
-  
+
   return {
     mass,
     density: actualDensity,
@@ -41,13 +45,13 @@ export function calculateMassFromVolume(
 /**
  * Calculate mass for a tank using tank group density
  */
-export function calculateTankMass(
+export async function calculateTankMass(
   volumeResult: VolumeCalculationResult,
   tankGroup: TankGroup,
   temperature?: number,
   productType?: ProductType
-): MassCalculationResult {
-  return calculateMass(volumeResult, tankGroup.density, temperature, productType);
+): Promise<MassCalculationResult> {
+  return calculateMassFromVolume(volumeResult, tankGroup.density, temperature, productType);
 }
 
 /**

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { TankTable, TankGroup, ProductType, TankTableConfiguration, TankTableParseResult } from '../types/tankTable';
 import { TankTableStorage } from '../storage/TankTableStorage';
 import { parseTankTableFile, validateTankTable } from '../utils/tankTableParser';
-import { STANDARD_ASTM_TABLES } from '../utils/astm54b';
 
 const storage = TankTableStorage.getInstance();
 
@@ -80,7 +79,12 @@ export function useTankTables(): UseTankTablesReturn {
       // Initialize ASTM tables if not present
       const astmTables = storage.getASTMTables();
       if (astmTables.length === 0) {
-        STANDARD_ASTM_TABLES.forEach(table => storage.saveASTMTable(table));
+        // Use dynamic import to avoid circular dependency
+        import('../utils/astm54b').then(({ STANDARD_ASTM_TABLES }) => {
+          STANDARD_ASTM_TABLES.forEach(table => storage.saveASTMTable(table));
+        }).catch(error => {
+          console.error('Failed to load ASTM tables:', error);
+        });
       }
       
     } catch (error) {

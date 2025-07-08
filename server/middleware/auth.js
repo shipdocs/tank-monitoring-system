@@ -382,4 +382,6 @@ export function listUsers(adminUsername) {
 }
 
 // Initialize on module load
-await initAuthConfig();
+(async () => {
+  await initAuthConfig();
+})();

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { type VesselTemplate } from '../../types/vessel';
+import { type VesselTemplate, type TankGroup } from '../../types/vessel';
 import { type Tank } from '../../types/tank';
 import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Ship, Users } from 'lucide-react';
 
@@ -67,7 +66,7 @@ const SortableTankItem: React.FC<SortableTankItemProps> = ({ tank, isAssigned })
 };
 
 interface DroppableGroupProps {
-  group: Omit<import('../../types/vessel').TankGroup, 'id' | 'tanks'>;
+  group: Omit<TankGroup, 'id' | 'tanks'>;
   assignedTanks: Tank[];
   onDrop: (tankId: string, groupId: string) => void;
 }
@@ -155,8 +154,8 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
   const handleRemoveFromGroup = (tankId: string) => {
     setAssignments(prev => {
       const newAssignments = { ...prev };
-      delete newAssignments[tankId];
-      return newAssignments;
+      const { [tankId]: _removed, ...rest } = newAssignments;
+      return rest;
     });
   };
 

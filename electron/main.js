@@ -48,7 +48,7 @@ autoUpdater.on('update-available', (info) => {
   }
 });
 
-autoUpdater.on('update-not-available', (info) => {
+autoUpdater.on('update-not-available', (_info) => {
   addLog('INFO', 'UPDATER', 'Update not available');
 });
 
@@ -228,7 +228,7 @@ process.on('uncaughtException', (error) => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   const errorMessage = reason instanceof Error ? reason.stack : String(reason);
   addLog('ERROR', 'UNHANDLED_REJECTION', errorMessage);
 
@@ -371,7 +371,7 @@ async function setupHotReload() {
         electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
         hardResetMethod: 'exit',
       });
-    } catch (error) {
+    } catch (_error) {
       console.log('electron-reload not available, continuing without hot reload');
     }
   }
@@ -1471,7 +1471,7 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', (event) => {
+app.on('before-quit', (_event) => {
   try {
     addLog('INFO', 'APP', 'Application shutting down...');
     stopServer();
@@ -1507,7 +1507,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 
 // IPC Handlers
 // Handle opening external URLs
-ipcMain.handle('open-external', async (event, url) => {
+ipcMain.handle('open-external', async (_event, url) => {
   try {
     // Validate URL
     if (!url || typeof url !== 'string') {
@@ -1532,7 +1532,7 @@ ipcMain.handle('open-external', async (event, url) => {
 });
 
 // Window control handlers
-ipcMain.handle('minimize-window', async (event) => {
+ipcMain.handle('minimize-window', async (_event) => {
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.minimize();
@@ -1547,7 +1547,7 @@ ipcMain.handle('minimize-window', async (event) => {
   }
 });
 
-ipcMain.handle('maximize-window', async (event) => {
+ipcMain.handle('maximize-window', async (_event) => {
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMaximized()) {
@@ -1567,7 +1567,7 @@ ipcMain.handle('maximize-window', async (event) => {
   }
 });
 
-ipcMain.handle('close-window', async (event) => {
+ipcMain.handle('close-window', async (_event) => {
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.close();
@@ -1583,7 +1583,7 @@ ipcMain.handle('close-window', async (event) => {
 });
 
 // Open settings window
-ipcMain.handle('open-settings', async (event) => {
+ipcMain.handle('open-settings', async (_event) => {
   try {
     createSettingsWindow();
     addLog('INFO', 'IPC', 'Settings window opened via IPC');
@@ -1595,7 +1595,7 @@ ipcMain.handle('open-settings', async (event) => {
 });
 
 // Get server status
-ipcMain.handle('get-server-status', async (event) => {
+ipcMain.handle('get-server-status', async (_event) => {
   try {
     const status = {
       isRunning: serverInstance !== null,
@@ -1609,7 +1609,7 @@ ipcMain.handle('get-server-status', async (event) => {
     // Check if server is actually responding
     if (status.isRunning && !isDev) {
       try {
-        const response = await new Promise((resolve, reject) => {
+        const response = await new Promise((resolve, _reject) => {
           const req = http.get('http://localhost:3001/health', (res) => {
             resolve(res.statusCode === 200);
           });
@@ -1632,7 +1632,7 @@ ipcMain.handle('get-server-status', async (event) => {
       try {
         const serverLogs = getDebugLogs();
         status.recentLogs = serverLogs.slice(-10); // Last 10 server logs
-      } catch (error) {
+      } catch (_error) {
         addLog('WARN', 'IPC', 'Could not retrieve server logs');
       }
     }
@@ -1646,7 +1646,7 @@ ipcMain.handle('get-server-status', async (event) => {
 });
 
 // Show notification
-ipcMain.handle('show-notification', async (event, { title, body }) => {
+ipcMain.handle('show-notification', async (_event, { title, body }) => {
   try {
     // Validate inputs
     if (!title || typeof title !== 'string') {
@@ -1689,7 +1689,7 @@ ipcMain.handle('show-notification', async (event, { title, body }) => {
 });
 
 // File system operations
-ipcMain.handle('show-open-dialog', async (event, options) => {
+ipcMain.handle('show-open-dialog', async (_event, options) => {
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],

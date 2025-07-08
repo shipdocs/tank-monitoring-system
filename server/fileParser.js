@@ -223,15 +223,15 @@ export class FlexibleFileParser {
   }
 
   async parseCSV(filePath, delimiter = null) {
-    return new Promise(async (resolve, reject) => {
+    // Auto-detect delimiter if not provided
+    if (!delimiter && this.options.autoDetectDelimiter) {
+      delimiter = await this.detectCSVDelimiter(filePath);
+    }
+
+    return new Promise((resolve, reject) => {
       const results = [];
       let columns = [];
       let isFirstRow = true;
-
-      // Auto-detect delimiter if not provided
-      if (!delimiter && this.options.autoDetectDelimiter) {
-        delimiter = await this.detectCSVDelimiter(filePath);
-      }
 
       const parser = csv({
         separator: delimiter || ',',
@@ -459,7 +459,7 @@ export class DataMapper {
     return data.map(row => this.mapRow(row, columns));
   }
 
-  mapRow(row, columns) {
+  mapRow(row, _columns) {
     const tank = {};
 
     // Apply field mappings
@@ -491,18 +491,21 @@ export class DataMapper {
 
     switch (targetType) {
       case 'number':
-      case 'integer':
+      case 'integer': {
         const num = parseFloat(value);
         return isNaN(num) ? null : num;
+      }
 
-      case 'boolean':
+      case 'boolean': {
         if (typeof value === 'boolean') return value;
         const str = String(value).toLowerCase();
         return ['true', '1', 'yes', 'on', 'enabled'].includes(str);
+      }
 
-      case 'date':
+      case 'date': {
         const date = new Date(value);
         return isNaN(date.getTime()) ? null : date.toISOString();
+      }
 
       default:
         return String(value);

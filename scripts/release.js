@@ -2,7 +2,7 @@
 
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+// import { join } from 'path'; // Unused import
 
 const VALID_TYPES = ['patch', 'minor', 'major'];
 

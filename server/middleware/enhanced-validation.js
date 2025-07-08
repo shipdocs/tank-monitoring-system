@@ -1,4 +1,4 @@
-import { joi, sanitize, validate, validateParams, validateQuery } from './validation.js';
+// import { joi, sanitize, validate, validateParams, validateQuery } from './validation.js'; // Unused imports
 import logger, { createModuleLogger, logError } from '../logger.js';
 
 const validationLogger = createModuleLogger('validation-middleware');

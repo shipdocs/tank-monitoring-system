@@ -1,4 +1,4 @@
-import { type Metric, getCLS, getFCP, getFID, getLCP, getTTFB, onCLS, onFCP, onFID, onLCP, onTTFB } from 'web-vitals';
+import { type Metric, onCLS, onFCP, onLCP, onTTFB } from 'web-vitals';
 
 export interface PerformanceMetric {
   id: string;
@@ -77,20 +77,41 @@ class PerformanceMonitoringService {
       });
     });
 
-    onFID((metric: Metric) => {
-      this.addMetric({
-        id: `fid-${Date.now()}`,
-        name: 'First Input Delay',
-        value: metric.value,
-        delta: metric.delta,
-        unit: 'ms',
-        timestamp: Date.now(),
-        category: 'web-vitals',
-        metadata: {
-          id: metric.id,
-          navigationType: metric.navigationType,
-        },
-      });
+    // FID measurement using manual event listener (onFID not available in this web-vitals version)
+    let firstInputDelay: number | null = null;
+    let firstInputTime: number | null = null;
+
+    const handleFirstInput = (event: Event) => {
+      if (firstInputDelay === null) {
+        firstInputTime = performance.now();
+        requestAnimationFrame(() => {
+          if (firstInputTime !== null) {
+            firstInputDelay = performance.now() - firstInputTime;
+            this.addMetric({
+              id: `fid-${Date.now()}`,
+              name: 'First Input Delay',
+              value: firstInputDelay,
+              delta: firstInputDelay,
+              unit: 'ms',
+              timestamp: Date.now(),
+              category: 'web-vitals',
+              metadata: {
+                id: `fid-${Date.now()}`,
+                eventType: event.type,
+              },
+            });
+            // Remove listeners after first input
+            ['mousedown', 'keydown', 'touchstart', 'pointerdown'].forEach(type => {
+              document.removeEventListener(type, handleFirstInput, { capture: true });
+            });
+          }
+        });
+      }
+    };
+
+    // Listen for first input events
+    ['mousedown', 'keydown', 'touchstart', 'pointerdown'].forEach(type => {
+      document.addEventListener(type, handleFirstInput, { capture: true, once: true });
     });
 
     onFCP((metric: Metric) => {
@@ -308,7 +329,7 @@ class PerformanceMonitoringService {
   // Component Render Performance Tracking
   trackComponentRender(componentName: string, propsSize: number = 0): () => void {
     const startTime = performance.now();
-    const markId = `component-${componentName}-${Date.now()}`;
+    const _markId = `component-${componentName}-${Date.now()}`;
 
     return () => {
       const renderTime = performance.now() - startTime;

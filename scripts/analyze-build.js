@@ -124,7 +124,7 @@ async function analyzeCompressionRatio(distPath) {
           ratio,
           type,
         });
-      } catch (e) {
+      } catch (_e) {
         // Original file might not exist or be accessible
       }
     }
@@ -220,7 +220,7 @@ async function checkPerformanceMetrics(assets, buildTime) {
     await fs.access(statsPath);
     console.log('\n📈 Bundle visualization available at: dist/stats.html');
     console.log('   💡 Open this file in a browser to explore bundle composition');
-  } catch (e) {
+  } catch (_e) {
     console.log('\n⚠️  Bundle visualization not generated');
   }
 

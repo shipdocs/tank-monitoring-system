@@ -449,7 +449,7 @@ export class FlexibleFileMonitor extends EventEmitter {
       const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
       const ipMatch = hostname.match(ipv4Regex);
       if (ipMatch) {
-        const [, a, b, c, d] = ipMatch.map(Number);
+        const [, a, b, _c, _d] = ipMatch.map(Number);
         if (
           (a === 10) ||
           (a === 172 && b >= 16 && b <= 31) ||

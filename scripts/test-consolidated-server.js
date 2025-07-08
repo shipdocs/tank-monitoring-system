@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'fs';
-import https from 'https';
+// import https from 'https'; // Unused import
 
 console.log('🔍 Testing Consolidated Server Implementation...\n');
 
@@ -220,8 +220,8 @@ function testForConflicts() {
     }
 
     // Check for duplicate API endpoints
-    const integratedServer = readFileSync('electron/integrated-server.js', 'utf8');
-    const standaloneServer = readFileSync('server/index.js', 'utf8');
+    const _integratedServer = readFileSync('electron/integrated-server.js', 'utf8');
+    const _standaloneServer = readFileSync('server/index.js', 'utf8');
 
     // This is expected - both servers have similar endpoints
     // We'll just warn about it

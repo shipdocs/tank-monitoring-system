@@ -73,7 +73,7 @@ for (const platform of platforms) {
       const files = fs.readdirSync(distDir);
       const platformFiles = files.filter(file =>
         platform.outputs.some(pattern =>
-          file.match(pattern.replace('*', '.*')),
+          file.match(pattern.replace(/\*/g, '.*')),
         ),
       );
 

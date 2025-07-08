@@ -112,7 +112,40 @@ export class TankStorage {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
       console.error(`❌ Failed to save to localStorage (${key}):`, error);
+
+      // Handle specific quota exceeded error
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.warn('⚠️ localStorage quota exceeded, attempting cleanup...');
+        this.clearOldData();
+        // Retry once after cleanup
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+          console.log('✅ Successfully saved after cleanup');
+          return;
+        } catch (retryError) {
+          console.error('❌ Failed to save even after cleanup:', retryError);
+        }
+      }
+
       throw new Error(`Storage operation failed: ${error}`);
+    }
+  }
+
+  // Clear old data to free up localStorage space
+  private clearOldData(): void {
+    try {
+      // Remove old tank data (keep only recent)
+      const keys = Object.keys(localStorage);
+      const tankDataKeys = keys.filter(key => key.startsWith('tankData_'));
+
+      // Sort by timestamp and remove oldest entries
+      tankDataKeys.sort().slice(0, -5).forEach(key => {
+        localStorage.removeItem(key);
+      });
+
+      console.log(`🧹 Cleaned up ${tankDataKeys.length - 5} old tank data entries`);
+    } catch (error) {
+      console.error('❌ Error during localStorage cleanup:', error);
     }
   }
 

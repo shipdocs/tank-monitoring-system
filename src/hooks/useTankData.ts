@@ -121,6 +121,19 @@ export const useTankData = () => {
         }
 
         const wsUrl = authService.getWebSocketUrl(WS_URL);
+
+        // Validate WebSocket URL format
+        if (!wsUrl || (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://'))) {
+          console.error('❌ Invalid WebSocket URL:', wsUrl);
+          setTankData(prev => ({
+            ...prev,
+            connectionStatus: 'error',
+            isLoading: false,
+            loadingMessage: 'Invalid WebSocket URL',
+          }));
+          return;
+        }
+
         console.log('🔌 Connecting to WebSocket:', wsUrl);
         setTankData(prev => ({
           ...prev,

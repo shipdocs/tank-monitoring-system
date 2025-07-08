@@ -39,10 +39,13 @@ export const useServerStatus = () => {
 
     const fetchStatus = async () => {
       try {
-        const [statusData, configData] = await Promise.all([
+        const results = await Promise.allSettled([
           getServerStatus(abortController.signal),
           getServerConfig(abortController.signal),
         ]);
+
+        const statusData = results[0].status === 'fulfilled' ? results[0].value : null;
+        const configData = results[1].status === 'fulfilled' ? results[1].value : null;
 
         // Only update state if component is still mounted
         if (isMounted && !abortController.signal.aborted) {

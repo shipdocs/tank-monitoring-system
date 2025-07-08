@@ -254,11 +254,20 @@ export class FlexibleFileMonitor extends EventEmitter {
    * Watch a URL
    */
   async watchUrl(source) {
+    // Validate URL to prevent SSRF attacks
+    if (!this.isValidUrl(source.path)) {
+      const error = new Error(`Invalid or unsafe URL: ${source.path}`);
+      logError(error, { context: 'URL validation failed', sourceId: source.id });
+      this.handleError(source, error);
+      return;
+    }
+
     // URL polling
     const pollUrl = async () => {
       try {
         const response = await fetch(source.path, {
           headers: source.options.headers || {},
+          timeout: 10000, // 10 second timeout
         });
 
         if (!response.ok) {
@@ -413,6 +422,47 @@ export class FlexibleFileMonitor extends EventEmitter {
     } catch (error) {
       logError(error, { context: 'Error processing data', sourceId: source.id });
       this.handleError(source, error);
+    }
+  }
+
+  /**
+   * Validate URL to prevent SSRF attacks
+   */
+  isValidUrl(urlString) {
+    try {
+      const url = new URL(urlString);
+
+      // Only allow HTTP and HTTPS protocols
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return false;
+      }
+
+      // Block private/internal IP ranges
+      const hostname = url.hostname.toLowerCase();
+
+      // Block localhost and loopback
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+        return false;
+      }
+
+      // Block private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+      const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+      const ipMatch = hostname.match(ipv4Regex);
+      if (ipMatch) {
+        const [, a, b, c, d] = ipMatch.map(Number);
+        if (
+          (a === 10) ||
+          (a === 172 && b >= 16 && b <= 31) ||
+          (a === 192 && b === 168) ||
+          (a === 169 && b === 254) // Link-local
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch {
+      return false;
     }
   }
 

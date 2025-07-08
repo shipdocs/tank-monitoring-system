@@ -1,23 +1,23 @@
 import React from 'react';
 import {
   DndContext,
-  closestCenter,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
   horizontalListSortingStrategy,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Tank, ViewMode, TankGroup } from '../types/tank';
+import { type Tank, type TankGroup, type ViewMode } from '../types/tank';
 import { SortableTankItem } from './SortableTankItem';
 import { groupTanks } from '../utils/tankGrouping';
 
@@ -25,7 +25,7 @@ interface SortableTankGridProps {
   tanks: Tank[];
   viewMode: ViewMode;
   onReorder: (oldIndex: number, newIndex: number) => void;
-  onRename: (tankId: number, newName: string) => void;
+  onRename: (tankId: string, newName: string) => void;
 }
 
 export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
@@ -45,7 +45,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const getGridClasses = () => {
@@ -79,15 +79,15 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
     setActiveId(null);
 
     if (active.id !== over?.id && over) {
-      const oldIndex = tanks.findIndex((tank) => tank.id.toString() === active.id);
-      const newIndex = tanks.findIndex((tank) => tank.id.toString() === over.id);
+      const oldIndex = tanks.findIndex((tank) => tank.id === active.id);
+      const newIndex = tanks.findIndex((tank) => tank.id === over.id);
 
       console.log('Reordering:', {
         oldIndex,
         newIndex,
         draggedTank: tanks[oldIndex]?.name,
         targetTank: tanks[newIndex]?.name,
-        expectedResult: `Moving ${tanks[oldIndex]?.name} to position ${newIndex}`
+        expectedResult: `Moving ${tanks[oldIndex]?.name} to position ${newIndex}`,
       });
 
       if (oldIndex !== -1 && newIndex !== -1) {
@@ -96,7 +96,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
     }
   };
 
-  const activeTank = activeId ? tanks.find(tank => tank.id.toString() === activeId) : null;
+  const activeTank = activeId ? tanks.find(tank => tank.id === activeId) : null;
 
   const getSortingStrategy = () => {
     switch (viewMode) {
@@ -134,7 +134,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
     };
 
     return (
-      <div key={group.id} className={`${isCompactSideBySide ? "space-y-4" : "space-y-6"} bg-white rounded-xl shadow-sm border border-gray-200 p-6`}>
+      <div key={group.id} className={`${isCompactSideBySide ? 'space-y-4' : 'space-y-6'} bg-white rounded-xl shadow-sm border border-gray-200 p-6`}>
         {/* Enhanced Group Header */}
         <div className={`bg-gradient-to-r ${getGroupColor(group.displayName)} text-white p-4 rounded-lg shadow-md`}>
           <div className="flex items-center justify-between">
@@ -154,7 +154,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
 
         {/* Group Tanks */}
         <SortableContext
-          items={group.tanks.map(tank => tank.id.toString())}
+          items={group.tanks.map(tank => tank.id)}
           strategy={getSortingStrategy()}
         >
           <div className={getGridClasses()}>
@@ -182,7 +182,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={tanks.map(tank => tank.id.toString())}
+          items={tanks.map(tank => tank.id)}
           strategy={getSortingStrategy()}
         >
           <div className={getGridClasses()}>

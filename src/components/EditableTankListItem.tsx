@@ -1,68 +1,42 @@
 import React, { useState } from 'react';
-import { Tank } from '../types/tank';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Edit2, GripVertical } from 'lucide-react';
+import { type Tank } from '../types/tank';
+import { AlertTriangle, Edit2, GripVertical, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  getStatusColor,
+  getStatusText,
+  getTankPercentage,
+  getTrendColor,
+  getTrendIcon,
+  getTrendSpeed,
+  getTrendText,
+  isAlarmState,
+} from '../utils/tankDisplay';
 
 interface EditableTankListItemProps {
   tank: Tank;
-  onRename: (tankId: number, newName: string) => void;
+  onRename: (tankId: string, newName: string) => void;
   dragHandleProps?: Record<string, unknown>;
 }
 
-export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({ 
-  tank, 
-  onRename, 
-  dragHandleProps 
+export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
+  tank,
+  onRename,
+  dragHandleProps,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
-  const isAlarm = tank.status === 'critical' || tank.status === 'low';
+  const percentage = getTankPercentage(tank.currentLevel, tank.maxCapacity);
+  const isAlarm = isAlarmState(tank.status);
 
-  const getStatusColor = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'bg-green-500';
-      case 'low': return 'bg-yellow-500';
-      case 'high': return 'bg-orange-500';
-      case 'critical': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStatusText = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'Normal';
-      case 'low': return 'Low Level';
-      case 'high': return 'High Level';
-      case 'critical': return 'Critical';
-      default: return 'Unknown';
-    }
-  };
-
-  const getTrendIcon = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'unloading': return <TrendingDown className="w-4 h-4 text-red-600" />;
-      case 'stable': return <Minus className="w-4 h-4 text-gray-500" />;
-      default: return <Minus className="w-4 h-4 text-gray-400" />;
-    }
-  };
-
-  const getTrendColor = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return 'text-green-600 bg-green-50';
-      case 'unloading': return 'text-red-600 bg-red-50';
-      case 'stable': return 'text-gray-600 bg-gray-50';
-      default: return 'text-gray-500 bg-gray-50';
-    }
-  };
-
-  const getTrendText = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return 'Loading';
-      case 'unloading': return 'Unloading';
-      case 'stable': return 'Stable';
-      default: return 'Unknown';
+  // Helper function to render trend icon based on icon info
+  const renderTrendIcon = (trend: Tank['trend']) => {
+    const iconInfo = getTrendIcon(trend);
+    switch (iconInfo.name) {
+      case 'TrendingUp': return <TrendingUp className={iconInfo.className} />;
+      case 'TrendingDown': return <TrendingDown className={iconInfo.className} />;
+      case 'Minus': return <Minus className={iconInfo.className} />;
+      default: return <Minus className={iconInfo.className} />;
     }
   };
 
@@ -118,7 +92,7 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
             <p className="text-sm text-gray-600">{tank.location}</p>
           </div>
         </div>
-        
+
         {/* Level Display */}
         <div className="flex items-center space-x-4 flex-1">
           <div className="flex-1 max-w-xs">
@@ -127,13 +101,13 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
               <span>{percentage.toFixed(1)}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className={`h-full transition-all duration-500 ${getStatusColor(tank.status)}`}
                 style={{ width: `${Math.min(percentage, 100)}%` }}
               ></div>
             </div>
           </div>
-          
+
           <div className="text-right">
             <div className="text-xl font-bold text-gray-900">
               {tank.currentLevel.toFixed(0)} mm
@@ -172,11 +146,11 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
       {tank.trend && (
         <div className="flex justify-center mt-2">
           <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium ${getTrendColor(tank.trend)}`}>
-            {getTrendIcon(tank.trend)}
+            {renderTrendIcon(tank.trend)}
             <span>{getTrendText(tank.trend)}</span>
             {tank.trendValue && tank.trendValue > 0 && (
               <span className="text-xs">
-                {tank.trendValue.toFixed(1)} {tank.unit}/min
+                {getTrendSpeed(tank.trend, tank.trendValue)}
               </span>
             )}
           </div>

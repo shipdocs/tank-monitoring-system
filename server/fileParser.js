@@ -11,31 +11,31 @@ export const TANK_FIELDS = {
   id: { type: 'string', required: true, description: 'Tank identifier' },
   name: { type: 'string', required: false, description: 'Tank name/label' },
   level: { type: 'number', required: true, description: 'Current level' },
-  
+
   // Capacity fields
   maxCapacity: { type: 'number', required: false, description: 'Maximum capacity' },
   minLevel: { type: 'number', required: false, description: 'Minimum level' },
   maxLevel: { type: 'number', required: false, description: 'Maximum level' },
-  
+
   // Environmental fields
   temperature: { type: 'number', required: false, description: 'Temperature reading' },
   pressure: { type: 'number', required: false, description: 'Pressure reading' },
   humidity: { type: 'number', required: false, description: 'Humidity reading' },
-  
+
   // Status fields
   status: { type: 'string', required: false, description: 'Tank status (OK, WARNING, ERROR)' },
   alarmState: { type: 'boolean', required: false, description: 'Alarm active' },
-  
+
   // Metadata fields
   unit: { type: 'string', required: false, description: 'Unit of measurement' },
   location: { type: 'string', required: false, description: 'Physical location' },
   type: { type: 'string', required: false, description: 'Tank type' },
   lastUpdated: { type: 'date', required: false, description: 'Last update timestamp' },
-  
+
   // Custom fields (user-defined)
   custom1: { type: 'any', required: false, description: 'Custom field 1' },
   custom2: { type: 'any', required: false, description: 'Custom field 2' },
-  custom3: { type: 'any', required: false, description: 'Custom field 3' }
+  custom3: { type: 'any', required: false, description: 'Custom field 3' },
 };
 
 /**
@@ -46,14 +46,14 @@ export class FileFormatDetector {
     try {
       const ext = path.extname(filePath).toLowerCase();
       const sample = await this.readFileSample(filePath, 1024);
-      
+
       // Extension-based detection
       if (ext === '.json') return 'json';
       if (ext === '.xml') return 'xml';
       if (ext === '.csv') return 'csv';
       if (ext === '.tsv') return 'tsv';
       if (ext === '.txt') return await this.detectTextFormat(sample);
-      
+
       // Content-based detection
       return await this.detectByContent(sample);
     } catch (error) {
@@ -61,7 +61,7 @@ export class FileFormatDetector {
       return 'unknown';
     }
   }
-  
+
   static async readFileSample(filePath, bytes = 1024) {
     const buffer = Buffer.alloc(bytes);
     const fd = await fs.open(filePath, 'r');
@@ -72,52 +72,52 @@ export class FileFormatDetector {
       await fd.close();
     }
   }
-  
+
   static async detectTextFormat(sample) {
     // Check for JSON
     if (sample.trim().startsWith('{') || sample.trim().startsWith('[')) {
       return 'json';
     }
-    
+
     // Check for XML
     if (sample.trim().startsWith('<')) {
       return 'xml';
     }
-    
+
     // Check for CSV patterns
     const lines = sample.split('\n').filter(line => line.trim());
     if (lines.length >= 2) {
       const firstLine = lines[0];
       const secondLine = lines[1];
-      
+
       // Check for common delimiters
       const delimiters = [',', ';', '\t', '|', ':'];
       for (const delimiter of delimiters) {
         const firstCount = (firstLine.match(new RegExp(`\\${delimiter}`, 'g')) || []).length;
         const secondCount = (secondLine.match(new RegExp(`\\${delimiter}`, 'g')) || []).length;
-        
+
         if (firstCount > 0 && firstCount === secondCount) {
           return delimiter === '\t' ? 'tsv' : 'csv';
         }
       }
     }
-    
+
     // Check for fixed-width
     if (this.isFixedWidth(sample)) {
       return 'fixed-width';
     }
-    
+
     return 'text';
   }
-  
+
   static async detectByContent(sample) {
     return await this.detectTextFormat(sample);
   }
-  
+
   static isFixedWidth(sample) {
     const lines = sample.split('\n').filter(line => line.trim()).slice(0, 5);
     if (lines.length < 2) return false;
-    
+
     // Check if lines have consistent spacing patterns
     const firstLineSpaces = this.getSpacePositions(lines[0]);
     return lines.slice(1).every(line => {
@@ -125,21 +125,21 @@ export class FileFormatDetector {
       return this.arraysMatch(firstLineSpaces, spaces, 2); // Allow 2 char tolerance
     });
   }
-  
+
   static getSpacePositions(line) {
     const positions = [];
     for (let i = 0; i < line.length; i++) {
-      if (line[i] === ' ' && (i === 0 || line[i-1] !== ' ')) {
+      if (line[i] === ' ' && (i === 0 || line[i - 1] !== ' ')) {
         positions.push(i);
       }
     }
     return positions;
   }
-  
+
   static arraysMatch(arr1, arr2, tolerance = 0) {
     if (Math.abs(arr1.length - arr2.length) > tolerance) return false;
     const minLength = Math.min(arr1.length, arr2.length);
-    
+
     for (let i = 0; i < minLength; i++) {
       if (Math.abs(arr1[i] - arr2[i]) > tolerance) return false;
     }
@@ -158,18 +158,18 @@ export class FlexibleFileParser {
       autoDetectHeaders: true,
       skipEmptyLines: true,
       trimValues: true,
-      ...options
+      ...options,
     };
   }
-  
+
   async parseFile(filePath, format = null) {
     try {
       if (!format) {
         format = await FileFormatDetector.detectFormat(filePath);
       }
-      
+
       console.log(`Parsing file ${filePath} as ${format}`);
-      
+
       switch (format) {
         case 'json':
           return await this.parseJSON(filePath);
@@ -190,11 +190,11 @@ export class FlexibleFileParser {
       throw error;
     }
   }
-  
+
   async parseJSON(filePath) {
     const content = await fs.readFile(filePath, this.options.encoding);
     const data = JSON.parse(content);
-    
+
     // Handle different JSON structures
     if (Array.isArray(data)) {
       return { data, columns: this.extractJSONColumns(data) };
@@ -204,24 +204,24 @@ export class FlexibleFileParser {
       // Single object - convert to array
       return { data: [data], columns: this.extractJSONColumns([data]) };
     }
-    
+
     throw new Error('Invalid JSON structure for tank data');
   }
-  
+
   extractJSONColumns(data) {
     if (!data.length) return [];
-    
+
     const columns = new Set();
     data.forEach(item => {
       Object.keys(item).forEach(key => columns.add(key));
     });
-    
+
     return Array.from(columns).map(col => ({
       name: col,
-      type: this.inferDataType(data.map(item => item[col]).filter(v => v != null))
+      type: this.inferDataType(data.map(item => item[col]).filter(v => v != null)),
     }));
   }
-  
+
   async parseCSV(filePath, delimiter = null) {
     return new Promise(async (resolve, reject) => {
       const results = [];
@@ -232,20 +232,20 @@ export class FlexibleFileParser {
       if (!delimiter && this.options.autoDetectDelimiter) {
         delimiter = await this.detectCSVDelimiter(filePath);
       }
-      
+
       const parser = csv({
         separator: delimiter || ',',
         headers: this.options.autoDetectHeaders,
         skipEmptyLines: this.options.skipEmptyLines,
-        mapValues: ({ value }) => this.options.trimValues ? value.trim() : value
+        mapValues: ({ value }) => this.options.trimValues ? value.trim() : value,
       });
-      
+
       createReadStream(filePath, { encoding: this.options.encoding })
         .pipe(parser)
         .on('headers', (headers) => {
           columns = headers.map(header => ({
             name: header,
-            type: 'string' // Will be inferred later
+            type: 'string', // Will be inferred later
           }));
         })
         .on('data', (data) => {
@@ -275,7 +275,7 @@ export class FlexibleFileParser {
 
     for (const delimiter of delimiters) {
       const counts = lines.map(line =>
-        (line.match(new RegExp(`\\${delimiter}`, 'g')) || []).length
+        (line.match(new RegExp(`\\${delimiter}`, 'g')) || []).length,
       );
 
       if (counts.length >= 2 && counts[0] > 0) {
@@ -347,7 +347,7 @@ export class FlexibleFileParser {
 
     const columns = headers.map(header => ({
       name: header.trim() || 'unnamed',
-      type: 'string'
+      type: 'string',
     }));
 
     return { data, columns: this.inferColumnTypes(columns, data) };
@@ -399,15 +399,15 @@ export class FlexibleFileParser {
 
     // Generate columns based on maximum number of values in any line
     const maxCols = Math.max(...data.map(row =>
-      Object.keys(row).filter(key => key.startsWith('col_')).length
+      Object.keys(row).filter(key => key.startsWith('col_')).length,
     ));
 
     const columns = [
       { name: 'line_number', type: 'number' },
       ...Array.from({ length: maxCols }, (_, i) => ({
         name: `col_${i + 1}`,
-        type: 'string'
-      }))
+        type: 'string',
+      })),
     ];
 
     return { data, columns: this.inferColumnTypes(columns, data) };
@@ -416,7 +416,7 @@ export class FlexibleFileParser {
   inferColumnTypes(columns, data) {
     return columns.map(col => ({
       ...col,
-      type: this.inferDataType(data.map(row => row[col.name]).filter(v => v != null && v !== ''))
+      type: this.inferDataType(data.map(row => row[col.name]).filter(v => v != null && v !== '')),
     }));
   }
 
@@ -435,7 +435,7 @@ export class FlexibleFileParser {
 
     // Check for booleans
     const boolCount = sample.filter(v =>
-      ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'].includes(String(v).toLowerCase())
+      ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'].includes(String(v).toLowerCase()),
     ).length;
     if (boolCount / sample.length > 0.8) return 'boolean';
 
@@ -526,7 +526,7 @@ export class DataMapper {
       status: /^(status|state|condition|alarm)$/i,
       unit: /^(unit|units|measurement|uom)$/i,
       location: /^(location|position|zone|area|site)$/i,
-      type: /^(type|kind|category|class)$/i
+      type: /^(type|kind|category|class)$/i,
     };
 
     columns.forEach(col => {

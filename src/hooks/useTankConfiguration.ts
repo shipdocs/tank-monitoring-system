@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
-import { Tank } from '../types/tank';
+import { type Tank } from '../types/tank';
 import {
-  TankConfiguration,
-  loadTankConfiguration,
-  saveTankConfiguration,
+  type TankConfiguration,
   applyTankConfiguration,
-  updateTankName,
   exportConfiguration,
   importConfiguration,
+  loadTankConfiguration,
+  saveTankConfiguration,
+  updateTankName,
 } from '../utils/tankConfig';
 
 export const useTankConfiguration = (originalTanks: Tank[]) => {
@@ -51,21 +51,21 @@ export const useTankConfiguration = (originalTanks: Tank[]) => {
     console.log('oldIndex:', oldIndex, 'newIndex:', newIndex);
     console.log('Total tanks:', configuredTanks.length);
     console.log('Moving from position', oldIndex, 'to position', newIndex);
-    
+
     // Validate indices
-    if (oldIndex < 0 || oldIndex >= configuredTanks.length || 
+    if (oldIndex < 0 || oldIndex >= configuredTanks.length ||
         newIndex < 0 || newIndex >= configuredTanks.length) {
       console.error('Invalid indices!', { oldIndex, newIndex, totalTanks: configuredTanks.length });
       return;
     }
-    
+
     // Special case debugging for first position
     if (newIndex === 0) {
       console.log('🚨 SPECIAL CASE: Moving to FIRST position');
       console.log('Tank being moved:', configuredTanks[oldIndex]);
       console.log('Current first tank:', configuredTanks[0]);
     }
-    
+
     // Use arrayMove for proper reordering (dnd-kit recommended approach)
     const reorderedTanks = arrayMove(configuredTanks, oldIndex, newIndex);
 
@@ -95,12 +95,12 @@ export const useTankConfiguration = (originalTanks: Tank[]) => {
     setConfiguration(updatedConfig);
   }, [configuration, configuredTanks]);
 
-  const renameTank = useCallback((tankId: number, newName: string) => {
+  const renameTank = useCallback((tankId: string, newName: string) => {
     console.log('=== AFTER CONFIGURATION UPDATE ===');
     console.log('New configuration will trigger applyTankConfiguration effect');
     console.log('This will re-sort tanks based on position property');
     console.log('If ordering looks wrong, check applyTankConfiguration sorting logic');
-    
+
     if (!configuration) return;
 
     const updatedConfig = updateTankName(configuration, tankId, newName);

@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Tank, TankData } from '../types/tank';
+import { useEffect, useRef, useState } from 'react';
+import { type Tank, type TankData } from '../types/tank';
+import authService from '../utils/auth';
 
-
+// WebSocket configuration
+const WS_URL = 'ws://localhost:3002';
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+const MAX_RECONNECT_DELAY = 30000; // 30 seconds
+const RECONNECT_MULTIPLIER = 1.5;
 
 // Helper function to calculate trend
 const calculateTrend = (currentLevel: number, previousLevel: number): { trend: Tank['trend'], trendValue: number } => {
@@ -17,7 +22,7 @@ const calculateTrend = (currentLevel: number, previousLevel: number): { trend: T
 
   return {
     trend: difference > 0 ? 'loading' : 'unloading',
-    trendValue: Math.abs(ratePerMinute)
+    trendValue: Math.abs(ratePerMinute),
   };
 };
 
@@ -25,70 +30,217 @@ export const useTankData = () => {
   const [tankData, setTankData] = useState<TankData>({
     tanks: [],
     lastSync: new Date(),
-    connectionStatus: 'disconnected',
+    connectionStatus: 'connecting',
+    isLoading: true,
+    loadingMessage: 'Initializing connection...',
   });
 
-
+  // WebSocket refs
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
+  const isUnmountedRef = useRef(false);
 
   useEffect(() => {
-    let updateInterval: NodeJS.Timeout | null = null;
+    let fallbackInterval: NodeJS.Timeout | null = null;
+    const abortController = new AbortController();
 
-    // Simple data fetching function
+    // Process incoming tank data
+    const processTankData = (data: Tank[]) => {
+      // Only process if component is still mounted
+      if (isUnmountedRef.current || abortController.signal.aborted) return;
+
+      console.log('✅ Received tank data:', data.length, 'tanks');
+
+      setTankData(prev => {
+        // Calculate trends by comparing with previous data
+        const tanksWithTrends = data.map((newTank: Tank) => {
+          const prevTank = prev.tanks.find(t => t.id === newTank.id);
+          const previousLevel = prevTank?.currentLevel || newTank.currentLevel;
+          const { trend, trendValue } = calculateTrend(newTank.currentLevel, previousLevel);
+
+          return {
+            ...newTank,
+            trend,
+            trendValue,
+            previousLevel,
+          };
+        });
+
+        return {
+          tanks: tanksWithTrends,
+          lastSync: new Date(),
+          connectionStatus: 'connected',
+        };
+      });
+    };
+
+    // Fallback HTTP polling function with abort support
     const fetchTankData = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/tanks');
+        const response = await fetch('http://localhost:3001/api/tanks', {
+          signal: abortController.signal,
+          headers: {
+            ...authService.getAuthHeaders(),
+          },
+        });
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Fetched tank data:', data.length, 'tanks');
-
-          setTankData(prev => {
-            // Calculate trends by comparing with previous data
-            const tanksWithTrends = data.map((newTank: Tank) => {
-              const prevTank = prev.tanks.find(t => t.id === newTank.id);
-              const previousLevel = prevTank?.currentLevel || newTank.currentLevel;
-              const { trend, trendValue } = calculateTrend(newTank.currentLevel, previousLevel);
-
-              return {
-                ...newTank,
-                trend,
-                trendValue,
-                previousLevel
-              };
-            });
-
-            return {
-              tanks: tanksWithTrends,
-              lastSync: new Date(),
-              connectionStatus: 'connected'
-            };
-          });
-
+          processTankData(data);
         } else {
           throw new Error('Failed to fetch tank data from server');
         }
       } catch (error) {
-        console.error('❌ Error fetching tank data:', error.message);
-        setTankData(prev => ({
-          ...prev,
-          connectionStatus: 'disconnected'
-        }));
+        // Check if error is due to abort
+        if (error instanceof Error && error.name === 'AbortError') {
+          // Request was aborted, this is expected during cleanup
+          return;
+        }
+
+        // Only update state if component is still mounted
+        if (!isUnmountedRef.current && !abortController.signal.aborted) {
+          console.error('❌ Error fetching tank data:', error instanceof Error ? error.message : 'Unknown error');
+          setTankData(prev => ({
+            ...prev,
+            connectionStatus: 'disconnected',
+          }));
+        }
       }
     };
 
-    // Update function that runs every 3 seconds
-    const updateData = () => {
-      fetchTankData();
+    // WebSocket connection management
+    const connectWebSocket = () => {
+      if (isUnmountedRef.current) return;
+
+      try {
+        // Check authentication before connecting
+        if (!authService.isAuthenticated()) {
+          console.error('❌ Not authenticated, redirecting to login');
+          window.location.href = '/login';
+          return;
+        }
+
+        const wsUrl = authService.getWebSocketUrl(WS_URL);
+        console.log('🔌 Connecting to WebSocket:', wsUrl);
+        setTankData(prev => ({
+          ...prev,
+          connectionStatus: 'connecting',
+          isLoading: true,
+          loadingMessage: 'Establishing WebSocket connection...',
+        }));
+
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected');
+          reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
+          setTankData(prev => ({
+            ...prev,
+            connectionStatus: 'connected',
+            isLoading: false,
+            loadingMessage: undefined,
+          }));
+
+          // Stop fallback polling if running
+          if (fallbackInterval) {
+            clearInterval(fallbackInterval);
+            fallbackInterval = null;
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+
+            // Handle different message types
+            if (message.type === 'tankUpdate' && message.data) {
+              processTankData(message.data);
+            } else if (message.type === 'ping') {
+              // Respond to ping if needed
+              ws.send(JSON.stringify({ type: 'pong' }));
+            }
+          } catch (error) {
+            console.error('❌ Error parsing WebSocket message:', error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+          setTankData(prev => ({
+            ...prev,
+            connectionStatus: 'error',
+            isLoading: false,
+            loadingMessage: 'WebSocket connection error',
+          }));
+        };
+
+        ws.onclose = (event) => {
+          console.log('🔌 WebSocket disconnected:', event.code, event.reason);
+          wsRef.current = null;
+
+          setTankData(prev => ({
+            ...prev,
+            connectionStatus: 'disconnected',
+          }));
+
+          // Start fallback polling
+          if (!fallbackInterval && !isUnmountedRef.current) {
+            console.log('📡 Starting fallback HTTP polling');
+            fallbackInterval = setInterval(fetchTankData, 3000);
+            fetchTankData(); // Initial fetch
+          }
+
+          // Reconnect with exponential backoff
+          if (!isUnmountedRef.current && event.code !== 1000) { // 1000 = normal closure
+            const delay = reconnectDelayRef.current;
+            console.log(`⏱️ Reconnecting in ${delay}ms...`);
+
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectDelayRef.current = Math.min(
+                delay * RECONNECT_MULTIPLIER,
+                MAX_RECONNECT_DELAY,
+              );
+              connectWebSocket();
+            }, delay);
+          }
+        };
+      } catch (error) {
+        console.error('❌ Error creating WebSocket:', error);
+
+        // Fall back to HTTP polling
+        if (!fallbackInterval && !isUnmountedRef.current) {
+          console.log('📡 Starting fallback HTTP polling');
+          fallbackInterval = setInterval(fetchTankData, 3000);
+          fetchTankData();
+        }
+      }
     };
 
-    // Set up simple 3-second interval
-    updateInterval = setInterval(updateData, 3000);
-
-    // Try to fetch real data initially
-    fetchTankData();
+    // Initialize connection
+    connectWebSocket();
 
     return () => {
-      if (updateInterval) {
-        clearInterval(updateInterval);
+      isUnmountedRef.current = true;
+
+      // Abort any pending HTTP requests
+      abortController.abort();
+
+      // Clean up WebSocket
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmounting');
+        wsRef.current = null;
+      }
+
+      // Clear reconnect timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      // Clear fallback interval
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
       }
     };
   }, []); // Empty dependency array - run once on mount

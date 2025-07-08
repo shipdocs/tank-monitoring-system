@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { DataSourceType, DataSourceConfig } from '../../types/vessel';
+import { type DataSourceConfig, type DataSourceType } from '../../types/vessel';
 import {
+  Cable,
+  CheckCircle,
   Database,
   FileText,
-  Cable,
   FolderOpen,
-  CheckCircle
 } from 'lucide-react';
 
 interface DataSourceSelectorProps {
@@ -29,38 +29,38 @@ const dataSourceOptions: DataSourceOption[] = [
     title: 'Serial Port Connection',
     description: 'Real-time data from tank sensors via serial port',
     features: ['Real-time updates', 'Direct sensor connection', 'High accuracy'],
-    recommended: true
+    recommended: true,
   },
   {
     type: 'csv-file',
     icon: <FileText className="w-8 h-8" />,
     title: 'CSV File Monitoring',
     description: 'Automatic monitoring of CSV files for tank data',
-    features: ['Flexible column mapping', 'Automatic file watching', 'Historical data support']
+    features: ['Flexible column mapping', 'Automatic file watching', 'Historical data support'],
   },
   {
     type: 'txt-file',
     icon: <FileText className="w-8 h-8" />,
     title: 'Text File Monitoring',
     description: 'Automatic monitoring of delimited text files for tank data',
-    features: ['Multiple delimiter support', 'Space/tab delimited', 'Custom formats']
+    features: ['Multiple delimiter support', 'Space/tab delimited', 'Custom formats'],
   },
   {
     type: 'json-file',
     icon: <Database className="w-8 h-8" />,
     title: 'JSON File Monitoring',
     description: 'Automatic monitoring of JSON files for tank data',
-    features: ['Structured format', 'Complete tank information', 'Easy integration']
+    features: ['Structured format', 'Complete tank information', 'Easy integration'],
   },
 
 ];
 
 export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
   selectedDataSource,
-  onSelect
+  onSelect,
 }) => {
   const [selectedType, setSelectedType] = useState<DataSourceType | undefined>(
-    selectedDataSource?.type
+    selectedDataSource?.type,
   );
   const [fileConfig, setFileConfig] = useState({
     filePath: selectedDataSource?.filePath || '',
@@ -73,7 +73,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
     autoDetectDataEnd: selectedDataSource?.autoDetectDataEnd ?? true,
     skipOutliers: selectedDataSource?.skipOutliers ?? true,
     maxRecords: selectedDataSource?.maxRecords || 0,
-    temperatureRange: selectedDataSource?.temperatureRange || { min: 0, max: 50 }
+    temperatureRange: selectedDataSource?.temperatureRange || { min: 0, max: 50 },
   });
   const [previewData, setPreviewData] = useState<string[][]>([]);
   const [isValidating, setIsValidating] = useState(false);
@@ -105,8 +105,8 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
             { name: 'Data Files', extensions: ['txt', 'csv', 'json'] },
             { name: 'Text Files', extensions: ['txt'] },
             { name: 'CSV Files', extensions: ['csv'] },
-            { name: 'JSON Files', extensions: ['json'] }
-          ]
+            { name: 'JSON Files', extensions: ['json'] },
+          ],
         });
 
         if (result.success && result.filePath) {
@@ -134,7 +134,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
             autoDetectDataEnd: fileConfig.autoDetectDataEnd,
             skipOutliers: fileConfig.skipOutliers,
             maxRecords: fileConfig.maxRecords,
-            temperatureRange: fileConfig.temperatureRange
+            temperatureRange: fileConfig.temperatureRange,
           };
 
           onSelect(config);
@@ -149,8 +149,8 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = selectedType === 'csv-file' ? '.csv' :
-                   selectedType === 'txt-file' ? '.txt,.csv,.tsv' :
-                   '.json';
+      selectedType === 'txt-file' ? '.txt,.csv,.tsv' :
+        '.json';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -178,7 +178,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
           // Group lines into records for vertical format
           const records = [];
           console.log(`🔍 File Debug: ${lines.length} lines, ${fileConfig.linesPerRecord} per record`);
-          console.log(`🔍 First 8 lines:`, lines.slice(0, 8));
+          console.log('🔍 First 8 lines:', lines.slice(0, 8));
 
           // Load ALL records for accurate tank detection (no limit for tank counting)
           for (let i = 0; i < lines.length; i += fileConfig.linesPerRecord) {
@@ -228,7 +228,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
               totalRecords: records.length,
               validRecords,
               suggestedCutoff: outliers.length > 0 ? Math.min(...outliers) : undefined,
-              outliers
+              outliers,
             };
 
             setFileConfig(prev => ({ ...prev, dataQuality: quality }));
@@ -260,7 +260,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
         maxRecords: fileConfig.maxRecords,
         temperatureRange: fileConfig.temperatureRange,
         dataQuality: fileConfig.dataQuality,
-        previewData: previewData
+        previewData,
       };
 
       onSelect(config);
@@ -307,7 +307,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
     return (
       <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
         <h4 className="font-medium text-gray-900 mb-4">File Configuration</h4>
-        
+
         <div className="space-y-4">
           {/* File Selection */}
           <div>
@@ -322,8 +322,8 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
               <span className="text-gray-600">
                 {fileConfig.filePath || `Choose ${
                   selectedType === 'csv-file' ? 'CSV' :
-                  selectedType === 'txt-file' ? 'Text' :
-                  'JSON'
+                    selectedType === 'txt-file' ? 'Text' :
+                      'JSON'
                 } file`}
               </span>
             </button>
@@ -342,14 +342,14 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                     min="3"
                     max="3600"
                     value={fileConfig.importInterval}
-                    onChange={(e) => setFileConfig(prev => ({ 
-                      ...prev, 
-                      importInterval: parseInt(e.target.value) || 30 
+                    onChange={(e) => setFileConfig(prev => ({
+                      ...prev,
+                      importInterval: parseInt(e.target.value) || 30,
                     }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Delimiter
@@ -394,7 +394,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                     onChange={(e) => setFileConfig(prev => ({
                       ...prev,
                       isVerticalFormat: e.target.checked,
-                      hasHeaders: e.target.checked ? false : prev.hasHeaders // Disable headers for vertical
+                      hasHeaders: e.target.checked ? false : prev.hasHeaders, // Disable headers for vertical
                     }))}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
@@ -422,7 +422,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                   value={fileConfig.linesPerRecord}
                   onChange={(e) => setFileConfig(prev => ({
                     ...prev,
-                    linesPerRecord: parseInt(e.target.value) || 4
+                    linesPerRecord: parseInt(e.target.value) || 4,
                   }))}
                   className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -441,7 +441,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                         value={fileConfig.lineMapping[index] || ''}
                         onChange={(e) => setFileConfig(prev => ({
                           ...prev,
-                          lineMapping: { ...prev.lineMapping, [index]: e.target.value }
+                          lineMapping: { ...prev.lineMapping, [index]: e.target.value },
                         }))}
                         className="flex-1 px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       >
@@ -511,7 +511,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                       value={fileConfig.maxRecords}
                       onChange={(e) => setFileConfig(prev => ({
                         ...prev,
-                        maxRecords: parseInt(e.target.value) || 0
+                        maxRecords: parseInt(e.target.value) || 0,
                       }))}
                       className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                     />
@@ -529,7 +529,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                         value={fileConfig.temperatureRange.min}
                         onChange={(e) => setFileConfig(prev => ({
                           ...prev,
-                          temperatureRange: { ...prev.temperatureRange, min: parseInt(e.target.value) || 0 }
+                          temperatureRange: { ...prev.temperatureRange, min: parseInt(e.target.value) || 0 },
                         }))}
                         className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                       />
@@ -541,7 +541,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                         value={fileConfig.temperatureRange.max}
                         onChange={(e) => setFileConfig(prev => ({
                           ...prev,
-                          temperatureRange: { ...prev.temperatureRange, max: parseInt(e.target.value) || 50 }
+                          temperatureRange: { ...prev.temperatureRange, max: parseInt(e.target.value) || 50 },
                         }))}
                         className="w-16 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                       />
@@ -577,7 +577,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                           <button
                             onClick={() => setFileConfig(prev => ({
                               ...prev,
-                              maxRecords: fileConfig.dataQuality?.suggestedCutoff || 0
+                              maxRecords: fileConfig.dataQuality?.suggestedCutoff || 0,
                             }))}
                             className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
                           >
@@ -672,7 +672,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                 Recommended
               </div>
             )}
-            
+
             <div className="flex flex-col space-y-3">
               <div className="flex items-center space-x-3">
                 <div className={`p-3 rounded-full ${
@@ -682,7 +682,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                 }`}>
                   {option.icon}
                 </div>
-                
+
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900">
                     {option.title}
@@ -692,7 +692,7 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
                   </p>
                 </div>
               </div>
-              
+
               <div className="space-y-1">
                 {option.features.map((feature, index) => (
                   <div key={index} className="flex items-center space-x-2">
@@ -721,8 +721,8 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
             {selectedType === 'csv-file' || selectedType === 'txt-file' || selectedType === 'json-file'
               ? 'Configure your file settings above, then click "Next" to continue.'
               : selectedType === 'serial-port'
-              ? 'Serial port configuration will be completed in the next steps.'
-              : 'Click "Next" to choose your tank layout configuration.'
+                ? 'Serial port configuration will be completed in the next steps.'
+                : 'Click "Next" to choose your tank layout configuration.'
             }
           </p>
         </div>

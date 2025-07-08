@@ -1,4 +1,4 @@
-import { VesselConfiguration } from '../types/vessel';
+import { type VesselConfiguration } from '../types/vessel';
 
 export interface TankReading {
   id: string;
@@ -10,7 +10,7 @@ export interface TankReading {
 }
 
 export interface TankConfiguration {
-  id: number;
+  id: string;
   customName?: string;
   position: number;
 }
@@ -55,7 +55,7 @@ export class TankStorage {
     if (!this.getItem(this.APP_SETTINGS_KEY)) {
       const defaultSettings: AppSettings = {
         lastUpdated: new Date().toISOString(),
-        version: this.VERSION
+        version: this.VERSION,
       };
       this.setItem(this.APP_SETTINGS_KEY, defaultSettings);
     }
@@ -130,13 +130,13 @@ export class TankStorage {
   saveVessel(vessel: VesselConfiguration): void {
     const vessels = this.getVessels();
     const existingIndex = vessels.findIndex(v => v.id === vessel.id);
-    
+
     const updatedVessel = {
       ...vessel,
       metadata: {
         ...vessel.metadata,
-        lastModified: new Date().toISOString()
-      }
+        lastModified: new Date().toISOString(),
+      },
     };
 
     if (existingIndex >= 0) {
@@ -167,7 +167,7 @@ export class TankStorage {
   getAppSettings(): AppSettings {
     return this.getItem<AppSettings>(this.APP_SETTINGS_KEY) || {
       lastUpdated: new Date().toISOString(),
-      version: this.VERSION
+      version: this.VERSION,
     };
   }
 
@@ -182,7 +182,7 @@ export class TankStorage {
     const settings = this.getAppSettings();
     return {
       activeVesselId: settings.activeVesselId,
-      lastUpdated: settings.lastUpdated
+      lastUpdated: settings.lastUpdated,
     };
   }
 
@@ -190,7 +190,7 @@ export class TankStorage {
   saveTankConfiguration(config: AppConfiguration): void {
     const updatedConfig = {
       ...config,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
     this.setItem(this.TANK_CONFIG_KEY, updatedConfig);
   }
@@ -200,7 +200,7 @@ export class TankStorage {
     return config || {
       id: 'default',
       tanks: [],
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
   }
 
@@ -209,27 +209,27 @@ export class TankStorage {
     const readings = this.getTankReadings();
     const newReading: TankReading = {
       ...reading,
-      id: `reading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      id: `reading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
-    
+
     readings.unshift(newReading);
-    
+
     // Keep only last 10000 readings to prevent storage bloat
     if (readings.length > 10000) {
       readings.splice(10000);
     }
-    
+
     this.setItem(this.READINGS_KEY, readings);
   }
 
   getTankHistory(tankId: string, hours: number = 24): TankReading[] {
     const readings = this.getTankReadings();
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
-    
+
     return readings
-      .filter(reading => 
-        reading.tankId === tankId && 
-        new Date(reading.timestamp) > cutoffTime
+      .filter(reading =>
+        reading.tankId === tankId &&
+        new Date(reading.timestamp) > cutoffTime,
       )
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 1000); // Limit to 1000 readings
@@ -246,7 +246,7 @@ export class TankStorage {
       if (vesselData) {
         const vessels = Array.isArray(vesselData) ? vesselData : [vesselData];
         vessels.forEach(vessel => {
-          if (vessel && vessel.id) {
+          if (vessel?.id) {
             this.saveVessel(vessel);
           }
         });
@@ -256,7 +256,7 @@ export class TankStorage {
       if (tankConfigData) {
         this.saveTankConfiguration(tankConfigData);
       }
-      
+
       console.log('✅ Migration completed successfully');
     } catch (error) {
       console.error('❌ Error during migration:', error);
@@ -271,32 +271,32 @@ export class TankStorage {
       tankConfiguration: this.getTankConfiguration(),
       readings: this.getTankReadings(),
       exportDate: new Date().toISOString(),
-      version: this.VERSION
+      version: this.VERSION,
     };
-    
+
     return JSON.stringify(data, null, 2);
   }
 
   importBackup(backupData: string): boolean {
     try {
       const data = JSON.parse(backupData);
-      
+
       if (data.vessels) {
         this.setItem(this.VESSELS_KEY, data.vessels);
       }
-      
+
       if (data.appSettings) {
         this.setItem(this.APP_SETTINGS_KEY, data.appSettings);
       }
-      
+
       if (data.tankConfiguration) {
         this.setItem(this.TANK_CONFIG_KEY, data.tankConfiguration);
       }
-      
+
       if (data.readings) {
         this.setItem(this.READINGS_KEY, data.readings);
       }
-      
+
       console.log('✅ Successfully restored data from backup');
       return true;
     } catch (error) {

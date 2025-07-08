@@ -1,6 +1,6 @@
 import React from 'react';
 import { useServerStatus } from '../hooks/useServerStatus';
-import { Server, Wifi, WifiOff, FileText, Cable, Database, Eye, RefreshCw } from 'lucide-react';
+import { Cable, Database, Eye, FileText, RefreshCw, Server, Wifi, WifiOff } from 'lucide-react';
 
 export const ServerStatusIndicator: React.FC = () => {
   const { status, config, isLoading, error, refresh } = useServerStatus();
@@ -75,23 +75,23 @@ export const ServerStatusIndicator: React.FC = () => {
         <Server className="w-4 h-4 text-gray-600" />
         <span className="text-sm font-medium text-gray-700">Server</span>
       </div>
-      
+
       <div className="w-px h-4 bg-gray-300"></div>
-      
+
       <div className={`flex items-center space-x-2 ${getStatusColor()}`}>
         {status.connected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
         <span className="text-sm font-medium">
           {status.connected ? 'Connected' : 'Configured'}
         </span>
       </div>
-      
+
       <div className="w-px h-4 bg-gray-300"></div>
-      
+
       <div className="flex items-center space-x-2 text-gray-600">
         {getDataSourceIcon()}
         <span className="text-sm" title={getDataSourceLabel()}>
-          {getDataSourceLabel().length > 25 
-            ? getDataSourceLabel().substring(0, 25) + '...' 
+          {getDataSourceLabel().length > 25
+            ? `${getDataSourceLabel().substring(0, 25)}...`
             : getDataSourceLabel()
           }
         </span>
@@ -107,7 +107,7 @@ export const ServerStatusIndicator: React.FC = () => {
           </div>
         </>
       )}
-      
+
       <button
         onClick={refresh}
         className="p-1 hover:bg-gray-100 rounded transition-colors"

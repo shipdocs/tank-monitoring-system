@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Gauge, Settings, Ship, ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Gauge, Settings, Ship } from 'lucide-react';
 import { ConnectionStatus } from './ConnectionStatus';
 import { AlarmSummary } from './AlarmSummary';
 import { ServerStatusIndicator } from './ServerStatusIndicator';
 import { LogoDisplay } from './LogoDisplay';
-import { Tank } from '../types/tank';
+import { type Tank } from '../types/tank';
 
 interface CollapsibleHeaderProps {
   appName: string;

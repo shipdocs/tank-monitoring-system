@@ -6,11 +6,11 @@ import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import chokidar from 'chokidar';
+import bcrypt from 'bcrypt';
 
-// Import server modules  
+// Import server modules
 import { FlexibleFileMonitor } from '../server/fileMonitor.js';
 import { FlexibleFileParser } from '../server/fileParser.js';
 
@@ -31,25 +31,27 @@ let tankConfiguration = {
   preAlarmPercentage: 86,
   overfillPercentage: 97.5,
   lowLevelPercentage: 10,
-  tanks: {}
+  tanks: {},
 };
 
 // App branding storage
 let appBranding = {
   appName: 'Tank Monitoring System',
   appSlogan: 'Real-time tank level monitoring dashboard',
-  primaryColor: '#2563eb'
+  primaryColor: '#2563eb',
 };
 
 // Security settings storage
+// Passwords are hashed using bcrypt with 10 salt rounds
+// Plain text passwords are automatically migrated to bcrypt hashes on first load
 let securitySettings = {
   passwordProtected: false,
-  password: ''
+  password: '',
 };
 
 // Tank data storage
 let lastTankData = [];
-let connectedClients = new Set();
+const connectedClients = new Set();
 let isFileMonitoringActive = false;
 
 // Simple rate limiting for file system access
@@ -87,14 +89,14 @@ function addLog(level, category, message) {
     timestamp: new Date().toISOString(),
     level,
     category,
-    message
+    message,
   };
-  
+
   debugLogs.push(log);
   if (debugLogs.length > MAX_LOGS) {
     debugLogs.shift();
   }
-  
+
   console.log(`[${log.timestamp}] [${level}] [${category}] ${message}`);
 }
 
@@ -123,7 +125,7 @@ let currentConfig = {
       minLevel: '',
       maxLevel: '',
       unit: '',
-      location: ''
+      location: '',
     },
     autoDiscoverColumns: true,
     isVerticalFormat: true,
@@ -132,19 +134,32 @@ let currentConfig = {
     autoDetectDataEnd: true,
     skipOutliers: true,
     maxRecords: 12,
-    temperatureRange: { min: 0, max: 50 }
-  }
+    temperatureRange: { min: 0, max: 50 },
+  },
 };
 
 const CONFIG_FILE = path.join(
   process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : process.env.HOME),
-  '.tank-monitor-config.json'
+  '.tank-monitor-config.json',
 );
 
 const TANK_CONFIG_FILE = path.join(
   process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : process.env.HOME),
-  '.tank-monitor-tank-config.json'
+  '.tank-monitor-tank-config.json',
 );
+
+const SECURITY_CONFIG_FILE = path.join(
+  process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : process.env.HOME),
+  '.tank-monitor-security.json',
+);
+
+const BRANDING_CONFIG_FILE = path.join(
+  process.env.APPDATA || (process.platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : process.env.HOME),
+  '.tank-monitor-branding.json',
+);
+
+// Bcrypt configuration
+const BCRYPT_SALT_ROUNDS = 10;
 
 function loadConfig() {
   try {
@@ -167,6 +182,59 @@ function loadTankConfig() {
     }
   } catch (error) {
     addLog('ERROR', 'CONFIG', `Failed to load tank config: ${error.message}`);
+  }
+}
+
+function loadSecurityConfig() {
+  try {
+    if (fs.existsSync(SECURITY_CONFIG_FILE)) {
+      const data = fs.readFileSync(SECURITY_CONFIG_FILE, 'utf8');
+      const loadedSettings = JSON.parse(data);
+
+      // Check if we need to migrate from plain text password
+      if (loadedSettings.password && loadedSettings.password.length > 0 && !loadedSettings.password.startsWith('$2b$')) {
+        // This is a plain text password, we need to hash it
+        addLog('INFO', 'SECURITY', 'Migrating plain text password to bcrypt hash');
+        const hashedPassword = bcrypt.hashSync(loadedSettings.password, BCRYPT_SALT_ROUNDS);
+        loadedSettings.password = hashedPassword;
+        saveSecurityConfig(loadedSettings);
+      }
+
+      securitySettings = { ...securitySettings, ...loadedSettings };
+      addLog('INFO', 'CONFIG', 'Security configuration loaded');
+    }
+  } catch (error) {
+    addLog('ERROR', 'CONFIG', `Failed to load security config: ${error.message}`);
+  }
+}
+
+function saveSecurityConfig(settings = securitySettings) {
+  try {
+    fs.writeFileSync(SECURITY_CONFIG_FILE, JSON.stringify(settings, null, 2));
+    addLog('INFO', 'CONFIG', 'Security configuration saved');
+  } catch (error) {
+    addLog('ERROR', 'CONFIG', `Failed to save security config: ${error.message}`);
+  }
+}
+
+function loadBrandingConfig() {
+  try {
+    if (fs.existsSync(BRANDING_CONFIG_FILE)) {
+      const data = fs.readFileSync(BRANDING_CONFIG_FILE, 'utf8');
+      appBranding = { ...appBranding, ...JSON.parse(data) };
+      addLog('INFO', 'CONFIG', 'Branding configuration loaded');
+    }
+  } catch (error) {
+    addLog('ERROR', 'CONFIG', `Failed to load branding config: ${error.message}`);
+  }
+}
+
+function saveBrandingConfig() {
+  try {
+    fs.writeFileSync(BRANDING_CONFIG_FILE, JSON.stringify(appBranding, null, 2));
+    addLog('INFO', 'CONFIG', 'Branding configuration saved');
+  } catch (error) {
+    addLog('ERROR', 'CONFIG', `Failed to save branding config: ${error.message}`);
   }
 }
 
@@ -223,7 +291,7 @@ function parseVerticalFormatData(fileContent, config) {
     // Get tank configuration from settings, with fallback to defaults
     const tankConfig = tankConfiguration.tanks[tankId] || {
       maxHeight: 4545,  // Use configured value instead of hardcoded 1500
-      allowedHeight: 4545  // Use configured value instead of hardcoded 1400
+      allowedHeight: 4545,  // Use configured value instead of hardcoded 1400
     };
 
     const tank = {
@@ -237,7 +305,7 @@ function parseVerticalFormatData(fileContent, config) {
       status: 'normal',
       lastUpdated: new Date().toISOString(),
       location: `Position ${tanks.length + 1}`,
-      group: tanks.length < 6 ? 'BB' : 'SB'
+      group: tanks.length < 6 ? 'BB' : 'SB',
     };
 
     // Apply line mapping
@@ -278,7 +346,7 @@ function generateEmptyTanks() {
     // Get tank configuration from settings, with fallback to defaults
     const tankConfig = tankConfiguration.tanks[tankId] || {
       maxHeight: 4545,  // Use configured value instead of hardcoded 1500
-      allowedHeight: 4545  // Use configured value instead of hardcoded 1400
+      allowedHeight: 4545,  // Use configured value instead of hardcoded 1400
     };
 
     tanks.push({
@@ -292,8 +360,8 @@ function generateEmptyTanks() {
       status: 'critical', // Empty tanks are critical
       lastUpdated: timestamp,
       location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,
-      group: group,
-      temperature: 20 // Default temperature
+      group,
+      temperature: 20, // Default temperature
     });
   }
 
@@ -318,8 +386,8 @@ function broadcastTankData(tanks) {
     data: {
       tanks,
       lastSync: new Date().toISOString(),
-      connectionStatus: isFileMonitoringActive ? 'connected' : 'disconnected'
-    }
+      connectionStatus: isFileMonitoringActive ? 'connected' : 'disconnected',
+    },
   });
 
   connectedClients.forEach(client => {
@@ -333,7 +401,7 @@ function broadcastTankData(tanks) {
 function broadcastStatus(status) {
   const message = JSON.stringify({
     type: 'status',
-    data: { connectionStatus: status, lastSync: new Date().toISOString() }
+    data: { connectionStatus: status, lastSync: new Date().toISOString() },
   });
 
   connectedClients.forEach(client => {
@@ -344,21 +412,22 @@ function broadcastStatus(status) {
 }
 
 
-
 export function startIntegratedServer(isDev = false) {
   return new Promise((resolve, reject) => {
     try {
       addLog('INFO', 'SERVER', 'Starting integrated server...');
-      
+
       // Load configuration
       loadConfig();
       loadTankConfig();
-      
+      loadSecurityConfig();
+      loadBrandingConfig();
+
       // Create Express app
       app = express();
       app.use(cors());
       app.use(express.json());
-      
+
       // Serve static files
       let staticPath = isDev
         ? path.join(__dirname, '..', 'dist')
@@ -374,7 +443,7 @@ export function startIntegratedServer(isDev = false) {
           path.join(process.resourcesPath || '', 'app.asar', 'dist'),
           path.join(__dirname, '../../dist'),
           path.join(__dirname, '../../../dist'),
-          path.join(process.cwd(), 'dist')
+          path.join(process.cwd(), 'dist'),
         ];
 
         for (const altPath of alternatives) {
@@ -388,7 +457,7 @@ export function startIntegratedServer(isDev = false) {
 
       app.use(express.static(staticPath));
       addLog('INFO', 'SERVER', `Serving static files from: ${staticPath}`);
-      
+
       // API Routes
       app.get('/api/status', (req, res) => {
         const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
@@ -396,7 +465,7 @@ export function startIntegratedServer(isDev = false) {
         if (!checkRateLimit(clientIp, '/api/status')) {
           return res.status(429).json({
             error: 'Too many requests',
-            message: 'Rate limit exceeded. Please try again later.'
+            message: 'Rate limit exceeded. Please try again later.',
           });
         }
 
@@ -412,27 +481,27 @@ export function startIntegratedServer(isDev = false) {
           lastSync: new Date().toISOString(),
           status: 'online',
           version: '2.0.0',
-          debugLogs: debugLogs.length
+          debugLogs: debugLogs.length,
         });
       });
-      
+
       app.get('/api/config', (req, res) => {
         res.json(currentConfig);
       });
-      
+
       app.post('/api/config', (req, res) => {
         currentConfig = { ...currentConfig, ...req.body };
         saveConfig();
-        
+
         // Restart file monitoring if needed
         if (fileMonitor && currentConfig.csvFile.enabled) {
           fileMonitor.stop();
           startFileMonitoring();
         }
-        
+
         res.json({ success: true, config: currentConfig });
       });
-      
+
       app.get('/api/debug-logs', (req, res) => {
         res.json(debugLogs);
       });
@@ -444,7 +513,7 @@ export function startIntegratedServer(isDev = false) {
         } else {
           res.status(503).json({
             error: 'No tank data available',
-            message: 'Data source not connected or no data received yet'
+            message: 'Data source not connected or no data received yet',
           });
         }
       });
@@ -474,6 +543,7 @@ export function startIntegratedServer(isDev = false) {
       app.post('/api/branding', (req, res) => {
         try {
           appBranding = { ...appBranding, ...req.body };
+          saveBrandingConfig();
           addLog('INFO', 'CONFIG', 'App branding updated');
           res.json({ success: true, message: 'Branding saved' });
         } catch (error) {
@@ -486,13 +556,36 @@ export function startIntegratedServer(isDev = false) {
       app.get('/api/security', (req, res) => {
         // Don't send the actual password, just the protection status
         res.json({
-          passwordProtected: securitySettings.passwordProtected
+          passwordProtected: securitySettings.passwordProtected,
         });
       });
 
-      app.post('/api/security', (req, res) => {
+      app.post('/api/security', async (req, res) => {
         try {
-          securitySettings = { ...securitySettings, ...req.body };
+          const newSettings = { ...req.body };
+
+          // If a new password is provided, hash it
+          if (newSettings.password && newSettings.password.length > 0) {
+            try {
+              // Hash the password using bcrypt
+              const hashedPassword = await bcrypt.hash(newSettings.password, BCRYPT_SALT_ROUNDS);
+              newSettings.password = hashedPassword;
+              addLog('INFO', 'SECURITY', 'Password hashed successfully');
+            } catch (hashError) {
+              addLog('ERROR', 'SECURITY', `Failed to hash password: ${hashError.message}`);
+              return res.status(500).json({ success: false, message: 'Failed to hash password' });
+            }
+          } else if (!newSettings.passwordProtected) {
+            // If password protection is disabled, clear the password
+            newSettings.password = '';
+          } else {
+            // Keep existing password if not changing it
+            newSettings.password = securitySettings.password;
+          }
+
+          securitySettings = { ...securitySettings, ...newSettings };
+          saveSecurityConfig();
+
           addLog('INFO', 'CONFIG', 'Security settings updated');
           res.json({ success: true, message: 'Security settings saved' });
         } catch (error) {
@@ -501,12 +594,49 @@ export function startIntegratedServer(isDev = false) {
         }
       });
 
-      app.post('/api/security/verify', (req, res) => {
+      app.post('/api/security/verify', async (req, res) => {
         const { password } = req.body;
-        if (!securitySettings.passwordProtected || password === securitySettings.password) {
-          res.json({ success: true, message: 'Access granted' });
-        } else {
-          res.status(401).json({ success: false, message: 'Invalid password' });
+
+        try {
+          // If password protection is disabled, grant access
+          if (!securitySettings.passwordProtected) {
+            return res.json({ success: true, message: 'Access granted' });
+          }
+
+          // If no password is stored, deny access
+          if (!securitySettings.password) {
+            addLog('WARN', 'SECURITY', 'Password protection enabled but no password set');
+            return res.status(401).json({ success: false, message: 'No password configured' });
+          }
+
+          // Check if this is an old plain text password (shouldn't happen after migration)
+          if (!securitySettings.password.startsWith('$2b$')) {
+            addLog('WARN', 'SECURITY', 'Plain text password detected during verification - this should not happen');
+            // For backward compatibility, do a plain text comparison and migrate
+            if (password === securitySettings.password) {
+              // Migrate to bcrypt immediately
+              const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+              securitySettings.password = hashedPassword;
+              saveSecurityConfig();
+              return res.json({ success: true, message: 'Access granted (password migrated)' });
+            } else {
+              return res.status(401).json({ success: false, message: 'Invalid password' });
+            }
+          }
+
+          // Compare the provided password with the stored hash
+          const isValid = await bcrypt.compare(password, securitySettings.password);
+
+          if (isValid) {
+            addLog('INFO', 'SECURITY', 'Password verification successful');
+            res.json({ success: true, message: 'Access granted' });
+          } else {
+            addLog('WARN', 'SECURITY', 'Invalid password attempt');
+            res.status(401).json({ success: false, message: 'Invalid password' });
+          }
+        } catch (error) {
+          addLog('ERROR', 'SECURITY', `Password verification error: ${error.message}`);
+          res.status(500).json({ success: false, message: 'Authentication error' });
         }
       });
 
@@ -541,7 +671,7 @@ export function startIntegratedServer(isDev = false) {
           res.json({ success: false, error: error.message });
         }
       });
-      
+
       app.post('/api/test-csv', async (req, res) => {
         const { filePath } = req.body;
         try {
@@ -553,7 +683,6 @@ export function startIntegratedServer(isDev = false) {
           res.status(400).json({ error: error.message });
         }
       });
-
 
 
       // Serve settings page
@@ -573,7 +702,7 @@ export function startIntegratedServer(isDev = false) {
         if (!checkRateLimit(clientIp, '/settings')) {
           return res.status(429).json({
             error: 'Too many requests',
-            message: 'Rate limit exceeded. Please try again later.'
+            message: 'Rate limit exceeded. Please try again later.',
           });
         }
 
@@ -592,7 +721,7 @@ export function startIntegratedServer(isDev = false) {
         if (!checkRateLimit(clientIp, '/flexible-settings')) {
           return res.status(429).json({
             error: 'Too many requests',
-            message: 'Rate limit exceeded. Please try again later.'
+            message: 'Rate limit exceeded. Please try again later.',
           });
         }
 
@@ -608,15 +737,15 @@ export function startIntegratedServer(isDev = false) {
       app.get('*', (req, res) => {
         res.sendFile(path.join(staticPath, 'index.html'));
       });
-      
+
       // Create HTTP server
       server = app.listen(3001, () => {
         addLog('INFO', 'SERVER', 'HTTP server running on port 3001');
       });
-      
+
       // Create WebSocket server
       wss = new WebSocketServer({ port: 3002 });
-      
+
       wss.on('connection', (ws) => {
         addLog('INFO', 'WS', 'New WebSocket connection');
         connectedClients.add(ws);
@@ -624,7 +753,7 @@ export function startIntegratedServer(isDev = false) {
         // Send initial data
         ws.send(JSON.stringify({
           type: 'config',
-          data: currentConfig
+          data: currentConfig,
         }));
 
         // Send current tank data if available
@@ -634,8 +763,8 @@ export function startIntegratedServer(isDev = false) {
             data: {
               tanks: lastTankData,
               lastSync: new Date().toISOString(),
-              connectionStatus: 'connected'
-            }
+              connectionStatus: 'connected',
+            },
           }));
         }
 
@@ -658,9 +787,9 @@ export function startIntegratedServer(isDev = false) {
           connectedClients.delete(ws);
         });
       });
-      
+
       addLog('INFO', 'SERVER', 'WebSocket server running on port 3002');
-      
+
       // Start file monitoring if configured
       if (currentConfig.csvFile.enabled && currentConfig.csvFile.filePath) {
         startFileMonitoring();
@@ -714,10 +843,10 @@ function startFileMonitoring() {
     options: {
       delimiter: currentConfig.csvFile.delimiter || ',',
       hasHeaders: currentConfig.csvFile.hasHeaders || false,
-      ...currentConfig.csvFile
-    }
+      ...currentConfig.csvFile,
+    },
   };
-  
+
   fileMonitor.on('data', (data) => {
     // Get the configured tank count limit
     const tankCountLimit = currentConfig.tankCount || 12;
@@ -737,11 +866,11 @@ function startFileMonitoring() {
 
     addLog('DEBUG', 'MONITOR', `Broadcasting data for ${tanks.length} tanks (limit: ${tankCountLimit})`);
   });
-  
+
   fileMonitor.on('error', (error) => {
     addLog('ERROR', 'MONITOR', error.message);
   });
-  
+
   // Add the data source and start monitoring
   fileMonitor.addSource(dataSource);
   fileMonitor.start();
@@ -762,8 +891,8 @@ function startVerticalFormatMonitoring() {
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: 1000,
-      pollInterval: 100
-    }
+      pollInterval: 100,
+    },
   });
 
   watcher.on('change', () => {
@@ -790,7 +919,7 @@ async function loadVerticalFormatFile() {
     const tanks = parseVerticalFormatData(fileContent, {
       linesPerRecord: currentConfig.csvFile.linesPerRecord || 4,
       lineMapping: currentConfig.csvFile.lineMapping || {},
-      maxRecords: currentConfig.csvFile.maxRecords || currentConfig.tankCount || 12
+      maxRecords: currentConfig.csvFile.maxRecords || currentConfig.tankCount || 12,
     });
 
     addLog('INFO', 'MONITOR', `Loaded ${tanks.length} tanks from vertical format file`);

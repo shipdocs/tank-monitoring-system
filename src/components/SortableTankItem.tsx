@@ -1,16 +1,17 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Tank, ViewMode } from '../types/tank';
+import { type Tank, type ViewMode } from '../types/tank';
 import { EditableTankCard } from './EditableTankCard';
 import { EditableTankListItem } from './EditableTankListItem';
 import { EditableTankCompactCard } from './EditableTankCompactCard';
 import { EditableTankCylinder } from './EditableTankCylinder';
+import { TankErrorBoundary } from './TankErrorBoundary';
 
 interface SortableTankItemProps {
   tank: Tank;
   viewMode: ViewMode;
-  onRename: (tankId: number, newName: string) => void;
+  onRename: (tankId: string, newName: string) => void;
 }
 
 export const SortableTankItem: React.FC<SortableTankItemProps> = ({
@@ -25,7 +26,7 @@ export const SortableTankItem: React.FC<SortableTankItemProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tank.id.toString() });
+  } = useSortable({ id: tank.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -95,7 +96,9 @@ export const SortableTankItem: React.FC<SortableTankItemProps> = ({
       style={style}
       className={`transition-all duration-200 ${isDragging ? 'scale-105 shadow-2xl' : ''}`}
     >
-      {renderTank()}
+      <TankErrorBoundary tankId={tank.id} tankName={tank.name}>
+        {renderTank()}
+      </TankErrorBoundary>
     </div>
   );
 };

@@ -1,60 +1,47 @@
 import React, { useState } from 'react';
-import { Tank } from '../types/tank';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Edit2, GripVertical } from 'lucide-react';
+import { type Tank } from '../types/tank';
+import { AlertTriangle, Edit2, GripVertical, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  getStatusBorderColor,
+  getStatusColor,
+  getTankPercentage,
+  getTrendColor,
+  getTrendIcon,
+  getTrendText,
+  isAlarmState,
+  isCriticalState,
+} from '../utils/tankDisplay';
 
 interface EditableCompactTankCardProps {
   tank: Tank;
-  onRename: (tankId: number, newName: string) => void;
+  onRename: (tankId: string, newName: string) => void;
   dragHandleProps?: Record<string, unknown>;
 }
 
-export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = ({ 
-  tank, 
-  onRename, 
-  dragHandleProps 
+export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = ({
+  tank,
+  onRename,
+  dragHandleProps,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const getStatusColor = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'bg-green-500';
-      case 'low': return 'bg-yellow-500';
-      case 'high': return 'bg-orange-500';
-      case 'critical': return 'bg-red-600';
-      default: return 'bg-gray-500';
+  // Helper function to render trend icon based on icon info
+  const renderTrendIcon = (trend: Tank['trend']) => {
+    const iconInfo = getTrendIcon(trend);
+    switch (iconInfo.name) {
+      case 'TrendingUp': return <TrendingUp className={`${iconInfo.className} font-bold`} />;
+      case 'TrendingDown': return <TrendingDown className={`${iconInfo.className} font-bold`} />;
+      case 'Minus': return <Minus className={iconInfo.className} />;
+      default: return <Minus className={iconInfo.className} />;
     }
   };
 
-  const getStatusBorderColor = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'border-green-200';
-      case 'low': return 'border-yellow-300';
-      case 'high': return 'border-orange-300';
-      case 'critical': return 'border-red-400';
-      default: return 'border-gray-200';
-    }
-  };
+  // Get uppercase trend text
+  const getTrendTextUppercase = (trend: Tank['trend']) => getTrendText(trend).toUpperCase();
 
-  const getTrendIcon = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return <TrendingUp className="w-4 h-4 text-green-600 font-bold" />;
-      case 'unloading': return <TrendingDown className="w-4 h-4 text-red-600 font-bold" />;
-      case 'stable': return <Minus className="w-4 h-4 text-gray-500" />;
-      default: return <Minus className="w-4 h-4 text-gray-400" />;
-    }
-  };
-
-  const getTrendText = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return 'LOADING';
-      case 'unloading': return 'UNLOADING';
-      case 'stable': return 'STABLE';
-      default: return '';
-    }
-  };
-
-  const getTrendColor = (trend: Tank['trend']) => {
+  // Get color for compact display
+  const getTrendColorCompact = (trend: Tank['trend']) => {
     switch (trend) {
       case 'loading': return 'bg-green-100 text-green-700 border-green-300';
       case 'unloading': return 'bg-red-100 text-red-700 border-red-300';
@@ -83,15 +70,15 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
-  const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
-  const isCritical = tank.status === 'critical';
+  const percentage = getTankPercentage(tank.currentLevel, tank.maxCapacity);
+  const isAlarm = isAlarmState(tank.status);
+  const isCritical = isCriticalState(tank.status);
 
   return (
     <div className={`bg-white rounded-lg shadow-sm border-2 transition-all duration-300 hover:shadow-md ${
       isCritical ? 'border-red-400 shadow-red-200 animate-pulse' :
-      isAlarm ? 'border-orange-300 shadow-orange-100' :
-      getStatusBorderColor(tank.status)
+        isAlarm ? 'border-orange-300 shadow-orange-100' :
+          getStatusBorderColor(tank.status)
     }`}>
       {/* Compact Header */}
       <div className="bg-gray-50 px-3 py-2 rounded-t-lg border-b">
@@ -100,7 +87,7 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
             <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
               <GripVertical className="w-3 h-3 text-gray-400" />
             </div>
-            
+
             {isEditing ? (
               <input
                 type="text"
@@ -112,14 +99,14 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
                 autoFocus
               />
             ) : (
-              <h4 
+              <h4
                 className="text-sm font-semibold text-gray-800 cursor-pointer hover:text-blue-600 flex-1 min-w-0 truncate"
                 onClick={() => setIsEditing(true)}
               >
                 {tank.name}
               </h4>
             )}
-            
+
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
@@ -129,10 +116,10 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
               </button>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-1 ml-2">
             <div className={`w-3 h-3 rounded-full ${getStatusColor(tank.status)} ${isCritical ? 'animate-pulse' : ''}`}></div>
-            {tank.trend && getTrendIcon(tank.trend)}
+            {tank.trend && renderTrendIcon(tank.trend)}
           </div>
         </div>
       </div>
@@ -150,15 +137,15 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
 
         {/* Prominent Trend Indicator */}
         {tank.trend && tank.trend !== 'stable' && (
-          <div className={`flex items-center justify-center space-x-2 px-2 py-1 rounded-md border ${getTrendColor(tank.trend)}`}>
-            {getTrendIcon(tank.trend)}
-            <span className="text-xs font-bold">{getTrendText(tank.trend)}</span>
+          <div className={`flex items-center justify-center space-x-2 px-2 py-1 rounded-md border ${getTrendColorCompact(tank.trend)}`}>
+            {renderTrendIcon(tank.trend)}
+            <span className="text-xs font-bold">{getTrendTextUppercase(tank.trend)}</span>
           </div>
         )}
 
         {/* Progress Bar */}
         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div 
+          <div
             className={`h-full transition-all duration-500 ${getStatusColor(tank.status)}`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           ></div>

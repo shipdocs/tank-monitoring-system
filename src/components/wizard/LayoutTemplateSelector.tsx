@@ -1,5 +1,5 @@
 import React from 'react';
-import { VesselType, VesselTemplate, VESSEL_TEMPLATES } from '../../types/vessel';
+import { VESSEL_TEMPLATES, type VesselTemplate, type VesselType } from '../../types/vessel';
 
 interface LayoutTemplateSelectorProps {
   vesselType: VesselType;
@@ -10,10 +10,10 @@ interface LayoutTemplateSelectorProps {
 export const LayoutTemplateSelector: React.FC<LayoutTemplateSelectorProps> = ({
   vesselType,
   selectedTemplate,
-  onSelect
+  onSelect,
 }) => {
   const availableTemplates = VESSEL_TEMPLATES.filter(
-    template => template.vesselType === vesselType
+    template => template.vesselType === vesselType,
   );
 
   const renderLayoutPreview = (template: VesselTemplate) => {
@@ -152,7 +152,7 @@ export const LayoutTemplateSelector: React.FC<LayoutTemplateSelectorProps> = ({
                 <p className="text-gray-600 mb-4">
                   {template.description}
                 </p>
-                
+
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-gray-700">Tank Groups:</div>
                   <div className="flex flex-wrap gap-2">
@@ -160,9 +160,9 @@ export const LayoutTemplateSelector: React.FC<LayoutTemplateSelectorProps> = ({
                       <span
                         key={index}
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                        style={{ 
-                          backgroundColor: group.displaySettings.color + '40',
-                          color: group.displaySettings.color.replace('#', '#').slice(0, 7) + 'CC'
+                        style={{
+                          backgroundColor: `${group.displaySettings.color}40`,
+                          color: `${group.displaySettings.color.replace('#', '#').slice(0, 7)}CC`,
                         }}
                       >
                         {group.name}
@@ -171,7 +171,7 @@ export const LayoutTemplateSelector: React.FC<LayoutTemplateSelectorProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex-shrink-0">
                 {renderLayoutPreview(template)}
               </div>
@@ -189,7 +189,7 @@ export const LayoutTemplateSelector: React.FC<LayoutTemplateSelectorProps> = ({
             </span>
           </div>
           <p className="text-sm text-blue-700 mt-1">
-            This will create {selectedTemplate.defaultGroups.length} tank groups. 
+            This will create {selectedTemplate.defaultGroups.length} tank groups.
             You can customize them in the next step.
           </p>
         </div>

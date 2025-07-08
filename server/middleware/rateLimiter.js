@@ -1,0 +1,347 @@
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Store for rate limit data
+class FileStore {
+  constructor(filePath) {
+    this.filePath = filePath;
+    this.data = new Map();
+    this.saveInterval = null;
+    this.init();
+  }
+
+  async init() {
+    try {
+      // Try to load existing data
+      const fileContent = await fs.readFile(this.filePath, 'utf8');
+      const savedData = JSON.parse(fileContent);
+
+      // Restore data with proper Date objects
+      Object.entries(savedData).forEach(([key, value]) => {
+        this.data.set(key, {
+          ...value,
+          resetTime: new Date(value.resetTime),
+        });
+      });
+
+      console.log(`Loaded rate limit data for ${this.data.size} IPs`);
+    } catch (error) {
+      // File doesn't exist or is invalid, start fresh
+      console.log('Starting with fresh rate limit store');
+    }
+
+    // Clean up expired entries every minute
+    setInterval(() => this.cleanup(), 60000);
+
+    // Save data every 30 seconds
+    this.saveInterval = setInterval(() => this.save(), 30000);
+  }
+
+  async save() {
+    try {
+      const dataObj = {};
+      this.data.forEach((value, key) => {
+        dataObj[key] = value;
+      });
+
+      await fs.writeFile(this.filePath, JSON.stringify(dataObj, null, 2));
+    } catch (error) {
+      console.error('Error saving rate limit data:', error);
+    }
+  }
+
+  cleanup() {
+    const now = Date.now();
+    let removed = 0;
+
+    this.data.forEach((value, key) => {
+      if (value.resetTime.getTime() < now) {
+        this.data.delete(key);
+        removed++;
+      }
+    });
+
+    if (removed > 0) {
+      console.log(`Cleaned up ${removed} expired rate limit entries`);
+    }
+  }
+
+  increment(key) {
+    const now = Date.now();
+    const record = this.data.get(key);
+
+    if (!record || record.resetTime.getTime() < now) {
+      // Create new record
+      this.data.set(key, {
+        totalHits: 1,
+        resetTime: new Date(now + 60000), // 1 minute window
+      });
+      return { totalHits: 1, resetTime: new Date(now + 60000) };
+    }
+
+    // Increment existing record
+    record.totalHits++;
+    return record;
+  }
+
+  decrement(key) {
+    const record = this.data.get(key);
+    if (record && record.totalHits > 0) {
+      record.totalHits--;
+    }
+  }
+
+  resetKey(key) {
+    this.data.delete(key);
+  }
+
+  reset() {
+    this.data.clear();
+  }
+
+  async shutdown() {
+    if (this.saveInterval) {
+      clearInterval(this.saveInterval);
+    }
+    await this.save();
+  }
+}
+
+// Create store instance
+const rateLimitStore = new FileStore(path.join(__dirname, '../rate-limit-data.json'));
+
+// Helper to get client identifier (IP + User Agent for better accuracy)
+function getClientIdentifier(req) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const userAgent = req.get('user-agent') || 'unknown';
+  const forwardedFor = req.get('x-forwarded-for');
+
+  // Use forwarded IP if behind proxy
+  const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : ip;
+
+  // Create a unique identifier combining IP and User Agent hash
+  const uaHash = userAgent.substring(0, 50); // Limit UA length
+  return `${clientIp}:${uaHash}`;
+}
+
+// Custom key generator for better client identification
+const keyGenerator = (req) => getClientIdentifier(req);
+
+// Custom handler for rate limit exceeded
+const rateLimitHandler = (req, res) => {
+  const retryAfter = res.getHeader('Retry-After');
+  const limit = res.getHeader('X-RateLimit-Limit');
+
+  res.status(429).json({
+    error: 'Too Many Requests',
+    message: 'Rate limit exceeded. You have made too many requests in a short period.',
+    retryAfter: retryAfter ? parseInt(retryAfter) : 60,
+    limit: limit ? parseInt(limit) : null,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+// Skip successful requests for authenticated users with valid tokens
+const skipSuccessfulRequests = (req, res) =>
+  // Skip counting successful authenticated requests (reduces limit consumption for legitimate users)
+  res.statusCode < 400 && req.user !== undefined
+;
+
+// Different rate limiters for different endpoint types
+
+// Strict limiter for authentication endpoints
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 requests per window
+  message: 'Too many authentication attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator,
+  handler: rateLimitHandler,
+  store: {
+    increment: async (key) => rateLimitStore.increment(key),
+    decrement: async (key) => rateLimitStore.decrement(key),
+    resetKey: async (key) => rateLimitStore.resetKey(key),
+    reset: async () => rateLimitStore.reset(),
+  },
+  // Skip rate limiting for successful logins to not penalize legitimate users
+  skip: (req, res) =>
+    // Only skip if it's a successful response
+    res.statusCode === 200,
+
+});
+
+// Moderate limiter for general API endpoints
+export const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: 'Too many requests, please slow down',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator,
+  handler: rateLimitHandler,
+  skipSuccessfulRequests,
+  store: {
+    increment: async (key) => rateLimitStore.increment(key),
+    decrement: async (key) => rateLimitStore.decrement(key),
+    resetKey: async (key) => rateLimitStore.resetKey(key),
+    reset: async () => rateLimitStore.reset(),
+  },
+});
+
+// Lenient limiter for static assets and WebSocket connections
+export const staticLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 200, // 200 requests per minute
+  message: 'Too many requests for static assets',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator,
+  handler: rateLimitHandler,
+  skipSuccessfulRequests: true, // Don't count successful static asset requests
+  store: {
+    increment: async (key) => rateLimitStore.increment(key),
+    decrement: async (key) => rateLimitStore.decrement(key),
+    resetKey: async (key) => rateLimitStore.resetKey(key),
+    reset: async () => rateLimitStore.reset(),
+  },
+});
+
+// Very strict limiter for file system operations
+export const fileSystemLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // 20 requests per 5 minutes
+  message: 'Too many file system operations, please wait before trying again',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator,
+  handler: rateLimitHandler,
+  store: {
+    increment: async (key) => rateLimitStore.increment(key),
+    decrement: async (key) => rateLimitStore.decrement(key),
+    resetKey: async (key) => rateLimitStore.resetKey(key),
+    reset: async () => rateLimitStore.reset(),
+  },
+});
+
+// Configuration change limiter
+export const configLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // 10 config changes per 5 minutes
+  message: 'Too many configuration changes, please wait',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator,
+  handler: rateLimitHandler,
+  store: {
+    increment: async (key) => rateLimitStore.increment(key),
+    decrement: async (key) => rateLimitStore.decrement(key),
+    resetKey: async (key) => rateLimitStore.resetKey(key),
+    reset: async () => rateLimitStore.reset(),
+  },
+});
+
+// WebSocket connection limiter
+export const wsConnectionLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // 10 new WebSocket connections per minute per IP
+  message: 'Too many WebSocket connection attempts',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator,
+  handler: rateLimitHandler,
+  store: {
+    increment: async (key) => rateLimitStore.increment(key),
+    decrement: async (key) => rateLimitStore.decrement(key),
+    resetKey: async (key) => rateLimitStore.resetKey(key),
+    reset: async () => rateLimitStore.reset(),
+  },
+});
+
+// Dynamic rate limiter that adjusts based on server load
+export const createDynamicLimiter = (options = {}) => {
+  const baseMax = options.max || 100;
+  const windowMs = options.windowMs || 60000;
+
+  return rateLimit({
+    windowMs,
+    max: (req, res) => {
+      // You could adjust this based on server metrics
+      const load = process.memoryUsage().heapUsed / process.memoryUsage().heapTotal;
+
+      if (load > 0.8) {
+        // High load - reduce limits
+        return Math.floor(baseMax * 0.5);
+      } else if (load > 0.6) {
+        // Medium load - slightly reduce limits
+        return Math.floor(baseMax * 0.75);
+      }
+
+      // Normal load
+      return baseMax;
+    },
+    message: 'Server is under high load, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator,
+    handler: rateLimitHandler,
+    skipSuccessfulRequests: options.skipSuccessfulRequests || false,
+    store: {
+      increment: async (key) => rateLimitStore.increment(key),
+      decrement: async (key) => rateLimitStore.decrement(key),
+      resetKey: async (key) => rateLimitStore.resetKey(key),
+      reset: async () => rateLimitStore.reset(),
+    },
+  });
+};
+
+// IP-based banning for severe abuse
+const bannedIPs = new Set();
+const banDuration = 60 * 60 * 1000; // 1 hour ban
+const banThreshold = 50; // Ban after 50 rate limit violations
+
+export function banAbusiveIPs(req, res, next) {
+  const clientId = getClientIdentifier(req);
+  const ip = clientId.split(':')[0];
+
+  // Check if IP is banned
+  if (bannedIPs.has(ip)) {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Your IP has been temporarily banned due to excessive requests',
+      banDuration: `${banDuration / 1000 / 60} minutes`,
+    });
+  }
+
+  // Track rate limit violations
+  res.on('finish', () => {
+    if (res.statusCode === 429) {
+      const violations = rateLimitStore.data.get(clientId);
+      if (violations && violations.totalHits > banThreshold) {
+        bannedIPs.add(ip);
+        console.log(`Banned IP ${ip} for excessive requests`);
+
+        // Auto-unban after duration
+        setTimeout(() => {
+          bannedIPs.delete(ip);
+          console.log(`Unbanned IP ${ip}`);
+        }, banDuration);
+      }
+    }
+  });
+
+  next();
+}
+
+// Graceful shutdown
+export async function shutdownRateLimiter() {
+  await rateLimitStore.shutdown();
+}
+
+// Export store for monitoring/admin purposes
+export { rateLimitStore };

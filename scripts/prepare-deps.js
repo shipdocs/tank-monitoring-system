@@ -20,29 +20,29 @@ fs.mkdirSync(tempDir);
 
 // Create package.json with only required dependencies
 const serverDeps = {
-  "name": "tank-monitoring-server-deps",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "express": "^4.21.1",
-    "ws": "^8.19.0",
-    "cors": "^2.8.5",
-    "csv-parser": "^3.2.0",
-    "chokidar": "^4.0.3",
-    "serialport": "^12.0.1"
-  }
+  'name': 'tank-monitoring-server-deps',
+  'version': '1.0.0',
+  'type': 'module',
+  'dependencies': {
+    'express': '^4.21.1',
+    'ws': '^8.19.0',
+    'cors': '^2.8.5',
+    'csv-parser': '^3.2.0',
+    'chokidar': '^4.0.3',
+    'serialport': '^12.0.1',
+  },
 };
 
 fs.writeFileSync(
   path.join(tempDir, 'package.json'),
-  JSON.stringify(serverDeps, null, 2)
+  JSON.stringify(serverDeps, null, 2),
 );
 
 // Install only production dependencies
 console.log('Installing production dependencies...');
 execSync('npm install --production --no-optional', {
   cwd: tempDir,
-  stdio: 'inherit'
+  stdio: 'inherit',
 });
 
 // Move to server-deps directory

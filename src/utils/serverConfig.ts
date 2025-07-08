@@ -1,4 +1,4 @@
-import { DataSourceConfig } from '../types/vessel';
+import { type DataSourceConfig } from '../types/vessel';
 
 // Server configuration interface (matches server expectations)
 interface ServerConfig {
@@ -63,9 +63,9 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
         minLevel: 'min_level',
         maxLevel: 'max_level',
         unit: 'unit',
-        location: 'location'
-      }
-    }
+        location: 'location',
+      },
+    },
   };
 
   switch (dataSource.type) {
@@ -75,8 +75,8 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
         dataFormat: 'csv',
         csvFile: {
           ...baseConfig.csvFile,
-          enabled: false
-        }
+          enabled: false,
+        },
       };
 
     case 'csv-file':
@@ -107,9 +107,9 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
             minLevel: '',
             maxLevel: '',
             unit: '',
-            location: ''
-          }
-        }
+            location: '',
+          },
+        },
       };
 
     case 'json-file':
@@ -122,15 +122,14 @@ export const convertToServerConfig = (dataSource: DataSourceConfig, tankCount: n
           filePath: dataSource.filePath || '',
           importInterval: dataSource.importInterval || 30000,
           hasHeaders: false,
-          delimiter: ','
-        }
+          delimiter: ',',
+        },
       };
 
     default:
       throw new Error(`Unsupported data source type: ${dataSource.type}`);
   }
 };
-
 
 
 // API functions for server communication
@@ -198,9 +197,9 @@ export const disconnectFromDataSource = async (): Promise<boolean> => {
   }
 };
 
-export const getServerConfig = async (): Promise<ServerConfig | null> => {
+export const getServerConfig = async (signal?: AbortSignal): Promise<ServerConfig | null> => {
   try {
-    const response = await fetch('http://localhost:3001/api/config');
+    const response = await fetch('http://localhost:3001/api/config', { signal });
 
     if (!response.ok) {
       throw new Error(`Server responded with ${response.status}`);
@@ -208,14 +207,18 @@ export const getServerConfig = async (): Promise<ServerConfig | null> => {
 
     return await response.json();
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      // Request was aborted, this is expected during cleanup
+      return null;
+    }
     console.error('Failed to get server config:', error);
     return null;
   }
 };
 
-export const getServerStatus = async (): Promise<unknown> => {
+export const getServerStatus = async (signal?: AbortSignal): Promise<unknown> => {
   try {
-    const response = await fetch('http://localhost:3001/api/status');
+    const response = await fetch('http://localhost:3001/api/status', { signal });
 
     if (!response.ok) {
       throw new Error(`Server responded with ${response.status}`);
@@ -223,6 +226,10 @@ export const getServerStatus = async (): Promise<unknown> => {
 
     return await response.json();
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      // Request was aborted, this is expected during cleanup
+      return null;
+    }
     console.error('Failed to get server status:', error);
     return null;
   }
@@ -230,28 +237,28 @@ export const getServerStatus = async (): Promise<unknown> => {
 
 // Helper function to apply wizard configuration to server
 export const applyWizardConfigToServer = async (
-  dataSource: DataSourceConfig, 
-  tankCount: number = 12
+  dataSource: DataSourceConfig,
+  tankCount: number = 12,
 ): Promise<{ success: boolean; connected: boolean }> => {
   try {
     console.log('🔧 Applying wizard config to server:', dataSource);
-    
+
     // Convert wizard config to server format
     const serverConfig = convertToServerConfig(dataSource, tankCount);
     console.log('📤 Server config:', serverConfig);
-    
+
     // Save configuration to server
     const saveSuccess = await saveServerConfig(serverConfig);
     if (!saveSuccess) {
       throw new Error('Failed to save configuration to server');
     }
-    
+
     console.log('✅ Configuration saved to server');
-    
+
     // Connect to data source
     const connected = await connectToDataSource();
     console.log(`🔌 Connection ${connected ? 'successful' : 'failed'}`);
-    
+
     return { success: true, connected };
   } catch (error) {
     console.error('❌ Failed to apply wizard config to server:', error);

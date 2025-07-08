@@ -1,33 +1,29 @@
 import React, { useState } from 'react';
-import { Tank } from '../types/tank';
+import { type Tank } from '../types/tank';
 import { Edit2, GripVertical } from 'lucide-react';
+import {
+  getStatusColor,
+  getTankPercentage,
+  isAlarmState,
+} from '../utils/tankDisplay';
 
 interface EditableTankCompactCardProps {
   tank: Tank;
-  onRename: (tankId: number, newName: string) => void;
+  onRename: (tankId: string, newName: string) => void;
   dragHandleProps?: Record<string, unknown>;
 }
 
-export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = ({ 
-  tank, 
-  onRename, 
-  dragHandleProps 
+export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = ({
+  tank,
+  onRename,
+  dragHandleProps,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
-  const isAlarm = tank.status === 'critical' || tank.status === 'low';
+  const percentage = getTankPercentage(tank.currentLevel, tank.maxCapacity);
+  const isAlarm = isAlarmState(tank.status);
 
-  const getStatusColor = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'bg-green-500';
-      case 'low': return 'bg-yellow-500';
-      case 'high': return 'bg-orange-500';
-      case 'critical': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
 
   const handleNameSubmit = () => {
     if (editName.trim() !== tank.name) {
@@ -85,7 +81,7 @@ export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = (
           <span>{percentage.toFixed(1)}%</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className={`h-2 rounded-full transition-all duration-500 ${getStatusColor(tank.status)}`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           ></div>

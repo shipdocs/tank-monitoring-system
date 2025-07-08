@@ -1,6 +1,6 @@
 import React from 'react';
-import { ViewMode } from '../types/tank';
-import { Grid3X3, List, LayoutGrid, ArrowRight, Columns3, Columns2, Settings } from 'lucide-react';
+import { type ViewMode } from '../types/tank';
+import { ArrowRight, Columns2, Columns3, Grid3X3, LayoutGrid, List, Settings } from 'lucide-react';
 
 interface DefaultLayoutSettingsProps {
   currentDefault: ViewMode;
@@ -16,38 +16,38 @@ export const DefaultLayoutSettings: React.FC<DefaultLayoutSettingsProps> = ({
       mode: 'grid' as ViewMode,
       icon: <Grid3X3 className="w-4 h-4" />,
       label: 'Grid View',
-      description: 'Cards in a responsive grid'
+      description: 'Cards in a responsive grid',
     },
     {
       mode: 'list' as ViewMode,
       icon: <List className="w-4 h-4" />,
       label: 'List View',
-      description: 'Detailed horizontal list'
+      description: 'Detailed horizontal list',
     },
     {
       mode: 'compact' as ViewMode,
       icon: <LayoutGrid className="w-4 h-4" />,
       label: 'Compact View',
-      description: 'Small cards with essential info'
+      description: 'Small cards with essential info',
     },
     {
       mode: 'single-row' as ViewMode,
       icon: <ArrowRight className="w-4 h-4" />,
       label: 'Single Row',
-      description: 'Horizontal scrolling row'
+      description: 'Horizontal scrolling row',
     },
     {
       mode: 'column' as ViewMode,
       icon: <Columns3 className="w-4 h-4" />,
       label: 'Column View',
-      description: 'Tanks as vertical cylinders in rows'
+      description: 'Tanks as vertical cylinders in rows',
     },
     {
       mode: 'side-by-side' as ViewMode,
       icon: <Columns2 className="w-4 h-4" />,
       label: 'Side by Side',
-      description: 'BB left, SB right in two columns'
-    }
+      description: 'BB left, SB right in two columns',
+    },
   ];
 
   return (
@@ -59,7 +59,7 @@ export const DefaultLayoutSettings: React.FC<DefaultLayoutSettingsProps> = ({
       <p className="text-sm text-gray-600 mb-4">
         Choose which layout to use when the app starts
       </p>
-      
+
       <div className="space-y-2">
         {viewOptions.map((option) => (
           <button
@@ -89,7 +89,7 @@ export const DefaultLayoutSettings: React.FC<DefaultLayoutSettingsProps> = ({
           </button>
         ))}
       </div>
-      
+
       <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-xs text-blue-700">
           💡 This setting is saved locally and will be used when you restart the app

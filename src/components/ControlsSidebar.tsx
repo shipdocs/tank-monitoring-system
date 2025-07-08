@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { SidebarViewControls } from './SidebarViewControls';
 import { DefaultLayoutSettings } from './DefaultLayoutSettings';
-import { ViewMode } from '../types/tank';
-import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard } from 'lucide-react';
+import { ErrorLogViewer } from './ErrorLogViewer';
+import { type ViewMode } from '../types/tank';
+import { AlertCircle, ChevronRight, Download, LayoutDashboard, RotateCcw, Settings, Upload, X } from 'lucide-react';
 
 interface ControlsSidebarProps {
   currentView: ViewMode;
@@ -103,7 +104,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
           <div>
             <h3 className="text-md font-semibold text-gray-800 mb-3">Tank Configuration</h3>
             <p className="text-sm text-gray-600 mb-4">Drag tanks to reorder, click names to edit</p>
-            
+
             {/* Configuration Controls */}
             <div className="space-y-3">
               <button
@@ -173,6 +174,22 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
 
           {/* Divider */}
           <div className="border-t border-gray-200"></div>
+
+          {/* Error Log Section (Dev Mode) */}
+          {process.env.NODE_ENV === 'development' && (
+            <>
+              <div>
+                <h3 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Error Log (Dev)
+                </h3>
+                <ErrorLogViewer />
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-200"></div>
+            </>
+          )}
 
           {/* Help Section */}
           <div>

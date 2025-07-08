@@ -1,6 +1,6 @@
 import React from 'react';
-import { ViewMode } from '../types/tank';
-import { Grid3X3, List, LayoutGrid, ArrowRight, Columns3, Columns2 } from 'lucide-react';
+import { type ViewMode } from '../types/tank';
+import { ArrowRight, Columns2, Columns3, Grid3X3, LayoutGrid, List } from 'lucide-react';
 
 interface SidebarViewControlsProps {
   currentView: ViewMode;
@@ -16,38 +16,38 @@ export const SidebarViewControls: React.FC<SidebarViewControlsProps> = ({
       mode: 'grid' as ViewMode,
       icon: <Grid3X3 className="w-4 h-4" />,
       label: 'Grid View',
-      description: 'Cards in a responsive grid'
+      description: 'Cards in a responsive grid',
     },
     {
       mode: 'list' as ViewMode,
       icon: <List className="w-4 h-4" />,
       label: 'List View',
-      description: 'Detailed horizontal list'
+      description: 'Detailed horizontal list',
     },
     {
       mode: 'compact' as ViewMode,
       icon: <LayoutGrid className="w-4 h-4" />,
       label: 'Compact View',
-      description: 'Small cards with essential info'
+      description: 'Small cards with essential info',
     },
     {
       mode: 'single-row' as ViewMode,
       icon: <ArrowRight className="w-4 h-4" />,
       label: 'Single Row',
-      description: 'Horizontal scrolling row'
+      description: 'Horizontal scrolling row',
     },
     {
       mode: 'column' as ViewMode,
       icon: <Columns3 className="w-4 h-4" />,
       label: 'Column View',
-      description: 'Tanks as vertical cylinders in rows'
+      description: 'Tanks as vertical cylinders in rows',
     },
     {
       mode: 'side-by-side' as ViewMode,
       icon: <Columns2 className="w-4 h-4" />,
       label: 'Side by Side',
-      description: 'BB left, SB right in two columns'
-    }
+      description: 'BB left, SB right in two columns',
+    },
   ];
 
   return (

@@ -1,5 +1,5 @@
 export interface Tank {
-  id: number;
+  id: string;
   name: string;
   currentLevel: number; // Current level in mm
   maxCapacity: number; // Maximum height in mm (not liters!)
@@ -27,7 +27,9 @@ export interface TankGroup {
 export interface TankData {
   tanks: Tank[];
   lastSync: Date;
-  connectionStatus: 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connected' | 'disconnected' | 'error' | 'connecting';
+  isLoading: boolean;
+  loadingMessage?: string;
 }
 
 export type ViewMode = 'grid' | 'list' | 'compact' | 'single-row' | 'column' | 'side-by-side';

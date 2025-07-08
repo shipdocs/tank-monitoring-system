@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getServerStatus, getServerConfig } from '../utils/serverConfig';
+import { useEffect, useState } from 'react';
+import { getServerConfig, getServerStatus } from '../utils/serverConfig';
 
 interface ServerStatus {
   connected: boolean;
@@ -29,49 +29,78 @@ export const useServerStatus = () => {
   const [config, setConfig] = useState<ServerConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const fetchStatus = async () => {
-    try {
-      const [statusData, configData] = await Promise.all([
-        getServerStatus(),
-        getServerConfig()
-      ]);
+  useEffect(() => {
+    // Create AbortController for cleanup
+    const abortController = new AbortController();
+    let intervalId: NodeJS.Timeout | null = null;
+    let isMounted = true;
 
-      if (statusData) {
-        setStatus(statusData);
+    const fetchStatus = async () => {
+      try {
+        const [statusData, configData] = await Promise.all([
+          getServerStatus(abortController.signal),
+          getServerConfig(abortController.signal),
+        ]);
+
+        // Only update state if component is still mounted
+        if (isMounted && !abortController.signal.aborted) {
+          if (statusData) {
+            setStatus(statusData);
+          }
+
+          if (configData) {
+            setConfig(configData);
+          }
+
+          setError(null);
+        }
+      } catch (err) {
+        // Only update error state if component is still mounted
+        if (isMounted && !abortController.signal.aborted) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch server status');
+        }
+      } finally {
+        // Only update loading state if component is still mounted
+        if (isMounted && !abortController.signal.aborted) {
+          setIsLoading(false);
+        }
       }
-      
-      if (configData) {
-        setConfig(configData);
+    };
+
+    // Initial fetch
+    fetchStatus();
+
+    // Poll server status every 10 seconds
+    intervalId = setInterval(() => {
+      if (!abortController.signal.aborted) {
+        fetchStatus();
       }
-      
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch server status');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }, 10000);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      abortController.abort();
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [refreshTrigger]);
 
   const refresh = () => {
     setIsLoading(true);
-    fetchStatus();
+    setError(null);
+    // Trigger a new effect run which will abort the old one and start fresh
+    setRefreshTrigger(prev => prev + 1);
   };
-
-  useEffect(() => {
-    fetchStatus();
-    
-    // Poll server status every 10 seconds
-    const interval = setInterval(fetchStatus, 10000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   return {
     status,
     config,
     isLoading,
     error,
-    refresh
+    refresh,
   };
 };

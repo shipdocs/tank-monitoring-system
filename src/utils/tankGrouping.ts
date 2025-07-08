@@ -1,4 +1,4 @@
-import { Tank, TankGroup } from '../types/tank';
+import { type Tank, type TankGroup } from '../types/tank';
 
 /**
  * Groups tanks based on their ID or configured group
@@ -12,26 +12,26 @@ export function groupTanks(tanks: Tank[]): TankGroup[] {
       id: 'BB',
       name: 'BB',
       displayName: 'BB (Port)',
-      tanks: []
+      tanks: [],
     },
     {
       id: 'SB',
       name: 'SB',
       displayName: 'SB (Starboard)',
-      tanks: []
+      tanks: [],
     },
     {
       id: 'CENTER',
       name: 'CENTER',
       displayName: 'Center Tanks',
-      tanks: []
-    }
+      tanks: [],
+    },
   ];
 
   tanks.forEach(tank => {
     // Use tank.group if explicitly set, otherwise determine by ID
     let groupId = tank.group;
-    
+
     if (!groupId) {
       // Default grouping logic based on tank ID
       if (tank.id >= 1 && tank.id <= 6) {
@@ -66,8 +66,8 @@ export function groupTanks(tanks: Tank[]): TankGroup[] {
 export function assignDefaultGroups(tanks: Tank[]): Tank[] {
   return tanks.map(tank => ({
     ...tank,
-    group: tank.group || (tank.id >= 1 && tank.id <= 6 ? 'BB' : 
-                         tank.id >= 7 && tank.id <= 12 ? 'SB' : 'CENTER')
+    group: tank.group || (tank.id >= 1 && tank.id <= 6 ? 'BB' :
+      tank.id >= 7 && tank.id <= 12 ? 'SB' : 'CENTER'),
   }));
 }
 

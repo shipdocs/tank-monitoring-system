@@ -3,10 +3,24 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
-import fsSync from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Import logger
+import logger, {
+  auditLog,
+  createModuleLogger,
+  logError,
+  logPerformance,
+  logShutdown,
+  logStartup,
+  logTankData,
+  requestLogger,
+} from './logger.js';
+
+// Create module logger
+const moduleLogger = createModuleLogger('main-server');
 
 // For Windows compatibility in packaged app - look for modules in parent directories
 const require = createRequire(import.meta.url);
@@ -23,7 +37,7 @@ function findModule(moduleName) {
   for (const modulePath of possiblePaths) {
     try {
       require.resolve(modulePath);
-      console.log(`Found ${moduleName} at: ${modulePath}`);
+      moduleLogger.debug(`Found ${moduleName} at: ${modulePath}`);
       return require(modulePath);
     } catch (e) {
       // Continue searching
@@ -34,7 +48,7 @@ function findModule(moduleName) {
   try {
     return require(moduleName);
   } catch (e) {
-    console.error(`Failed to find module ${moduleName}. Searched paths:`, possiblePaths);
+    moduleLogger.error(`Failed to find module ${moduleName}`, { searchedPaths: possiblePaths });
     throw e;
   }
 }
@@ -49,13 +63,36 @@ try {
   csv = findModule('csv-parser');
   chokidar = findModule('chokidar');
 } catch (error) {
-  console.error('Failed to load dependencies:', error);
+  logError(error, { context: 'Failed to load dependencies' });
   process.exit(1);
 }
 
 // Local imports
 import { FlexibleFileMonitor } from './fileMonitor.js';
-import { FlexibleFileParser, DataMapper, TANK_FIELDS } from './fileParser.js';
+import { DataMapper, FlexibleFileParser, TANK_FIELDS } from './fileParser.js';
+import { authenticate } from './middleware/auth.js';
+import authRoutes from './routes/auth.js';
+import { joi, sanitize, validate, validateParams, validateQuery } from './middleware/validation.js';
+import {
+  brandingSchema,
+  browseQuerySchema,
+  csvFileConfigSchema,
+  dataSourceSchema,
+  mainConfigSchema,
+  sourceIdParamSchema,
+  tankConfigSchema,
+  testMappingSchema,
+  validateFileQuerySchema,
+} from './validation/schemas.js';
+import {
+  apiLimiter,
+  authLimiter,
+  banAbusiveIPs,
+  configLimiter,
+  fileSystemLimiter,
+  shutdownRateLimiter,
+  staticLimiter,
+} from './middleware/rateLimiter.js';
 
 const app = express();
 const PORT = 3001;
@@ -63,7 +100,34 @@ const WS_PORT = 3002;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+
+// Security headers
+app.use(securityHeaders());
+
+// Enhanced JSON parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Content type validation
+app.use(validateContentType(['application/json', 'application/x-www-form-urlencoded']));
+
+// Automation detection
+app.use(detectAutomation());
+
+// Add request logging middleware
+app.use(requestLogger);
+
+// Add IP banning middleware (before rate limiters)
+app.use(banAbusiveIPs);
+
+// Authentication routes (before auth middleware)
+app.use('/api/auth', authLimiter, authRoutes);
+
+// Apply authentication middleware to all routes
+app.use(authenticate);
+
+// Validation error handler
+app.use(validationErrorHandler());
 
 // Determine the correct path for static files
 let staticPath;
@@ -72,36 +136,44 @@ const isPackaged = process.resourcesPath && __dirname.includes('resources');
 if (isPackaged) {
   // In packaged app, frontend files are in app.asar
   staticPath = path.join(process.resourcesPath, 'app.asar', 'dist');
-  console.log('Using packaged static path:', staticPath);
+  moduleLogger.info('Using packaged static path', { staticPath });
 } else {
   // In development, use relative path
   staticPath = path.join(__dirname, '../dist');
-  console.log('Using development static path:', staticPath);
+  moduleLogger.info('Using development static path', { staticPath });
 }
 
 // Check if the static path exists and log it
-if (fsSync.existsSync(staticPath)) {
-  console.log('Static path exists:', staticPath);
-} else {
-  console.log('Static path does not exist:', staticPath);
-  // Try alternative paths
-  const alternatives = [
-    path.join(process.resourcesPath || '', 'app.asar', 'dist'),
-    path.join(__dirname, '../../dist'),
-    path.join(__dirname, '../../../dist'),
-    path.join(process.cwd(), 'dist')
-  ];
+async function findStaticPath() {
+  try {
+    await fs.access(staticPath);
+    moduleLogger.debug('Static path exists', { staticPath });
+    return staticPath;
+  } catch {
+    moduleLogger.warn('Static path does not exist', { staticPath });
+    // Try alternative paths
+    const alternatives = [
+      path.join(process.resourcesPath || '', 'app.asar', 'dist'),
+      path.join(__dirname, '../../dist'),
+      path.join(__dirname, '../../../dist'),
+      path.join(process.cwd(), 'dist'),
+    ];
 
-  for (const altPath of alternatives) {
-    if (fsSync.existsSync(altPath)) {
-      staticPath = altPath;
-      console.log('Found alternative static path:', staticPath);
-      break;
+    for (const altPath of alternatives) {
+      try {
+        await fs.access(altPath);
+        staticPath = altPath;
+        moduleLogger.info('Found alternative static path', { staticPath: altPath });
+        return staticPath;
+      } catch {
+        // Continue to next alternative
+      }
     }
   }
+  return staticPath;
 }
 
-app.use(express.static(staticPath));
+// Static path will be set during initialization
 
 // Configuration file path
 const CONFIG_FILE = path.join(__dirname, 'config.json');
@@ -109,13 +181,23 @@ const CONFIG_FILE = path.join(__dirname, 'config.json');
 // Global variables
 let lastTankData = [];
 
+// Create module loggers for different components
+const csvLogger = createModuleLogger('csv-parser');
+const serialLogger = createModuleLogger('serial-port');
+const wsLogger = createModuleLogger('websocket');
+const fileMonitorLogger = createModuleLogger('file-monitor');
+
 // Vertical format parser
 function parseVerticalFormatData(fileContent, config) {
   const lines = fileContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   const { linesPerRecord, lineMapping, maxRecords } = config;
   const tanks = [];
 
-  console.log(`Parsing vertical format: ${lines.length} lines, ${linesPerRecord} lines per record`);
+  csvLogger.debug('Parsing vertical format', {
+    totalLines: lines.length,
+    linesPerRecord,
+    maxRecords,
+  });
 
   for (let i = 0; i < lines.length; i += linesPerRecord) {
     if (maxRecords > 0 && tanks.length >= maxRecords) break;
@@ -133,7 +215,7 @@ function parseVerticalFormatData(fileContent, config) {
       unit: 'L',
       status: 'normal',
       lastUpdated: new Date().toISOString(),
-      location: `Position ${tanks.length + 1}`
+      location: `Position ${tanks.length + 1}`,
     };
 
     // Apply line mapping
@@ -155,7 +237,7 @@ function parseVerticalFormatData(fileContent, config) {
     tanks.push(tank);
   }
 
-  console.log(`Parsed ${tanks.length} tanks from vertical format`);
+  csvLogger.info('Parsed tanks from vertical format', { tankCount: tanks.length });
   return tanks;
 }
 
@@ -188,7 +270,7 @@ const DEFAULT_CONFIG = {
         skipEmptyLines: true,
         trimValues: true,
         delimiter: ',',
-        extensions: ['.csv', '.json', '.txt', '.xml', '.tsv']
+        extensions: ['.csv', '.json', '.txt', '.xml', '.tsv'],
       },
       mapping: {
         id: 'tank_id',
@@ -203,10 +285,10 @@ const DEFAULT_CONFIG = {
         status: 'status',
         unit: 'unit',
         location: 'location',
-        type: 'type'
+        type: 'type',
       },
-      autoDiscoverColumns: true
-    }
+      autoDiscoverColumns: true,
+    },
   ],
 
   // Legacy CSV File Import (for backward compatibility)
@@ -225,9 +307,9 @@ const DEFAULT_CONFIG = {
       minLevel: 'min_level',
       maxLevel: 'max_level',
       unit: 'unit',
-      location: 'location'
-    }
-  }
+      location: 'location',
+    },
+  },
 };
 
 // Global state
@@ -235,9 +317,9 @@ let currentConfig = { ...DEFAULT_CONFIG };
 let serialPort = null;
 let parser = null;
 let wsServer = null;
-let connectedClients = new Set();
+const connectedClients = new Set();
 let fileMonitor = null;
-let flexibleParser = new FlexibleFileParser();
+const flexibleParser = new FlexibleFileParser();
 let SerialPort = null;
 let ReadlineParser = null;
 // CSV File Import state
@@ -253,11 +335,11 @@ async function initializeSerialPort() {
     const parserModule = await import('@serialport/parser-readline');
     SerialPort = serialportModule.SerialPort;
     ReadlineParser = parserModule.ReadlineParser;
-    console.log('SerialPort modules loaded successfully');
+    serialLogger.info('SerialPort modules loaded successfully');
     return true;
   } catch (error) {
-    console.log('SerialPort not available in this environment (WebContainer)');
-    console.log('Running in demo mode with simulated data');
+    moduleLogger.info('SerialPort not available in this environment (WebContainer)');
+    moduleLogger.info('Running in demo mode with simulated data');
     return false;
   }
 }
@@ -277,14 +359,14 @@ async function loadConfig() {
         ...(loadedConfig.csvFile || {}),
         columnMapping: {
           ...DEFAULT_CONFIG.csvFile.columnMapping,
-          ...(loadedConfig.csvFile?.columnMapping || {})
-        }
-      }
+          ...(loadedConfig.csvFile?.columnMapping || {}),
+        },
+      },
     };
 
-    console.log('Configuration loaded:', currentConfig);
+    moduleLogger.info('Configuration loaded', { configFile: CONFIG_FILE });
   } catch (error) {
-    console.log('No config file found, using defaults');
+    moduleLogger.info('No config file found, using defaults');
     currentConfig = { ...DEFAULT_CONFIG };
     await saveConfig();
   }
@@ -294,9 +376,9 @@ async function loadConfig() {
 async function saveConfig() {
   try {
     await fs.writeFile(CONFIG_FILE, JSON.stringify(currentConfig, null, 2));
-    console.log('Configuration saved');
+    moduleLogger.debug('Configuration saved', { configFile: CONFIG_FILE });
   } catch (error) {
-    console.error('Error saving config:', error);
+    logError(error, { context: 'Error saving config' });
   }
 }
 
@@ -308,16 +390,17 @@ async function discoverPorts() {
 
   try {
     const ports = await SerialPort.list();
+    serialLogger.debug('Discovered serial ports', { portCount: ports.length });
     return ports.map(port => ({
       path: port.path,
       manufacturer: port.manufacturer || 'Unknown',
       serialNumber: port.serialNumber || 'N/A',
       vendorId: port.vendorId || 'N/A',
       productId: port.productId || 'N/A',
-      friendlyName: port.friendlyName || port.path
+      friendlyName: port.friendlyName || port.path,
     }));
   } catch (error) {
-    console.error('Error discovering ports:', error);
+    logError(error, { context: 'Error discovering ports' });
     return [];
   }
 }
@@ -326,14 +409,14 @@ async function discoverPorts() {
 function parseTankData(data) {
   try {
     const timestamp = new Date();
-    
+
     if (currentConfig.dataFormat === 'json') {
       // Expect JSON format: {"tanks": [{"id": 1, "level": 123.4}, ...]}
       const parsed = JSON.parse(data);
       return parsed.tanks?.map(tank => {
         const tankId = tank.id;
         const group = tankId >= 1 && tankId <= 6 ? 'BB' :
-                     tankId >= 7 && tankId <= 12 ? 'SB' : 'CENTER';
+          tankId >= 7 && tankId <= 12 ? 'SB' : 'CENTER';
 
         return {
           id: tankId,
@@ -346,7 +429,7 @@ function parseTankData(data) {
           status: getStatus(parseFloat(tank.level) || 0),
           lastUpdated: timestamp,
           location: `Zone ${Math.floor((tankId - 1) / 3) + 1}-${((tankId - 1) % 3) + 1}`,
-          group: group
+          group,
         };
       }) || [];
     } else {
@@ -355,7 +438,7 @@ function parseTankData(data) {
       return values.slice(0, currentConfig.tankCount).map((level, index) => {
         const tankId = index + 1;
         const group = tankId >= 1 && tankId <= 6 ? 'BB' :
-                     tankId >= 7 && tankId <= 12 ? 'SB' : 'CENTER';
+          tankId >= 7 && tankId <= 12 ? 'SB' : 'CENTER';
 
         return {
           id: tankId,
@@ -368,16 +451,15 @@ function parseTankData(data) {
           status: getStatus(level),
           lastUpdated: timestamp,
           location: `Zone ${Math.floor(index / 3) + 1}-${(index % 3) + 1}`,
-          group: group
+          group,
         };
       });
     }
   } catch (error) {
-    console.error('Error parsing tank data:', error);
+    logError(error, { context: 'Error parsing tank data', data });
     return [];
   }
 }
-
 
 
 // Determine tank status based on level
@@ -398,18 +480,18 @@ async function discoverCsvColumns(filePath) {
       .pipe(csv({
         separator: currentConfig.csvFile.delimiter,
         headers: currentConfig.csvFile.hasHeaders,
-        skipEmptyLines: true
+        skipEmptyLines: true,
       }))
       .on('headers', (csvHeaders) => {
         headers = csvHeaders;
         discoveredColumns = csvHeaders;
-        console.log('Discovered CSV columns via headers event:', csvHeaders);
+        csvLogger.debug('Discovered CSV columns via headers event', { columns: csvHeaders });
 
         // Auto-suggest column mappings
         const suggestedMapping = suggestColumnMapping(csvHeaders);
         if (currentConfig.csvFile.autoDiscoverColumns) {
           currentConfig.csvFile.columnMapping = { ...currentConfig.csvFile.columnMapping, ...suggestedMapping };
-          console.log('Auto-suggested column mapping:', suggestedMapping);
+          csvLogger.info('Auto-suggested column mapping', { mapping: suggestedMapping });
         }
 
         resolve(csvHeaders);
@@ -420,7 +502,7 @@ async function discoverCsvColumns(filePath) {
             // For headerless CSV, use the keys from the first data row
             headers = Object.keys(data);
             discoveredColumns = headers;
-            console.log('Discovered CSV columns (no headers):', headers);
+            csvLogger.debug('Discovered CSV columns (no headers)', { columns: headers });
 
             // Auto-suggest mappings for headerless CSV
             const suggestedMapping = suggestColumnMapping(headers);
@@ -433,7 +515,7 @@ async function discoverCsvColumns(filePath) {
             // Fallback: if headers event didn't fire but we have headers enabled
             headers = Object.keys(data);
             discoveredColumns = headers;
-            console.log('Discovered CSV columns via first data row:', headers);
+            csvLogger.debug('Discovered CSV columns via first data row', { columns: headers });
 
             const suggestedMapping = suggestColumnMapping(headers);
             if (currentConfig.csvFile.autoDiscoverColumns) {
@@ -446,7 +528,7 @@ async function discoverCsvColumns(filePath) {
         }
       })
       .on('error', (error) => {
-        console.error('Error discovering CSV columns:', error);
+        logError(error, { context: 'Error discovering CSV columns', filePath });
         reject(error);
       })
       .on('end', () => {
@@ -470,7 +552,7 @@ function suggestColumnMapping(columns) {
     minLevel: /^(min_?level|minimum|min_?value|low_?limit)$/i,
     maxLevel: /^(max_?level|maximum|max_?value|high_?limit)$/i,
     unit: /^(unit|units|measurement|uom)$/i,
-    location: /^(location|zone|area|position|site)$/i
+    location: /^(location|zone|area|position|site)$/i,
   };
 
   // Try to match each column to a field
@@ -483,12 +565,13 @@ function suggestColumnMapping(columns) {
     }
   });
 
-  console.log('Suggested column mapping:', mapping);
+  csvLogger.debug('Suggested column mapping', { mapping });
   return mapping;
 }
 
 // Read and parse CSV file
 async function readCsvFile(filePath) {
+  const startTime = Date.now();
   return new Promise((resolve, reject) => {
     const results = [];
 
@@ -496,17 +579,23 @@ async function readCsvFile(filePath) {
       .pipe(csv({
         separator: currentConfig.csvFile.delimiter,
         headers: currentConfig.csvFile.hasHeaders,
-        skipEmptyLines: true
+        skipEmptyLines: true,
       }))
       .on('data', (data) => {
         results.push(data);
       })
       .on('end', () => {
-        console.log(`CSV file read successfully: ${results.length} rows`);
+        const duration = Date.now() - startTime;
+        csvLogger.info('CSV file read successfully', {
+          filePath,
+          rowCount: results.length,
+          duration: `${duration}ms`,
+        });
+        logPerformance('CSV file read', duration, { rowCount: results.length });
         resolve(results);
       })
       .on('error', (error) => {
-        console.error('Error reading CSV file:', error);
+        logError(error, { context: 'Error reading CSV file', filePath });
         reject(error);
       });
   });
@@ -524,7 +613,9 @@ function convertCsvToTanks(csvData) {
     const level = parseFloat(row[mapping.level]);
 
     if (!id || !name || isNaN(level)) {
-      throw new Error(`Missing required data in row ${index + 1}: id=${id}, name=${name}, level=${level}`);
+      const error = new Error(`Missing required data in row ${index + 1}: id=${id}, name=${name}, level=${level}`);
+      csvLogger.error('Invalid CSV row', { row: index + 1, id, name, level });
+      throw error;
     }
 
     const maxCapacity = parseFloat(row[mapping.maxCapacity]) || 1000;
@@ -543,7 +634,7 @@ function convertCsvToTanks(csvData) {
       unit,
       status: getStatus(level),
       lastUpdated: timestamp,
-      location
+      location,
     };
   });
 }
@@ -560,7 +651,7 @@ async function importCsvData() {
 
     // Check if vertical format
     if (currentConfig.csvFile.isVerticalFormat) {
-      console.log('Using vertical format parser...');
+      csvLogger.info('Using vertical format parser');
 
       // Read file as text for vertical parsing
       const fileContent = await fs.readFile(currentConfig.csvFile.filePath, 'utf8');
@@ -572,10 +663,10 @@ async function importCsvData() {
         autoDetectDataEnd: currentConfig.csvFile.autoDetectDataEnd !== false,
         skipOutliers: currentConfig.csvFile.skipOutliers !== false,
         maxRecords: currentConfig.csvFile.maxRecords || 0,
-        temperatureRange: currentConfig.csvFile.temperatureRange || { min: 0, max: 50 }
+        temperatureRange: currentConfig.csvFile.temperatureRange || { min: 0, max: 50 },
       });
 
-      console.log(`Parsed ${tanks.length} tanks using vertical format`);
+      csvLogger.info('Parsed tanks using vertical format', { tankCount: tanks.length });
 
       // Store last data and broadcast
       lastTankData = tanks;
@@ -587,7 +678,7 @@ async function importCsvData() {
     const csvData = await readCsvFile(currentConfig.csvFile.filePath);
 
     if (csvData.length === 0) {
-      console.log('CSV file is empty');
+      csvLogger.warn('CSV file is empty', { filePath: currentConfig.csvFile.filePath });
       return;
     }
 
@@ -597,11 +688,10 @@ async function importCsvData() {
     // Store last data and broadcast
     lastCsvData = tanks;
     broadcastTankData(tanks);
-
-    console.log(`Imported ${tanks.length} tanks from CSV file`);
+    logTankData('imported from CSV', tanks, { source: 'csv-file' });
 
   } catch (error) {
-    console.error('Error importing CSV data:', error);
+    logError(error, { context: 'Error importing CSV data' });
     broadcastStatus('error');
   }
 }
@@ -610,19 +700,19 @@ async function importCsvData() {
 async function connectDataSource() {
   // Check if CSV file mode is enabled
   if (currentConfig.dataFormat === 'csvfile' || currentConfig.csvFile.enabled) {
-    console.log('Starting CSV file monitoring mode');
+    moduleLogger.info('Starting CSV file monitoring mode');
     return await startCsvFileMonitoring();
   }
 
   // Serial port mode
   if (!SerialPort) {
-    console.log('SerialPort not available, generating empty tanks');
+    moduleLogger.info('SerialPort not available, generating empty tanks');
     generateEmptyTanks();
     return true;
   }
 
   if (!currentConfig.selectedPort) {
-    console.log('No port selected');
+    serialLogger.warn('No port selected');
     return false;
   }
 
@@ -636,37 +726,40 @@ async function connectDataSource() {
       baudRate: currentConfig.baudRate,
       dataBits: currentConfig.dataBits,
       stopBits: currentConfig.stopBits,
-      parity: currentConfig.parity
+      parity: currentConfig.parity,
     });
 
     parser = serialPort.pipe(new ReadlineParser({ delimiter: '\n' }));
 
     serialPort.on('open', () => {
-      console.log(`Serial port ${currentConfig.selectedPort} opened`);
+      serialLogger.info('Serial port opened', { port: currentConfig.selectedPort });
+      auditLog('SERIAL_PORT_CONNECTED', 'system', { port: currentConfig.selectedPort });
       broadcastStatus('connected');
     });
 
     serialPort.on('error', (error) => {
-      console.error('Serial port error:', error);
+      logError(error, { context: 'Serial port error' });
       broadcastStatus('error');
     });
 
     serialPort.on('close', () => {
-      console.log('Serial port closed');
+      serialLogger.info('Serial port closed');
+      auditLog('SERIAL_PORT_DISCONNECTED', 'system', { port: currentConfig.selectedPort });
       broadcastStatus('disconnected');
     });
 
     parser.on('data', (data) => {
-      console.log('Received data:', data);
+      serialLogger.debug('Received serial data', { dataLength: data.length });
       const tanks = parseTankData(data);
       if (tanks.length > 0) {
         broadcastTankData(tanks);
+        logTankData('received from serial', tanks, { source: 'serial-port' });
       }
     });
 
     return true;
   } catch (error) {
-    console.error('Error connecting to serial port:', error);
+    logError(error, { context: 'Error connecting to serial port' });
     return false;
   }
 }
@@ -674,7 +767,7 @@ async function connectDataSource() {
 // Start CSV file monitoring
 async function startCsvFileMonitoring() {
   if (!currentConfig.csvFile.enabled || !currentConfig.csvFile.filePath) {
-    console.log('CSV file monitoring not enabled or no file path specified');
+    csvLogger.warn('CSV file monitoring not enabled or no file path specified');
     return false;
   }
 
@@ -690,7 +783,7 @@ async function startCsvFileMonitoring() {
       try {
         await discoverCsvColumns(currentConfig.csvFile.filePath);
       } catch (error) {
-        console.error('Error discovering columns:', error);
+        logError(error, { context: 'Error discovering columns' });
       }
     }
 
@@ -700,16 +793,16 @@ async function startCsvFileMonitoring() {
     // Set up file watcher
     csvFileWatcher = chokidar.watch(currentConfig.csvFile.filePath, {
       persistent: true,
-      ignoreInitial: true
+      ignoreInitial: true,
     });
 
     csvFileWatcher.on('change', () => {
-      console.log('CSV file changed, reimporting data...');
+      csvLogger.info('CSV file changed, reimporting data');
       importCsvData();
     });
 
     csvFileWatcher.on('error', (error) => {
-      console.error('CSV file watcher error:', error);
+      logError(error, { context: 'CSV file watcher error' });
     });
 
     // Set up periodic import
@@ -717,14 +810,17 @@ async function startCsvFileMonitoring() {
       importCsvData();
     }, currentConfig.csvFile.importInterval);
 
-    console.log(`CSV file monitoring started: ${currentConfig.csvFile.filePath}`);
-    console.log(`Import interval: ${currentConfig.csvFile.importInterval}ms`);
+    csvLogger.info('CSV file monitoring started', {
+      filePath: currentConfig.csvFile.filePath,
+      importInterval: currentConfig.csvFile.importInterval,
+    });
+    auditLog('CSV_MONITORING_STARTED', 'system', { filePath: currentConfig.csvFile.filePath });
     broadcastStatus('connected');
 
     return true;
 
   } catch (error) {
-    console.error('Error starting CSV file monitoring:', error);
+    logError(error, { context: 'Error starting CSV file monitoring' });
     broadcastStatus('error');
     return false;
   }
@@ -735,16 +831,15 @@ function stopCsvFileMonitoring() {
   if (csvFileWatcher) {
     csvFileWatcher.close();
     csvFileWatcher = null;
-    console.log('CSV file watcher stopped');
+    csvLogger.info('CSV file watcher stopped');
   }
 
   if (csvImportInterval) {
     clearInterval(csvImportInterval);
     csvImportInterval = null;
-    console.log('CSV import interval stopped');
+    csvLogger.info('CSV import interval stopped');
   }
 }
-
 
 
 // Generate empty tank data
@@ -766,8 +861,8 @@ function generateEmptyTanks() {
       status: 'critical', // Empty tanks are critical
       lastUpdated: timestamp,
       location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,
-      group: group,
-      temperature: 20 // Default temperature
+      group,
+      temperature: 20, // Default temperature
     });
   }
 
@@ -776,8 +871,7 @@ function generateEmptyTanks() {
 
   // Broadcast initial empty data
   broadcastTankData(tanks);
-
-  console.log('📊 Generated 12 empty tanks - no data source configured');
+  logTankData('generated empty tanks', tanks, { source: 'demo-mode' });
 
   return tanks;
 }
@@ -793,6 +887,44 @@ function disconnectDataSource() {
   }
 }
 
+// Helper function to safely send message to a WebSocket client
+function safeSend(client, message) {
+  try {
+    if (client.readyState === client.OPEN) {
+      client.send(message);
+      client.lastActivity = Date.now();
+      return true;
+    }
+    return false;
+  } catch (error) {
+    wsLogger.error('Error sending message to client', { error: error.message });
+    return false;
+  }
+}
+
+// Helper function to broadcast messages with automatic cleanup
+function safeBroadcast(message) {
+  const deadClients = [];
+
+  connectedClients.forEach(client => {
+    if (!safeSend(client, message) && client.readyState !== client.CONNECTING) {
+      deadClients.push(client);
+    }
+  });
+
+  // Clean up dead clients
+  deadClients.forEach(client => {
+    connectedClients.delete(client);
+    try {
+      client.terminate();
+    } catch (e) {
+      // Ignore errors during termination
+    }
+  });
+
+  return connectedClients.size - deadClients.length; // Return number of successful sends
+}
+
 // Broadcast data to all connected WebSocket clients
 function broadcastTankData(tanks) {
   // Store the latest tank data for API endpoint
@@ -803,14 +935,40 @@ function broadcastTankData(tanks) {
     data: {
       tanks,
       lastSync: new Date().toISOString(),
-      connectionStatus: SerialPort && serialPort?.isOpen ? 'connected' : 'connected' // Show connected for demo mode
+      connectionStatus: SerialPort && serialPort?.isOpen ? 'connected' : 'connected', // Show connected for demo mode
+    },
+  });
+
+  const deadClients = [];
+
+  connectedClients.forEach(client => {
+    try {
+      if (client.readyState === client.OPEN) {
+        client.send(message);
+        client.lastActivity = Date.now(); // Update activity timestamp
+      } else if (client.readyState !== client.CONNECTING) {
+        // Client is CLOSING or CLOSED
+        deadClients.push(client);
+      }
+    } catch (error) {
+      wsLogger.error('Error broadcasting to client', { error: error.message });
+      deadClients.push(client);
     }
   });
 
-  connectedClients.forEach(client => {
-    if (client.readyState === client.OPEN) {
-      client.send(message);
+  // Clean up dead clients
+  deadClients.forEach(client => {
+    connectedClients.delete(client);
+    try {
+      client.terminate();
+    } catch (e) {
+      // Ignore errors during termination
     }
+  });
+
+  wsLogger.debug('Broadcast tank data', {
+    clientCount: connectedClients.size,
+    deadClientCount: deadClients.length,
   });
 }
 
@@ -818,34 +976,55 @@ function broadcastTankData(tanks) {
 function broadcastStatus(status) {
   const message = JSON.stringify({
     type: 'status',
-    data: { connectionStatus: status, lastSync: new Date().toISOString() }
+    data: { connectionStatus: status, lastSync: new Date().toISOString() },
   });
 
+  const deadClients = [];
+
   connectedClients.forEach(client => {
-    if (client.readyState === client.OPEN) {
-      client.send(message);
+    try {
+      if (client.readyState === client.OPEN) {
+        client.send(message);
+        client.lastActivity = Date.now(); // Update activity timestamp
+      } else if (client.readyState !== client.CONNECTING) {
+        // Client is CLOSING or CLOSED
+        deadClients.push(client);
+      }
+    } catch (error) {
+      wsLogger.error('Error broadcasting status to client', { error: error.message });
+      deadClients.push(client);
+    }
+  });
+
+  // Clean up dead clients
+  deadClients.forEach(client => {
+    connectedClients.delete(client);
+    try {
+      client.terminate();
+    } catch (e) {
+      // Ignore errors during termination
     }
   });
 }
 
 // API Routes
-app.get('/api/ports', async (req, res) => {
+app.get('/api/ports', apiLimiter, async (req, res) => {
   const ports = await discoverPorts();
   res.json(ports);
 });
 
-app.get('/api/config', (req, res) => {
+app.get('/api/config', apiLimiter, (req, res) => {
   res.json(currentConfig);
 });
 
 // Tank data endpoint
-app.get('/api/tanks', (req, res) => {
+app.get('/api/tanks', apiLimiter, (req, res) => {
   if (lastTankData && lastTankData.length > 0) {
     res.json(lastTankData);
   } else {
     res.status(503).json({
       error: 'No tank data available',
-      message: 'Data source not connected or no data received yet'
+      message: 'Data source not connected or no data received yet',
     });
   }
 });
@@ -855,51 +1034,53 @@ let tankConfiguration = {
   preAlarmPercentage: 86,
   overfillPercentage: 97.5,
   lowLevelPercentage: 10,
-  tanks: {}
+  tanks: {},
 };
 
 // App branding storage
 let appBranding = {
   appName: 'Tank Monitoring System',
   appSlogan: 'Real-time tank level monitoring dashboard',
-  primaryColor: '#2563eb'
+  primaryColor: '#2563eb',
 };
 
 // API endpoint to get tank configuration
-app.get('/api/tank-config', (req, res) => {
+app.get('/api/tank-config', apiLimiter, (req, res) => {
   res.json(tankConfiguration);
 });
 
 // API endpoint to save tank configuration
-app.post('/api/tank-config', (req, res) => {
+app.post('/api/tank-config', configLimiter, (req, res) => {
   try {
     tankConfiguration = { ...tankConfiguration, ...req.body };
-    console.log('Tank configuration updated:', tankConfiguration);
+    moduleLogger.info('Tank configuration updated');
+    auditLog('TANK_CONFIG_UPDATED', req.user?.username || 'unknown', { config: tankConfiguration });
     res.json({ success: true, message: 'Tank configuration saved' });
   } catch (error) {
-    console.error('Failed to save tank configuration:', error);
+    logError(error, { context: 'Failed to save tank configuration' });
     res.status(500).json({ success: false, message: 'Failed to save configuration' });
   }
 });
 
 // API endpoint to get app branding
-app.get('/api/branding', (req, res) => {
+app.get('/api/branding', apiLimiter, (req, res) => {
   res.json(appBranding);
 });
 
 // API endpoint to save app branding
-app.post('/api/branding', (req, res) => {
+app.post('/api/branding', configLimiter, (req, res) => {
   try {
     appBranding = { ...appBranding, ...req.body };
-    console.log('App branding updated:', appBranding);
+    moduleLogger.info('App branding updated');
+    auditLog('BRANDING_UPDATED', req.user?.username || 'unknown', { branding: appBranding });
     res.json({ success: true, message: 'App branding saved' });
   } catch (error) {
-    console.error('Failed to save app branding:', error);
+    logError(error, { context: 'Failed to save app branding' });
     res.status(500).json({ success: false, message: 'Failed to save branding' });
   }
 });
 
-app.post('/api/config', async (req, res) => {
+app.post('/api/config', configLimiter, async (req, res) => {
   // Deep merge CSV file configuration to preserve existing settings
   const newConfig = { ...currentConfig, ...req.body };
   if (req.body.csvFile) {
@@ -908,8 +1089,8 @@ app.post('/api/config', async (req, res) => {
       ...req.body.csvFile,
       columnMapping: {
         ...currentConfig.csvFile.columnMapping,
-        ...(req.body.csvFile.columnMapping || {})
-      }
+        ...(req.body.csvFile.columnMapping || {}),
+      },
     };
   }
 
@@ -922,11 +1103,12 @@ app.post('/api/config', async (req, res) => {
 
   currentConfig = newConfig;
   await saveConfig();
+  auditLog('CONFIG_UPDATED', req.user?.username || 'unknown', { config: currentConfig });
 
   res.json({ success: true, config: currentConfig });
 });
 
-app.post('/api/connect', async (req, res) => {
+app.post('/api/connect', apiLimiter, async (req, res) => {
   const success = await connectDataSource();
   const isConnected = currentConfig.csvFile.enabled ?
     (csvFileWatcher !== null || csvImportInterval !== null) :
@@ -934,13 +1116,13 @@ app.post('/api/connect', async (req, res) => {
   res.json({ success, connected: isConnected });
 });
 
-app.post('/api/disconnect', (req, res) => {
+app.post('/api/disconnect', apiLimiter, (req, res) => {
   disconnectDataSource();
   res.json({ success: true, connected: false });
 });
 
 // CSV file specific endpoints
-app.get('/api/csv/columns', async (req, res) => {
+app.get('/api/csv/columns', fileSystemLimiter, async (req, res) => {
   if (!currentConfig.csvFile.filePath) {
     return res.status(400).json({ error: 'No CSV file path configured' });
   }
@@ -954,7 +1136,7 @@ app.get('/api/csv/columns', async (req, res) => {
   }
 });
 
-app.post('/api/csv/test-import', async (req, res) => {
+app.post('/api/csv/test-import', fileSystemLimiter, async (req, res) => {
   if (!currentConfig.csvFile.filePath) {
     return res.status(400).json({ error: 'No CSV file path configured' });
   }
@@ -967,19 +1149,15 @@ app.post('/api/csv/test-import', async (req, res) => {
       success: true,
       preview: tanks,
       totalRows: csvData.length,
-      columns: discoveredColumns
+      columns: discoveredColumns,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/csv/validate-file', async (req, res) => {
+app.post('/api/csv/validate-file', fileSystemLimiter, validate(joi.object({ filePath: joi.safeCustom().safePath().required() })), async (req, res) => {
   const { filePath } = req.body;
-
-  if (!filePath) {
-    return res.status(400).json({ error: 'File path is required' });
-  }
 
   try {
     await fs.access(filePath);
@@ -988,77 +1166,123 @@ app.post('/api/csv/validate-file', async (req, res) => {
       valid: true,
       exists: true,
       columns,
-      message: 'File is accessible and readable'
+      message: 'File is accessible and readable',
     });
   } catch (error) {
     res.status(400).json({
       valid: false,
       exists: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
 
 // File browser endpoint
-app.get('/api/flexible/browse', (req, res) => {
-    const requestedPath = req.query.path || process.cwd();
+app.get('/api/flexible/browse', fileSystemLimiter, async (req, res) => {
+  const requestedPath = req.query.path || process.cwd();
 
-    try {
-        // Security check - only allow browsing within project directory
-        const projectRoot = process.cwd();
-        const resolvedPath = path.resolve(requestedPath);
+  try {
+    // CRITICAL SECURITY: Comprehensive path validation
+    const projectRoot = path.resolve(process.cwd());
 
-        if (!resolvedPath.startsWith(projectRoot)) {
-            return res.json({ error: 'Access denied: Path outside project directory' });
-        }
-
-        if (!fsSync.existsSync(resolvedPath)) {
-            return res.json({ error: 'Directory does not exist' });
-        }
-
-        const stats = fsSync.statSync(resolvedPath);
-        if (!stats.isDirectory()) {
-            return res.json({ error: 'Path is not a directory' });
-        }
-
-        const items = fsSync.readdirSync(resolvedPath);
-        const directories = [];
-        const files = [];
-
-        items.forEach(item => {
-            const itemPath = path.join(resolvedPath, item);
-            try {
-                const itemStats = fsSync.statSync(itemPath);
-                if (itemStats.isDirectory()) {
-                    directories.push(item);
-                } else if (itemStats.isFile()) {
-                    files.push(item);
-                }
-            } catch (err) {
-                // Skip items we can't read
-            }
-        });
-
-        res.json({
-            path: resolvedPath,
-            directories: directories.sort(),
-            files: files.sort()
-        });
-
-    } catch (error) {
-        res.json({ error: error.message });
+    // Step 1: Reject any path containing null bytes
+    if (requestedPath.includes('\0')) {
+      return res.status(400).json({ error: 'Invalid path: null bytes not allowed' });
     }
+
+    // Step 2: Normalize and resolve the path to remove any .. or . sequences
+    const normalizedPath = path.normalize(requestedPath);
+    const resolvedPath = path.resolve(projectRoot, normalizedPath);
+
+    // Step 3: Ensure the resolved path starts with project root (after normalization)
+    // This prevents directory traversal attacks
+    if (!resolvedPath.startsWith(projectRoot + path.sep) && resolvedPath !== projectRoot) {
+      return res.status(403).json({ error: 'Access denied: Path outside project directory' });
+    }
+
+    // Step 4: Additional validation - check for suspicious patterns
+    const pathSegments = resolvedPath.split(path.sep);
+    for (const segment of pathSegments) {
+      // Block hidden files/directories (starting with .)
+      if (segment.startsWith('.') && segment !== '.') {
+        return res.status(403).json({ error: 'Access denied: Hidden files/directories not allowed' });
+      }
+      // Block any remaining encoded traversal attempts
+      if (segment.includes('..') || segment.includes('%2e%2e') || segment.includes('%252e')) {
+        return res.status(403).json({ error: 'Access denied: Path traversal attempt detected' });
+      }
+    }
+
+    // Step 5: Verify the path exists and is accessible
+    try {
+      await fs.access(resolvedPath);
+    } catch {
+      return res.status(404).json({ error: 'Directory does not exist' });
+    }
+
+    // Step 6: Ensure it's a directory using lstat to avoid symlink attacks
+    const stats = await fs.lstat(resolvedPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: 'Path is not a directory' });
+    }
+
+    // Step 7: Check if it's a symbolic link (potential security risk)
+    if (stats.isSymbolicLink()) {
+      return res.status(403).json({ error: 'Access denied: Symbolic links not allowed' });
+    }
+
+    // Safe to read directory contents
+    const items = await fs.readdir(resolvedPath);
+    const directories = [];
+    const files = [];
+
+    for (const item of items) {
+      // Skip hidden files/directories
+      if (item.startsWith('.')) {
+        continue;
+      }
+
+      const itemPath = path.join(resolvedPath, item);
+      try {
+        // Use lstat to avoid following symlinks
+        const itemStats = await fs.lstat(itemPath);
+
+        // Skip symbolic links
+        if (itemStats.isSymbolicLink()) {
+          continue;
+        }
+
+        if (itemStats.isDirectory()) {
+          directories.push(item);
+        } else if (itemStats.isFile()) {
+          files.push(item);
+        }
+      } catch (err) {
+        // Skip items we can't read
+        moduleLogger.warn('Cannot access file', { path: itemPath, error: err.message });
+      }
+    }
+
+    res.json({
+      path: resolvedPath,
+      directories: directories.sort(),
+      files: files.sort(),
+    });
+
+  } catch (error) {
+    res.json({ error: error.message });
+  }
 });
 
 // Flexible File System API endpoints
-app.get('/api/flexible/sources', (req, res) => {
+app.get('/api/flexible/sources', apiLimiter, (req, res) => {
   if (!fileMonitor) {
     return res.json([]);
   }
   res.json(fileMonitor.getSourceInfo());
 });
 
-app.post('/api/flexible/sources', async (req, res) => {
+app.post('/api/flexible/sources', configLimiter, async (req, res) => {
   try {
     if (!fileMonitor) {
       fileMonitor = new FlexibleFileMonitor();
@@ -1072,7 +1296,7 @@ app.post('/api/flexible/sources', async (req, res) => {
   }
 });
 
-app.delete('/api/flexible/sources/:id', (req, res) => {
+app.delete('/api/flexible/sources/:id', configLimiter, validateParams(sourceIdParamSchema), (req, res) => {
   if (!fileMonitor) {
     return res.status(404).json({ error: 'No file monitor active' });
   }
@@ -1085,7 +1309,7 @@ app.delete('/api/flexible/sources/:id', (req, res) => {
   }
 });
 
-app.get('/api/flexible/validate', async (req, res) => {
+app.get('/api/flexible/validate', fileSystemLimiter, async (req, res) => {
   const { path: filePath, format } = req.query;
 
   if (!filePath) {
@@ -1102,21 +1326,21 @@ app.get('/api/flexible/validate', async (req, res) => {
       columns: result.columns,
       sampleData: result.data.slice(0, 5),
       suggestedMapping,
-      totalRows: result.data.length
+      totalRows: result.data.length,
     });
   } catch (error) {
     res.status(400).json({
       error: error.message,
-      details: error.stack
+      details: error.stack,
     });
   }
 });
 
-app.get('/api/flexible/fields', (req, res) => {
+app.get('/api/flexible/fields', apiLimiter, (req, res) => {
   res.json(TANK_FIELDS);
 });
 
-app.post('/api/flexible/test-mapping', async (req, res) => {
+app.post('/api/flexible/test-mapping', fileSystemLimiter, async (req, res) => {
   const { path: filePath, format, mapping } = req.body;
 
   if (!filePath || !mapping) {
@@ -1131,16 +1355,16 @@ app.post('/api/flexible/test-mapping', async (req, res) => {
     res.json({
       success: true,
       sampleTanks: tanks,
-      totalRows: result.data.length
+      totalRows: result.data.length,
     });
   } catch (error) {
     res.status(400).json({
-      error: error.message
+      error: error.message,
     });
   }
 });
 
-app.get('/api/status', (req, res) => {
+app.get('/api/status', apiLimiter, (req, res) => {
   const isConnected = currentConfig.csvFile.enabled ?
     (csvFileWatcher !== null || csvImportInterval !== null) :
     (SerialPort ? (serialPort?.isOpen || false) : true);
@@ -1153,22 +1377,35 @@ app.get('/api/status', (req, res) => {
     csvFileEnabled: currentConfig.csvFile.enabled,
     csvFilePath: currentConfig.csvFile.filePath,
     dataSource: currentConfig.csvFile.enabled ? 'csvfile' : 'serial',
-    lastSync: new Date().toISOString()
+    lastSync: new Date().toISOString(),
   });
 });
 
+// Serve login page
+app.get('/login', staticLimiter, (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
 // Serve settings page
-app.get('/settings', (req, res) => {
+app.get('/settings', staticLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'settings.html'));
 });
 
 // Serve flexible settings page
-app.get('/flexible-settings', (req, res) => {
+app.get('/flexible-settings', staticLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'flexible-settings.html'));
 });
 
 // Fallback to main app
-app.get('*', (req, res) => {
+app.get('*', staticLimiter, (req, res) => {
+  // If not authenticated, redirect to login
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (!token && !req.path.startsWith('/api/')) {
+    return res.redirect('/login');
+  }
+
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
@@ -1179,7 +1416,10 @@ function setupFileMonitor() {
   }
 
   fileMonitor.on('data', (event) => {
-    console.log(`Received data from source ${event.source}: ${event.tanks.length} tanks`);
+    fileMonitorLogger.info('Received data from source', {
+      source: event.source,
+      tankCount: event.tanks.length,
+    });
 
     // Get the configured tank count limit
     const tankCountLimit = currentConfig.tankCount || 12;
@@ -1188,7 +1428,10 @@ function setupFileMonitor() {
     let tanks = event.tanks || [];
     if (tanks.length > tankCountLimit) {
       tanks = tanks.slice(0, tankCountLimit);
-      console.log(`Limited tank data from ${event.tanks.length} to ${tankCountLimit} tanks`);
+      fileMonitorLogger.debug('Limited tank data', {
+        originalCount: event.tanks.length,
+        limitedCount: tankCountLimit,
+      });
     }
 
     // Store the limited tank data
@@ -1199,30 +1442,70 @@ function setupFileMonitor() {
       type: 'tankData',
       data: tanks,
       source: event.source,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
+    const deadClients = [];
+
     connectedClients.forEach(client => {
-      if (client.readyState === 1) { // WebSocket.OPEN
-        client.send(message);
+      try {
+        if (client.readyState === 1) { // WebSocket.OPEN
+          client.send(message);
+          client.lastActivity = Date.now(); // Update activity timestamp
+        } else if (client.readyState !== 0) { // Not CONNECTING
+          deadClients.push(client);
+        }
+      } catch (error) {
+        wsLogger.error('Error broadcasting file monitor data', { error: error.message });
+        deadClients.push(client);
+      }
+    });
+
+    // Clean up dead clients
+    deadClients.forEach(client => {
+      connectedClients.delete(client);
+      try {
+        client.terminate();
+      } catch (e) {
+        // Ignore errors during termination
       }
     });
   });
 
   fileMonitor.on('error', (event) => {
-    console.error(`File monitor error for source ${event.source}:`, event.error);
+    logError(event.error, { context: 'File monitor error', source: event.source });
 
     // Broadcast error to WebSocket clients
     const message = JSON.stringify({
       type: 'error',
       source: event.source,
       error: event.error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
+    const deadClients = [];
+
     connectedClients.forEach(client => {
-      if (client.readyState === 1) {
-        client.send(message);
+      try {
+        if (client.readyState === 1) { // WebSocket.OPEN
+          client.send(message);
+          client.lastActivity = Date.now(); // Update activity timestamp
+        } else if (client.readyState !== 0) { // Not CONNECTING
+          deadClients.push(client);
+        }
+      } catch (error) {
+        wsLogger.error('Error broadcasting error message', { error: error.message });
+        deadClients.push(client);
+      }
+    });
+
+    // Clean up dead clients
+    deadClients.forEach(client => {
+      connectedClients.delete(client);
+      try {
+        client.terminate();
+      } catch (e) {
+        // Ignore errors during termination
       }
     });
   });
@@ -1242,51 +1525,226 @@ function setupFileMonitor() {
 // WebSocket Server
 function setupWebSocket() {
   wsServer = new WebSocketServer({ port: WS_PORT });
-  
-  wsServer.on('connection', (ws) => {
-    console.log('WebSocket client connected');
+
+  // Periodic health check interval
+  const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+  const CONNECTION_TIMEOUT = 60000; // 60 seconds timeout for inactive connections
+
+  wsServer.on('connection', async (ws, req) => {
+    const clientIp = req.socket.remoteAddress;
+    wsLogger.info('WebSocket client connected', { ip: clientIp });
+
+    // Apply WebSocket connection rate limiting
+    const { wsConnectionLimiter } = await import('./middleware/rateLimiter.js');
+
+    // Create a mock Express request/response for rate limiting
+    const mockReq = {
+      ip: clientIp,
+      connection: { remoteAddress: clientIp },
+      get: (header) => req.headers[header.toLowerCase()],
+      headers: req.headers,
+    };
+    const mockRes = {
+      status: (code) => ({ json: (data) => {
+        wsLogger.warn('WebSocket connection rate limited', { ip: clientIp, code, data });
+        ws.close(1008, `Rate limited: ${data.message}`);
+      } }),
+      getHeader: (name) => null,
+      setHeader: (name, value) => {},
+    };
+
+    // Check rate limit
+    try {
+      await new Promise((resolve, reject) => {
+        wsConnectionLimiter(mockReq, mockRes, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    } catch (error) {
+      // Rate limit exceeded, connection already closed by mock response
+      return;
+    }
+
+    // Extract token from query string or headers
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const token = url.searchParams.get('token') ||
+                  (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')
+                    ? req.headers.authorization.substring(7)
+                    : null);
+
+    // Verify token
+    if (!token) {
+      wsLogger.warn('WebSocket connection rejected: No token', { ip: clientIp });
+      ws.close(1008, 'Authentication required');
+      return;
+    }
+
+    try {
+      const { verifyToken } = await import('./middleware/auth.js');
+      const decoded = verifyToken(token);
+      ws.user = decoded;
+      wsLogger.info('WebSocket authenticated', { username: decoded.username, ip: clientIp });
+      auditLog('WEBSOCKET_CONNECTED', decoded.username, { ip: clientIp });
+    } catch (error) {
+      wsLogger.warn('WebSocket connection rejected: Invalid token', { ip: clientIp });
+      ws.close(1008, 'Invalid authentication');
+      return;
+    }
+
+    // Add connection metadata
+    ws.isAlive = true;
+    ws.connectionTime = Date.now();
+    ws.lastActivity = Date.now();
+
     connectedClients.add(ws);
-    
+
+    // Set up ping-pong heartbeat
+    ws.on('pong', () => {
+      ws.isAlive = true;
+      ws.lastActivity = Date.now();
+    });
+
     // Send current status
-    ws.send(JSON.stringify({
-      type: 'status',
-      data: {
-        connectionStatus: SerialPort ? (serialPort?.isOpen ? 'connected' : 'disconnected') : 'connected',
-        lastSync: new Date().toISOString()
-      }
-    }));
-    
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected');
+    try {
+      ws.send(JSON.stringify({
+        type: 'status',
+        data: {
+          connectionStatus: SerialPort ? (serialPort?.isOpen ? 'connected' : 'disconnected') : 'connected',
+          lastSync: new Date().toISOString(),
+        },
+      }));
+    } catch (error) {
+      wsLogger.error('Error sending initial status', { error: error.message });
+      connectedClients.delete(ws);
+      ws.terminate();
+      return;
+    }
+
+    // Handle close event
+    ws.on('close', (code, reason) => {
+      wsLogger.info('WebSocket client disconnected', {
+        code,
+        reason: reason || 'No reason provided',
+        username: ws.user?.username,
+      });
+      auditLog('WEBSOCKET_DISCONNECTED', ws.user?.username || 'unknown', { code, reason });
       connectedClients.delete(ws);
     });
-    
+
+    // Handle error event
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      wsLogger.error('WebSocket error', { error: error.message, username: ws.user?.username });
       connectedClients.delete(ws);
+      try {
+        ws.terminate();
+      } catch (e) {
+        // Ignore errors during termination
+      }
+    });
+
+    // Handle message event (for activity tracking)
+    ws.on('message', (data) => {
+      ws.lastActivity = Date.now();
+      // Handle any incoming messages if needed
     });
   });
-  
-  console.log(`WebSocket server running on port ${WS_PORT}`);
+
+  // Set up periodic health checks
+  const healthCheckInterval = setInterval(() => {
+    const now = Date.now();
+    const clientsToRemove = [];
+
+    connectedClients.forEach((ws) => {
+      // Check if connection is stale (no activity for CONNECTION_TIMEOUT)
+      if (now - ws.lastActivity > CONNECTION_TIMEOUT) {
+        wsLogger.warn('Removing stale connection (timeout)', { username: ws.user?.username });
+        clientsToRemove.push(ws);
+        return;
+      }
+
+      // Check if connection is alive
+      if (ws.isAlive === false) {
+        wsLogger.warn('Removing dead connection (failed ping)', { username: ws.user?.username });
+        clientsToRemove.push(ws);
+        return;
+      }
+
+      // Send ping to check connection
+      ws.isAlive = false;
+      try {
+        ws.ping();
+      } catch (error) {
+        wsLogger.error('Error sending ping', { error: error.message });
+        clientsToRemove.push(ws);
+      }
+    });
+
+    // Clean up dead connections
+    clientsToRemove.forEach((ws) => {
+      connectedClients.delete(ws);
+      try {
+        ws.terminate();
+      } catch (e) {
+        // Ignore errors during termination
+      }
+    });
+
+    if (clientsToRemove.length > 0) {
+      wsLogger.info('Cleaned up dead connections', {
+        removedCount: clientsToRemove.length,
+        activeConnections: connectedClients.size,
+      });
+    }
+  }, HEALTH_CHECK_INTERVAL);
+
+  // Handle server errors
+  wsServer.on('error', (error) => {
+    logError(error, { context: 'WebSocket server error' });
+  });
+
+  // Store interval reference for cleanup
+  wsServer.healthCheckInterval = healthCheckInterval;
+
+  wsLogger.info('WebSocket server started', {
+    port: WS_PORT,
+    healthCheckInterval: HEALTH_CHECK_INTERVAL,
+  });
 }
 
 // Initialize server
 async function init() {
   await initializeSerialPort();
   await loadConfig();
+
+  // Log startup
+  logStartup({
+    port: PORT,
+    wsPort: WS_PORT,
+    dataFormat: currentConfig.dataFormat,
+    csvFile: currentConfig.csvFile,
+    dataSources: currentConfig.dataSources,
+  });
+
+  // Set up static path and middleware
+  const finalStaticPath = await findStaticPath();
+  app.use(express.static(finalStaticPath));
+
   setupWebSocket();
   setupFileMonitor();
-  
+
   app.listen(PORT, () => {
-    console.log(`Bridge service running on port ${PORT}`);
-    console.log(`Settings page: http://localhost:${PORT}/settings`);
-    console.log(`Main dashboard: http://localhost:${PORT}`);
-    
+    moduleLogger.info('Bridge service running', {
+      port: PORT,
+      settingsPage: `http://localhost:${PORT}/settings`,
+      mainDashboard: `http://localhost:${PORT}`,
+    });
+
     if (!SerialPort) {
-      console.log('Running in DEMO MODE - SerialPort not available in WebContainer');
+      moduleLogger.info('Running in DEMO MODE - SerialPort not available in WebContainer');
     }
   });
-  
+
   // Auto-connect if configured or start demo mode
   if (currentConfig.csvFile.enabled && currentConfig.csvFile.filePath) {
     setTimeout(() => {
@@ -1303,4 +1761,84 @@ async function init() {
   }
 }
 
-init().catch(console.error);
+// Graceful shutdown handler
+async function gracefulShutdown() {
+  logShutdown('SIGTERM/SIGINT received');
+
+  // Close WebSocket server
+  if (wsServer) {
+    wsLogger.info('Closing WebSocket server');
+
+    // Clear health check interval
+    if (wsServer.healthCheckInterval) {
+      clearInterval(wsServer.healthCheckInterval);
+    }
+
+    // Close all client connections
+    connectedClients.forEach(client => {
+      try {
+        client.close(1000, 'Server shutting down');
+      } catch (e) {
+        try {
+          client.terminate();
+        } catch (e2) {
+          // Ignore errors
+        }
+      }
+    });
+
+    // Clear the clients set
+    connectedClients.clear();
+
+    // Close the server
+    wsServer.close(() => {
+      wsLogger.info('WebSocket server closed');
+    });
+  }
+
+  // Disconnect data sources
+  disconnectDataSource();
+
+  // Stop file monitor
+  if (fileMonitor) {
+    fileMonitor.stop();
+  }
+
+  // Shutdown rate limiter
+  try {
+    await shutdownRateLimiter();
+    moduleLogger.info('Rate limiter shutdown complete');
+  } catch (error) {
+    logError(error, { context: 'Error shutting down rate limiter' });
+  }
+
+  // Exit process
+  setTimeout(() => {
+    moduleLogger.info('Shutdown complete');
+    process.exit(0);
+  }, 1000);
+}
+
+// Handle process termination signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  logError(error, { context: 'Uncaught Exception' });
+  gracefulShutdown();
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection', {
+    reason: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
+    promise: promise.toString(),
+  });
+  // Don't exit on unhandled rejections, just log them
+});
+
+init().catch(error => {
+  logError(error, { context: 'Initialization failed' });
+  process.exit(1);
+});

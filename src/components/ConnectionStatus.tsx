@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
 interface ConnectionStatusProps {
   status: 'connected' | 'disconnected' | 'error';

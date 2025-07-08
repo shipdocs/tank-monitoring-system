@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { VesselTypeSelector } from './VesselTypeSelector';
 import { DataSourceSelector } from './DataSourceSelector';
 import { LayoutTemplateSelector } from './LayoutTemplateSelector';
 import { TankAssignmentStep } from './TankAssignmentStep';
 import { WizardSummary } from './WizardSummary';
-import { VesselType, VesselTemplate, WizardState, DataSourceConfig } from '../../types/vessel';
-import { Tank } from '../../types/tank';
+import { type DataSourceConfig, type VesselTemplate, type VesselType, type WizardState } from '../../types/vessel';
+import { type Tank } from '../../types/tank';
 import { useDatabaseVesselConfiguration } from '../../hooks/useDatabaseVesselConfiguration';
 import { loadTanksFromDataSource } from '../../utils/dataSourceParser';
 import { applyWizardConfigToServer } from '../../utils/serverConfig';
-import { ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface VesselConfigurationWizardProps {
   tanks: Tank[]; // Tanks from configured data source
@@ -20,12 +20,12 @@ interface VesselConfigurationWizardProps {
 export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps> = ({
   tanks,
   onComplete,
-  onCancel
+  onCancel,
 }) => {
   const { createVesselFromTemplate, assignTankToGroup } = useDatabaseVesselConfiguration();
 
   const [wizardState, setWizardState] = useState<WizardState>({
-    step: 1
+    step: 1,
   });
 
   const [currentTanks, setCurrentTanks] = useState<Tank[]>(tanks);
@@ -114,7 +114,7 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
       // 2. Create vessel from template
       const vesselId = createVesselFromTemplate(
         wizardState.selectedTemplate.id,
-        wizardState.vesselName
+        wizardState.vesselName,
       );
 
       // 3. Assign tanks to groups
@@ -260,7 +260,7 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
               <X className="w-6 h-6" />
             </button>
           </div>
-          
+
           {/* Progress Bar */}
           <div className="mt-4">
             <div className="flex items-center space-x-2">
@@ -270,8 +270,8 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
                     index + 1 < wizardState.step
                       ? 'bg-green-500 text-white'
                       : index + 1 === wizardState.step
-                      ? 'bg-white text-blue-600'
-                      : 'bg-blue-500 text-blue-200'
+                        ? 'bg-white text-blue-600'
+                        : 'bg-blue-500 text-blue-200'
                   }`}>
                     {index + 1 < wizardState.step ? (
                       <Check className="w-4 h-4" />
@@ -322,52 +322,52 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
               <span>Back</span>
             </button>
 
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
               Cancel
-            </button>
-            
-            {wizardState.step === totalSteps ? (
-              <button
-                onClick={handleComplete}
-                disabled={isApplyingConfig}
-                className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-colors ${
-                  isApplyingConfig
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
-                {isApplyingConfig ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Applying Configuration...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Complete Setup</span>
-                  </>
-                )}
               </button>
-            ) : (
-              <button
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-colors border-2 ${
-                  canProceed()
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300'
-                }`}
-                title={canProceed() ? 'Proceed to next step' : 'Complete current step to continue'}
-              >
-                <span>Next Step</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+
+              {wizardState.step === totalSteps ? (
+                <button
+                  onClick={handleComplete}
+                  disabled={isApplyingConfig}
+                  className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-colors ${
+                    isApplyingConfig
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {isApplyingConfig ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Applying Configuration...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Complete Setup</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handleNext}
+                  disabled={!canProceed()}
+                  className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-colors border-2 ${
+                    canProceed()
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed border-gray-300'
+                  }`}
+                  title={canProceed() ? 'Proceed to next step' : 'Complete current step to continue'}
+                >
+                  <span>Next Step</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

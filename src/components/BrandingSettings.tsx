@@ -70,7 +70,7 @@ export const BrandingSettings: React.FC<BrandingSettingsProps> = ({
       <p className="text-sm text-gray-600 mb-4">
         Customize the app name, slogan, logo, and colors
       </p>
-      
+
       <div className="space-y-4">
         {/* App Name */}
         <div>
@@ -149,8 +149,8 @@ export const BrandingSettings: React.FC<BrandingSettingsProps> = ({
                 key={color}
                 onClick={() => setLocalPrimaryColor(color)}
                 className={`w-8 h-8 rounded-lg border-2 transition-all ${
-                  localPrimaryColor === color 
-                    ? 'border-gray-800 scale-110' 
+                  localPrimaryColor === color
+                    ? 'border-gray-800 scale-110'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
                 style={{ backgroundColor: color }}
@@ -174,7 +174,7 @@ export const BrandingSettings: React.FC<BrandingSettingsProps> = ({
           Save Branding
         </button>
       </div>
-      
+
       <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-xs text-blue-700">
           💡 Changes are saved locally and will persist after app restart

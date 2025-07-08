@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ViewMode } from '../types/tank';
+import { useEffect, useState } from 'react';
+import { type ViewMode } from '../types/tank';
 
 const DEFAULT_LAYOUT_KEY = 'tankmon_default_layout';
 

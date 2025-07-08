@@ -45,7 +45,7 @@ export interface VesselTemplate {
   previewImage?: string;
 }
 
-export type VesselType = 
+export type VesselType =
   | 'tanker'
   | 'bulk-carrier'
   | 'container-ship'
@@ -53,14 +53,14 @@ export type VesselType =
   | 'storage-terminal'
   | 'custom';
 
-export type LayoutType = 
+export type LayoutType =
   | 'port-starboard'
   | 'port-starboard-center'
   | 'center-only'
   | 'complex'
   | 'custom';
 
-export type GroupPosition = 
+export type GroupPosition =
   | 'port'
   | 'starboard'
   | 'center'
@@ -134,33 +134,33 @@ export const VESSEL_TEMPLATES: VesselTemplate[] = [
         name: 'Port Ballast',
         position: 'port',
         groupType: 'ballast',
-        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 1 }
+        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 1 },
       },
       {
         name: 'Port Cargo',
         position: 'port',
         groupType: 'cargo',
-        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 2 }
+        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 2 },
       },
       {
         name: 'Center Cargo',
         position: 'center',
         groupType: 'cargo',
-        displaySettings: { color: '#bbdefb', collapsed: false, sortOrder: 3 }
+        displaySettings: { color: '#bbdefb', collapsed: false, sortOrder: 3 },
       },
       {
         name: 'Starboard Cargo',
         position: 'starboard',
         groupType: 'cargo',
-        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 4 }
+        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 4 },
       },
       {
         name: 'Starboard Ballast',
         position: 'starboard',
         groupType: 'ballast',
-        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 5 }
-      }
-    ]
+        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 5 },
+      },
+    ],
   },
   {
     id: 'tanker-simple',
@@ -173,15 +173,15 @@ export const VESSEL_TEMPLATES: VesselTemplate[] = [
         name: 'Port Tanks',
         position: 'port',
         groupType: 'cargo',
-        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 1 }
+        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 1 },
       },
       {
         name: 'Starboard Tanks',
         position: 'starboard',
         groupType: 'cargo',
-        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 2 }
-      }
-    ]
+        displaySettings: { color: '#c8e6c9', collapsed: false, sortOrder: 2 },
+      },
+    ],
   },
   {
     id: 'bulk-carrier',
@@ -194,15 +194,15 @@ export const VESSEL_TEMPLATES: VesselTemplate[] = [
         name: 'Port Ballast',
         position: 'port',
         groupType: 'ballast',
-        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 1 }
+        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 1 },
       },
       {
         name: 'Starboard Ballast',
         position: 'starboard',
         groupType: 'ballast',
-        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 2 }
-      }
-    ]
+        displaySettings: { color: '#ffcdd2', collapsed: false, sortOrder: 2 },
+      },
+    ],
   },
   {
     id: 'center-only',
@@ -215,8 +215,8 @@ export const VESSEL_TEMPLATES: VesselTemplate[] = [
         name: 'Center Tanks',
         position: 'center',
         groupType: 'storage',
-        displaySettings: { color: '#bbdefb', collapsed: false, sortOrder: 1 }
-      }
-    ]
-  }
+        displaySettings: { color: '#bbdefb', collapsed: false, sortOrder: 1 },
+      },
+    ],
+  },
 ];

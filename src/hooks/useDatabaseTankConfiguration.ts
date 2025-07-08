@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
-import { Tank } from '../types/tank';
-import { TankStorage, AppConfiguration } from '../storage/TankStorage';
+import { type Tank } from '../types/tank';
+import { type AppConfiguration, TankStorage } from '../storage/TankStorage';
 import {
   applyTankConfiguration,
   exportConfiguration,
@@ -15,7 +15,7 @@ interface UseDatabaseTankConfigurationReturn {
   configuration: AppConfiguration | null;
   isLoading: boolean;
   reorderTanks: (oldIndex: number, newIndex: number) => void;
-  renameTank: (tankId: number, newName: string) => void;
+  renameTank: (tankId: string, newName: string) => void;
   exportConfig: () => void;
   importConfig: (file: File) => Promise<boolean>;
   resetConfiguration: () => void;
@@ -38,7 +38,7 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
       const defaultConfig: AppConfiguration = {
         id: 'default',
         tanks: [],
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       };
       setConfiguration(defaultConfig);
     } finally {
@@ -81,7 +81,7 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
 
     // Use arrayMove for proper reordering (dnd-kit recommended approach)
     const reorderedTanks = arrayMove(configuredTanks, oldIndex, newIndex);
-    
+
     console.log('Expected new order:', reorderedTanks.map(t => t.name));
 
     // Create a map of existing tank configs to preserve custom names
@@ -108,13 +108,13 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
     saveConfiguration(updatedConfig);
   }, [configuration, configuredTanks, saveConfiguration]);
 
-  const renameTank = useCallback((tankId: number, newName: string) => {
+  const renameTank = useCallback((tankId: string, newName: string) => {
     if (!configuration) return;
 
     const updatedTanks = configuration.tanks.map(tank =>
       tank.id === tankId
         ? { ...tank, customName: newName.trim() || undefined }
-        : tank
+        : tank,
     );
 
     // Add tank if it doesn't exist
@@ -123,7 +123,7 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
       updatedTanks.push({
         id: tankId,
         customName: newName.trim() || undefined,
-        position: maxPosition + 1
+        position: maxPosition + 1,
       });
     }
 
@@ -138,7 +138,7 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
 
   const exportConfig = useCallback(() => {
     if (!configuration) return;
-    
+
     try {
       exportConfiguration(configuration);
     } catch (error) {
@@ -181,22 +181,22 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
   const migrateFromLocalStorage = useCallback(() => {
     try {
       const tankConfigData = localStorage.getItem('tank-configuration');
-      
+
       if (tankConfigData) {
         const parsedData = JSON.parse(tankConfigData);
-        
+
         // Convert old format to new format if needed
         const migratedConfig: AppConfiguration = {
           id: 'default',
           tanks: parsedData.tanks || [],
-          lastUpdated: parsedData.lastUpdated || new Date().toISOString()
+          lastUpdated: parsedData.lastUpdated || new Date().toISOString(),
         };
-        
+
         saveConfiguration(migratedConfig);
-        
+
         // Remove from localStorage after successful migration
         localStorage.removeItem('tank-configuration');
-        
+
         console.log('Successfully migrated tank configuration from localStorage to SQLite');
       }
     } catch (error) {
@@ -213,6 +213,6 @@ export const useDatabaseTankConfiguration = (tanks: Tank[]): UseDatabaseTankConf
     exportConfig,
     importConfig,
     resetConfiguration,
-    migrateFromLocalStorage
+    migrateFromLocalStorage,
   };
 };

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { VesselTemplate } from '../../types/vessel';
-import { Tank } from '../../types/tank';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from '@dnd-kit/core';
+import React, { useEffect, useState } from 'react';
+import { type VesselTemplate } from '../../types/vessel';
+import { type Tank } from '../../types/tank';
+import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Users, Ship } from 'lucide-react';
+import { GripVertical, Ship, Users } from 'lucide-react';
 
 interface TankAssignmentStepProps {
   tanks: Tank[];
@@ -28,7 +28,7 @@ const SortableTankItem: React.FC<SortableTankItemProps> = ({ tank, isAssigned })
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tank.id.toString() });
+  } = useSortable({ id: tank.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -51,14 +51,14 @@ const SortableTankItem: React.FC<SortableTankItemProps> = ({ tank, isAssigned })
       >
         <GripVertical className="w-4 h-4" />
       </div>
-      
+
       <div className="flex-1">
         <div className="font-medium text-gray-900">{tank.name}</div>
         <div className="text-sm text-gray-500">
           {tank.level?.toFixed(1)}L / {tank.capacity?.toFixed(0)}L
         </div>
       </div>
-      
+
       <div className={`w-3 h-3 rounded-full ${
         isAssigned ? 'bg-green-500' : 'bg-gray-300'
       }`} />
@@ -98,7 +98,7 @@ const DroppableGroup: React.FC<DroppableGroupProps> = ({ group, assignedTanks, o
           <div key={tank.id} className="flex items-center justify-between p-2 bg-white rounded border">
             <span className="text-sm font-medium">{tank.name}</span>
             <button
-              onClick={() => onDrop(tank.id.toString(), '')}
+              onClick={() => onDrop(tank.id, '')}
               className="text-xs text-red-600 hover:text-red-800"
             >
               Remove
@@ -121,7 +121,7 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
   template,
   vesselName,
   onVesselNameChange,
-  onTankAssignment
+  onTankAssignment,
 }) => {
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -147,7 +147,7 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
     if (template.defaultGroups.some(g => g.name === groupId)) {
       setAssignments(prev => ({
         ...prev,
-        [tankId]: groupId
+        [tankId]: groupId,
       }));
     }
   };
@@ -160,13 +160,9 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
     });
   };
 
-  const getAssignedTanks = (groupName: string): Tank[] => {
-    return tanks.filter(tank => assignments[tank.id.toString()] === groupName);
-  };
+  const getAssignedTanks = (groupName: string): Tank[] => tanks.filter(tank => assignments[tank.id] === groupName);
 
-  const getUnassignedTanks = (): Tank[] => {
-    return tanks.filter(tank => !assignments[tank.id.toString()]);
-  };
+  const getUnassignedTanks = (): Tank[] => tanks.filter(tank => !assignments[tank.id]);
 
   const activeTank = activeId ? tanks.find(t => t.id.toString() === activeId) : null;
 
@@ -211,8 +207,8 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
                 Available Tanks ({getUnassignedTanks().length})
               </h3>
             </div>
-            
-            <SortableContext 
+
+            <SortableContext
               items={getUnassignedTanks().map(t => t.id.toString())}
               strategy={verticalListSortingStrategy}
             >
@@ -224,7 +220,7 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
                     isAssigned={false}
                   />
                 ))}
-                
+
                 {getUnassignedTanks().length === 0 && (
                   <div className="text-center text-gray-500 py-8">
                     All tanks have been assigned to groups
@@ -239,7 +235,7 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Tank Groups ({template.defaultGroups.length})
             </h3>
-            
+
             <div className="space-y-4">
               {template.defaultGroups.map((group, index) => (
                 <div key={index}>

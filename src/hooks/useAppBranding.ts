@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface AppBranding {
   appName: string;
@@ -19,21 +19,41 @@ export const useAppBranding = () => {
 
   // Load branding from API on mount
   useEffect(() => {
+    const abortController = new AbortController();
+
     const loadBranding = async () => {
       try {
-        const response = await fetch('/api/branding');
+        const response = await fetch('/api/branding', {
+          signal: abortController.signal,
+        });
         if (response.ok) {
           const data = await response.json();
-          setBranding({ ...DEFAULT_BRANDING, ...data });
+          // Only update state if component is still mounted
+          if (!abortController.signal.aborted) {
+            setBranding({ ...DEFAULT_BRANDING, ...data });
+          }
         }
       } catch (error) {
+        // Check if error is due to abort
+        if (error instanceof Error && error.name === 'AbortError') {
+          // Request was aborted, this is expected during cleanup
+          return;
+        }
         console.error('Failed to load branding from API:', error);
       } finally {
-        setIsLoading(false);
+        // Only update loading state if component is still mounted
+        if (!abortController.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadBranding();
+
+    // Cleanup function
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   // Save branding to API
@@ -45,7 +65,7 @@ export const useAppBranding = () => {
       const response = await fetch('/api/branding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
+        body: JSON.stringify(updated),
       });
 
       if (!response.ok) {

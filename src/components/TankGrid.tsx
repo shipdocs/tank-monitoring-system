@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tank, ViewMode, TankGroup } from '../types/tank';
+import { type Tank, type TankGroup, type ViewMode } from '../types/tank';
 import { TankCard } from './TankCard';
 import { TankListItem } from './TankListItem';
 import { TankCompactCard } from './TankCompactCard';
@@ -60,32 +60,32 @@ export const TankGrid: React.FC<TankGridProps> = ({ tanks, viewMode }) => {
   };
 
   const renderGroup = (group: TankGroup) => (
-    <div key={group.id} className="space-y-4">
+    <section key={group.id} className="space-y-4" role="region" aria-labelledby={`group-${group.id}-heading`}>
       {/* Group Header */}
       <div className="flex items-center space-x-3">
-        <h3 className="text-lg font-semibold text-gray-800">{group.displayName}</h3>
-        <div className="flex-1 h-px bg-gray-300"></div>
-        <span className="text-sm text-gray-500">{group.tanks.length} tanks</span>
+        <h3 id={`group-${group.id}-heading`} className="text-lg font-semibold text-gray-800">{group.displayName}</h3>
+        <div className="flex-1 h-px bg-gray-300" aria-hidden="true"></div>
+        <span className="text-sm text-gray-500" aria-label={`${group.tanks.length} tanks in this group`}>{group.tanks.length} tanks</span>
       </div>
 
       {/* Group Tanks */}
-      <div className={getGridClasses()}>
+      <div className={getGridClasses()} role="group" aria-labelledby={`group-${group.id}-heading`}>
         {group.tanks.map(renderTank)}
       </div>
-    </div>
+    </section>
   );
 
   // If only one group or no grouping needed, render without group headers
   if (tankGroups.length <= 1) {
     return (
-      <div className={getGridClasses()}>
+      <div className={getGridClasses()} role="grid" aria-label="Tank monitoring grid">
         {tanks.map(renderTank)}
       </div>
     );
   }
 
   return (
-    <div className={getGroupContainerClasses()}>
+    <div className={getGroupContainerClasses()} role="region" aria-label="Tank groups">
       {tankGroups.map(renderGroup)}
     </div>
   );

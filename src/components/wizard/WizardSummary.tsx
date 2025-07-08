@@ -1,7 +1,7 @@
 import React from 'react';
-import { WizardState } from '../../types/vessel';
-import { Tank } from '../../types/tank';
-import { Ship, Layout, Users, CheckCircle, AlertTriangle } from 'lucide-react';
+import { type WizardState } from '../../types/vessel';
+import { type Tank } from '../../types/tank';
+import { AlertTriangle, CheckCircle, Layout, Ship, Users } from 'lucide-react';
 
 interface WizardSummaryProps {
   wizardState: WizardState;
@@ -10,7 +10,7 @@ interface WizardSummaryProps {
 
 export const WizardSummary: React.FC<WizardSummaryProps> = ({
   wizardState,
-  tanks
+  tanks,
 }) => {
   const { vesselType, selectedTemplate, vesselName, tankAssignments } = wizardState;
 
@@ -21,20 +21,20 @@ export const WizardSummary: React.FC<WizardSummaryProps> = ({
 
   const getUnassignedTanks = () => {
     if (!tankAssignments) return tanks;
-    return tanks.filter(tank => !tankAssignments[tank.id.toString()]);
+    return tanks.filter(tank => !tankAssignments[tank.id]);
   };
 
   const getTanksByGroup = () => {
     if (!tankAssignments || !selectedTemplate) return {};
-    
+
     const result: Record<string, Tank[]> = {};
-    
+
     selectedTemplate.defaultGroups.forEach(group => {
-      result[group.name] = tanks.filter(tank => 
-        tankAssignments[tank.id.toString()] === group.name
+      result[group.name] = tanks.filter(tank =>
+        tankAssignments[tank.id] === group.name,
       );
     });
-    
+
     return result;
   };
 
@@ -59,7 +59,7 @@ export const WizardSummary: React.FC<WizardSummaryProps> = ({
           <Ship className="w-6 h-6 text-blue-600" />
           <h3 className="text-lg font-semibold text-blue-900">Vessel Information</h3>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <div className="text-sm text-blue-700 font-medium">Vessel Name</div>
@@ -89,12 +89,12 @@ export const WizardSummary: React.FC<WizardSummaryProps> = ({
           <div className="space-y-4">
             {selectedTemplate.defaultGroups.map((group, index) => {
               const groupTanks = tanksByGroup[group.name] || [];
-              
+
               return (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      <div 
+                      <div
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: group.displaySettings.color }}
                       />
@@ -107,7 +107,7 @@ export const WizardSummary: React.FC<WizardSummaryProps> = ({
                       {groupTanks.length} tanks assigned
                     </div>
                   </div>
-                  
+
                   {groupTanks.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {groupTanks.map(tank => (
@@ -140,17 +140,17 @@ export const WizardSummary: React.FC<WizardSummaryProps> = ({
             <div className="text-2xl font-bold text-gray-900">{tanks.length}</div>
             <div className="text-sm text-gray-600">Total Tanks</div>
           </div>
-          
+
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <div className="text-2xl font-bold text-green-600">{assignedTanks.length}</div>
             <div className="text-sm text-green-700">Assigned</div>
           </div>
-          
+
           <div className="text-center p-4 bg-orange-50 rounded-lg">
             <div className="text-2xl font-bold text-orange-600">{unassignedTanks.length}</div>
             <div className="text-sm text-orange-700">Unassigned</div>
           </div>
-          
+
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <div className="text-2xl font-bold text-blue-600">
               {selectedTemplate?.defaultGroups.length || 0}
@@ -187,10 +187,10 @@ export const WizardSummary: React.FC<WizardSummaryProps> = ({
           <h4 className="font-medium text-green-800">Ready to Complete</h4>
         </div>
         <p className="text-sm text-green-700">
-          Your vessel configuration is ready. Click "Complete Setup" to apply this configuration 
+          Your vessel configuration is ready. Click "Complete Setup" to apply this configuration
           and start monitoring your tanks with the new grouped layout.
         </p>
-        
+
         {vesselName && selectedTemplate && (
           <div className="mt-3 text-sm text-green-600">
             <strong>"{vesselName}"</strong> will be configured with <strong>{selectedTemplate.name}</strong> layout

@@ -10,7 +10,7 @@
   "pkg": {
     "scripts": [
       "index.js",
-      "fileMonitor.js", 
+      "fileMonitor.js",
       "fileParser.js"
     ],
     "assets": [
@@ -23,5 +23,11 @@
     ],
     "outputPath": "../dist-server-bin"
   },
-  "bin": "server-standalone.js"
+  "bin": "server-standalone.js",
+  "dependencies": {
+    "express-rate-limit": "^7.5.1",
+    "joi": "^17.13.3",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  }
 }

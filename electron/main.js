@@ -1,13 +1,22 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, dialog } from 'electron';
+// Global error handler setup - must be first!
+process.on('uncaughtException', (error) => {
+  console.error('Early uncaught exception:', error);
+  // If app hasn't loaded yet, just exit
+  if (typeof app === 'undefined' || !app || !app.isReady()) {
+    console.error('Fatal error during startup, exiting...');
+    process.exit(1);
+  }
+});
+
+import { BrowserWindow, Menu, Notification, app, dialog, ipcMain, shell } from 'electron';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require('electron-updater');
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import http from 'http';
-import { startIntegratedServer, stopIntegratedServer, getDebugLogs } from './integrated-server.js';
+import { getDebugLogs, startIntegratedServer, stopIntegratedServer } from './integrated-server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +43,7 @@ autoUpdater.on('update-available', (info) => {
       title: 'Update Available',
       message: `A new version (${info.version}) is available!`,
       detail: 'The update will be downloaded in the background. You will be notified when it\'s ready to install.',
-      buttons: ['OK']
+      buttons: ['OK'],
     });
   }
 });
@@ -64,7 +73,7 @@ autoUpdater.on('update-downloaded', (info) => {
       detail: 'The application will restart to apply the update.',
       buttons: ['Restart Now', 'Later'],
       defaultId: 0,
-      cancelId: 1
+      cancelId: 1,
     });
 
     if (response === 0) {
@@ -83,7 +92,7 @@ function checkForUpdatesManually() {
       title: 'Checking for Updates',
       message: 'Checking for updates...',
       detail: 'Please wait while we check for the latest version.',
-      buttons: ['OK']
+      buttons: ['OK'],
     });
   }
 
@@ -96,7 +105,7 @@ function checkForUpdatesManually() {
         title: 'Update Check Failed',
         message: 'Failed to check for updates',
         detail: `Error: ${err.message}\n\nPlease check your internet connection and try again.`,
-        buttons: ['OK']
+        buttons: ['OK'],
       });
     }
   });
@@ -112,7 +121,7 @@ function addLog(level, source, message) {
     timestamp,
     level,
     source,
-    message
+    message,
   };
 
   debugLogs.push(logEntry);
@@ -124,7 +133,7 @@ function addLog(level, source, message) {
 
   // Also log to console
   const formattedMessage = `[${timestamp}] [${level}] [${source}] ${message}`;
-  switch(level) {
+  switch (level) {
     case 'ERROR':
       console.error(formattedMessage);
       break;
@@ -137,6 +146,185 @@ function addLog(level, source, message) {
       break;
   }
 }
+
+// Global error handlers
+let errorDialogShown = false; // Prevent multiple dialogs
+let lastErrorTime = 0;
+const ERROR_DIALOG_COOLDOWN = 5000; // 5 seconds between error dialogs
+
+function showErrorDialog(title, message, details) {
+  // Prevent showing multiple error dialogs too quickly
+  const now = Date.now();
+  if (errorDialogShown || (now - lastErrorTime) < ERROR_DIALOG_COOLDOWN) {
+    return;
+  }
+
+  lastErrorTime = now;
+  errorDialogShown = true;
+
+  // Build error details
+  const fullDetails = details ? `${message}\n\nTechnical details:\n${details}` : message;
+
+  // Show dialog
+  const options = {
+    type: 'error',
+    title,
+    message,
+    detail: fullDetails,
+    buttons: ['OK', 'Quit Application'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  };
+
+  // Show dialog to user
+  dialog.showMessageBox(mainWindow, options).then((response) => {
+    errorDialogShown = false;
+    if (response.response === 1) {
+      // User chose to quit
+      app.quit();
+    }
+  }).catch(() => {
+    errorDialogShown = false;
+  });
+}
+
+// Handle uncaught exceptions (after app is initialized)
+process.removeAllListeners('uncaughtException'); // Remove the early handler
+process.on('uncaughtException', (error) => {
+  const errorMessage = error.stack || error.toString();
+  addLog('ERROR', 'UNCAUGHT_EXCEPTION', errorMessage);
+
+  console.error('Uncaught Exception:', error);
+
+  // Critical errors that should quit the app
+  const criticalErrors = [
+    'EADDRINUSE', // Port already in use
+    'EACCES',     // Permission denied
+    'EMFILE',     // Too many open files
+  ];
+
+  const isCritical = criticalErrors.some(errCode => errorMessage.includes(errCode));
+
+  if (isCritical) {
+    showErrorDialog(
+      'Critical Error',
+      'A critical error occurred and the application must close.',
+      errorMessage,
+    );
+
+    // Give time for dialog to show before quitting
+    setTimeout(() => {
+      app.quit();
+    }, 10000);
+  } else {
+    // Non-critical error - try to continue
+    showErrorDialog(
+      'Application Error',
+      'An unexpected error occurred. The application may continue to work, but some features might be affected.',
+      errorMessage,
+    );
+  }
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  const errorMessage = reason instanceof Error ? reason.stack : String(reason);
+  addLog('ERROR', 'UNHANDLED_REJECTION', errorMessage);
+
+  console.error('Unhandled Promise Rejection:', reason);
+
+  // Don't show dialog for common non-critical rejections
+  const ignoredErrors = [
+    'net::ERR_INTERNET_DISCONNECTED',
+    'net::ERR_NAME_NOT_RESOLVED',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+  ];
+
+  const shouldIgnore = ignoredErrors.some(errCode => errorMessage.includes(errCode));
+
+  if (!shouldIgnore) {
+    showErrorDialog(
+      'Async Error',
+      'An error occurred in an asynchronous operation.',
+      errorMessage,
+    );
+  }
+});
+
+// Handle renderer process crashes
+app.on('render-process-gone', (event, webContents, details) => {
+  const { reason, exitCode } = details;
+  const errorMessage = `Renderer process gone: ${reason}, exit code: ${exitCode}`;
+
+  addLog('ERROR', 'RENDERER_CRASH', errorMessage);
+  console.error('Renderer process crashed:', details);
+
+  // Reasons: 'clean-exit', 'abnormal-exit', 'killed', 'crashed', 'oom', 'launch-failed'
+  const criticalReasons = ['crashed', 'oom', 'launch-failed'];
+
+  if (criticalReasons.includes(reason)) {
+    showErrorDialog(
+      'Application Crash',
+      'The application interface has crashed and needs to restart.',
+      `Crash reason: ${reason}\nExit code: ${exitCode}`,
+    );
+
+    // Attempt to reload the window
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      setTimeout(() => {
+        mainWindow.reload();
+      }, 2000);
+    } else {
+      // Recreate the window if it's destroyed
+      setTimeout(() => {
+        createWindow();
+      }, 2000);
+    }
+  }
+});
+
+// Handle child process crashes (for integrated server)
+app.on('child-process-gone', (event, details) => {
+  const { type, reason, exitCode, serviceName, name } = details;
+  const errorMessage = `Child process gone: ${name || serviceName || type}, reason: ${reason}, exit code: ${exitCode}`;
+
+  addLog('ERROR', 'CHILD_PROCESS_CRASH', errorMessage);
+  console.error('Child process crashed:', details);
+
+  // If it's the server process, try to restart it
+  if (serviceName === 'integrated-server' || name === 'integrated-server') {
+    showErrorDialog(
+      'Server Crash',
+      'The integrated server has stopped unexpectedly.',
+      errorMessage,
+    );
+
+    // Attempt to restart the server
+    setTimeout(() => {
+      startServer();
+    }, 3000);
+  }
+});
+
+// Handle GPU process crashes
+app.on('gpu-process-crashed', (event, killed) => {
+  const errorMessage = `GPU process crashed (killed: ${killed})`;
+  addLog('ERROR', 'GPU_CRASH', errorMessage);
+  console.error('GPU process crashed:', killed);
+
+  // GPU crashes are usually recoverable
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.reload();
+  }
+});
+
+// Log all warnings
+process.on('warning', (warning) => {
+  addLog('WARN', 'PROCESS_WARNING', `${warning.name}: ${warning.message}`);
+  console.warn('Process warning:', warning);
+});
 
 // Wait for server to be ready
 function waitForServer(url, timeout = 30000) {
@@ -181,7 +369,7 @@ async function setupHotReload() {
       const electronReload = await import('electron-reload');
       electronReload.default(__dirname, {
         electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
-        hardResetMethod: 'exit'
+        hardResetMethod: 'exit',
       });
     } catch (error) {
       console.log('electron-reload not available, continuing without hot reload');
@@ -190,42 +378,149 @@ async function setupHotReload() {
 }
 
 function createWindow() {
-  // Create the browser window
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1200,
-    minHeight: 800,
-    icon: path.join(__dirname, 'icon.png'),
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
-      preload: path.join(__dirname, 'preload.cjs'),
-      webSecurity: true
-    },
-    show: false, // Don't show until ready-to-show
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
-  });
+  try {
+    // Create the browser window
+    mainWindow = new BrowserWindow({
+      width: 1400,
+      height: 900,
+      minWidth: 1200,
+      minHeight: 800,
+      icon: path.join(__dirname, 'icon.png'),
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        enableRemoteModule: false,
+        preload: path.join(__dirname, 'preload.cjs'),
+        webSecurity: true,
+      },
+      show: false, // Don't show until ready-to-show
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    });
 
-  // Load the app
-  if (isDev) {
-    // In development, load from the dev server
-    mainWindow.loadURL('http://localhost:5173');
-    // Open DevTools in development
-    mainWindow.webContents.openDevTools();
-  } else {
-    // In production, wait for server to be ready, then load the app
-    waitForServer('http://localhost:3001')
-      .then(() => {
-        console.log('Server is ready, loading app...');
-        mainWindow.loadURL('http://localhost:3001');
-      })
-      .catch((error) => {
-        console.error('Server failed to start:', error);
-        // Fallback: try to load anyway
-        mainWindow.loadURL('http://localhost:3001');
+    // Handle window creation errors
+    mainWindow.on('unresponsive', () => {
+      addLog('ERROR', 'WINDOW', 'Main window became unresponsive');
+      const choice = dialog.showMessageBoxSync(mainWindow, {
+        type: 'warning',
+        title: 'Application Not Responding',
+        message: 'The application is not responding.',
+        buttons: ['Wait', 'Reload', 'Close'],
+        defaultId: 0,
+        cancelId: 0,
       });
+
+      if (choice === 1) {
+        mainWindow.reload();
+      } else if (choice === 2) {
+        mainWindow.close();
+      }
+    });
+
+    // Handle page load failures
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      addLog('ERROR', 'PAGE_LOAD', `Failed to load: ${errorDescription} (${errorCode}) - ${validatedURL}`);
+
+      // Don't show error for cancelled loads (user navigation)
+      if (errorCode === -3) return;
+
+      // Common network errors
+      const networkErrors = [-105, -106, -109, -110, -118];
+      if (networkErrors.includes(errorCode)) {
+        // Show network error page
+        mainWindow.loadURL(`data:text/html;charset=utf-8,
+          <html>
+            <head>
+              <title>Connection Error</title>
+              <style>
+                body { 
+                  font-family: Arial, sans-serif; 
+                  text-align: center; 
+                  padding: 50px;
+                  background: #f0f0f0;
+                }
+                h1 { color: #d32f2f; }
+                button { 
+                  padding: 10px 20px; 
+                  margin: 10px;
+                  cursor: pointer;
+                  background: #1976d2;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                }
+                button:hover { background: #1565c0; }
+              </style>
+            </head>
+            <body>
+              <h1>Connection Error</h1>
+              <p>Failed to connect to the server. The server may still be starting up.</p>
+              <p>Error: ${errorDescription}</p>
+              <button onclick="location.reload()">Retry</button>
+              <button onclick="window.location='http://localhost:3001'">Try Again</button>
+            </body>
+          </html>
+        `);
+
+        // Auto-retry after 5 seconds
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.loadURL('http://localhost:3001');
+          }
+        }, 5000);
+      }
+    });
+
+    // Load the app
+    if (isDev) {
+      // In development, load from the dev server
+      mainWindow.loadURL('http://localhost:5173').catch((error) => {
+        addLog('ERROR', 'DEV_LOAD', `Failed to load dev server: ${error.message}`);
+        showErrorDialog(
+          'Development Server Error',
+          'Failed to connect to the development server.',
+          `Make sure the dev server is running with "npm run dev"\n\nError: ${error.message}`,
+        );
+      });
+      // Open DevTools in development
+      mainWindow.webContents.openDevTools();
+    } else {
+      // In production, wait for server to be ready, then load the app
+      waitForServer('http://localhost:3001')
+        .then(() => {
+          console.log('Server is ready, loading app...');
+          mainWindow.loadURL('http://localhost:3001').catch((error) => {
+            addLog('ERROR', 'PROD_LOAD', `Failed to load app: ${error.message}`);
+          });
+        })
+        .catch((error) => {
+          console.error('Server failed to start:', error);
+          addLog('ERROR', 'SERVER_WAIT', `Server startup timeout: ${error.message}`);
+
+          // Show error but still try to load
+          showErrorDialog(
+            'Server Startup Warning',
+            'The server is taking longer than expected to start.',
+            'The application will continue trying to connect. This may take up to 30 seconds on first launch.',
+          );
+
+          // Fallback: try to load anyway
+          mainWindow.loadURL('http://localhost:3001').catch((loadError) => {
+            addLog('ERROR', 'FALLBACK_LOAD', `Fallback load failed: ${loadError.message}`);
+          });
+        });
+    }
+  } catch (error) {
+    addLog('ERROR', 'WINDOW_CREATE', `Failed to create window: ${error.message}`);
+    showErrorDialog(
+      'Window Creation Error',
+      'Failed to create the application window.',
+      error.stack,
+    );
+
+    // Fatal error - quit the app
+    setTimeout(() => {
+      app.quit();
+    }, 5000);
   }
 
   // Show window when ready to prevent visual flash
@@ -282,12 +577,50 @@ async function startServer() {
     addLog('INFO', 'SERVER', 'Starting integrated server...');
     serverInstance = await startIntegratedServer(isDev);
     addLog('INFO', 'SERVER', 'Integrated server started successfully');
-    
+
     // Server is now running in the same process!
     // No need for spawn, process management, etc.
   } catch (error) {
     addLog('ERROR', 'SERVER', `Failed to start integrated server: ${error.message}`);
     console.error('Server startup error:', error);
+
+    // Determine if this is a critical error
+    const criticalErrors = ['EADDRINUSE', 'EACCES', 'MODULE_NOT_FOUND'];
+    const isCritical = criticalErrors.some(errCode => error.message.includes(errCode));
+
+    if (isCritical) {
+      let errorTitle = 'Server Startup Failed';
+      let errorMessage = 'The integrated server could not be started.';
+
+      if (error.message.includes('EADDRINUSE')) {
+        errorTitle = 'Port Already In Use';
+        errorMessage = 'The server port (3001) is already in use by another application.';
+      } else if (error.message.includes('EACCES')) {
+        errorTitle = 'Permission Denied';
+        errorMessage = 'Insufficient permissions to start the server. Try running as administrator.';
+      } else if (error.message.includes('MODULE_NOT_FOUND')) {
+        errorTitle = 'Missing Dependencies';
+        errorMessage = 'Required server modules are missing. The installation may be corrupted.';
+      }
+
+      showErrorDialog(
+        errorTitle,
+        errorMessage,
+        error.stack,
+      );
+
+      // For critical server errors, quit after showing the error
+      setTimeout(() => {
+        app.quit();
+      }, 10000);
+    } else {
+      // Non-critical error - show warning but continue
+      showErrorDialog(
+        'Server Warning',
+        'The server encountered an error but the application will try to continue.',
+        error.message,
+      );
+    }
   }
 }
 
@@ -313,8 +646,8 @@ function showDebugLogs() {
     show: false,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
-    }
+      contextIsolation: true,
+    },
   });
 
   const logsHtml = generateLogsHtml();
@@ -352,13 +685,13 @@ async function exportLogsToFile() {
       defaultPath: `tank-monitor-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`,
       filters: [
         { name: 'Text Files', extensions: ['txt'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
+        { name: 'All Files', extensions: ['*'] },
+      ],
     });
 
     if (!result.canceled && result.filePath) {
       const logsText = debugLogs.map(log =>
-        `[${log.timestamp}] [${log.level}] [${log.source}] ${log.message}`
+        `[${log.timestamp}] [${log.level}] [${log.source}] ${log.message}`,
       ).join('\n');
 
       await fsPromises.writeFile(result.filePath, logsText, 'utf8');
@@ -371,7 +704,7 @@ async function exportLogsToFile() {
         title: 'Export Successful',
         message: 'Debug logs have been exported successfully!',
         detail: `File saved to: ${result.filePath}`,
-        buttons: ['OK']
+        buttons: ['OK'],
       });
     }
   } catch (error) {
@@ -382,7 +715,7 @@ async function exportLogsToFile() {
       title: 'Export Failed',
       message: 'Failed to export debug logs',
       detail: error.message,
-      buttons: ['OK']
+      buttons: ['OK'],
     });
   }
 }
@@ -391,7 +724,7 @@ async function exportLogsToFile() {
 function generateLogsHtml() {
   const logsHtml = debugLogs.slice(-200).map(log => {
     const levelClass = log.level === 'ERROR' ? 'error' :
-                      log.level === 'WARN' ? 'warning' : 'info';
+      log.level === 'WARN' ? 'warning' : 'info';
 
     return `
       <div class="log-entry ${levelClass}">
@@ -546,9 +879,9 @@ function createSettingsWindow() {
       contextIsolation: true,
       enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.cjs'),
-      webSecurity: true
+      webSecurity: true,
     },
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
   });
 
   // Load settings page from integrated server
@@ -589,8 +922,8 @@ function createHelpWindow(type) {
     resizable: true,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
-    }
+      contextIsolation: true,
+    },
   });
 
   const helpContent = getHelpContent(type);
@@ -632,7 +965,7 @@ function getHelpContent(type) {
     </style>
   `;
 
-  switch(type) {
+  switch (type) {
     case 'getting-started':
       return `
         <html>
@@ -961,7 +1294,7 @@ function createMenu() {
           label: 'Settings',
           click: () => {
             createSettingsWindow();
-          }
+          },
         },
         { type: 'separator' },
         {
@@ -969,9 +1302,9 @@ function createMenu() {
           accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
           click: () => {
             app.quit();
-          }
-        }
-      ]
+          },
+        },
+      ],
     },
     {
       label: 'View',
@@ -984,15 +1317,15 @@ function createMenu() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
+        { role: 'togglefullscreen' },
+      ],
     },
     {
       label: 'Window',
       submenu: [
         { role: 'minimize' },
-        { role: 'close' }
-      ]
+        { role: 'close' },
+      ],
     },
     {
       label: 'Help',
@@ -1001,54 +1334,54 @@ function createMenu() {
           label: 'Getting Started',
           click: () => {
             createHelpWindow('getting-started');
-          }
+          },
         },
         {
           label: 'System Requirements',
           click: () => {
             createHelpWindow('requirements');
-          }
+          },
         },
         {
           label: 'Troubleshooting',
           click: () => {
             createHelpWindow('troubleshooting');
-          }
+          },
         },
         {
           label: 'What\'s New',
           click: () => {
             createHelpWindow('changelog');
-          }
+          },
         },
         { type: 'separator' },
         {
           label: 'Show Debug Logs',
           click: () => {
             showDebugLogs();
-          }
+          },
         },
         {
           label: 'Export Logs to File',
           click: () => {
             exportLogsToFile();
-          }
+          },
         },
         { type: 'separator' },
         {
           label: 'Check for Updates',
           click: () => {
             checkForUpdatesManually();
-          }
+          },
         },
         {
           label: 'About Tank Monitoring System',
           click: () => {
             createHelpWindow('about');
-          }
-        }
-      ]
-    }
+          },
+        },
+      ],
+    },
   ];
 
   // macOS specific menu adjustments
@@ -1064,8 +1397,8 @@ function createMenu() {
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' }
-      ]
+        { role: 'quit' },
+      ],
     });
 
     // Window menu
@@ -1074,7 +1407,7 @@ function createMenu() {
       { role: 'minimize' },
       { role: 'zoom' },
       { type: 'separator' },
-      { role: 'front' }
+      { role: 'front' },
     ];
   }
 
@@ -1084,28 +1417,73 @@ function createMenu() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  addLog('INFO', 'APP', 'Electron app ready, initializing...');
-  await setupHotReload();
-  createWindow();
-  createMenu();
-  startServer();
+  try {
+    addLog('INFO', 'APP', 'Electron app ready, initializing...');
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+    // Setup hot reload in development
+    await setupHotReload();
+
+    // Create the main window
+    createWindow();
+
+    // Create application menu
+    createMenu();
+
+    // Start the integrated server
+    await startServer();
+
+    // Handle app activation (macOS)
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  } catch (error) {
+    addLog('ERROR', 'APP_INIT', `Failed to initialize application: ${error.message}`);
+    console.error('App initialization error:', error);
+
+    showErrorDialog(
+      'Application Initialization Failed',
+      'The application failed to start properly.',
+      error.stack,
+    );
+
+    // Fatal initialization error - quit
+    setTimeout(() => {
+      app.quit();
+    }, 5000);
+  }
+}).catch((error) => {
+  // This should rarely happen, but handle it just in case
+  console.error('App whenReady error:', error);
+  app.quit();
 });
 
 app.on('window-all-closed', () => {
-  stopServer();
+  try {
+    stopServer();
+  } catch (error) {
+    addLog('ERROR', 'APP', `Error during window-all-closed: ${error.message}`);
+  }
+
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-app.on('before-quit', () => {
-  stopServer();
+app.on('before-quit', (event) => {
+  try {
+    addLog('INFO', 'APP', 'Application shutting down...');
+    stopServer();
+  } catch (error) {
+    addLog('ERROR', 'APP', `Error during shutdown: ${error.message}`);
+  }
+});
+
+// Handle app errors
+app.on('error', (error) => {
+  addLog('ERROR', 'APP_ERROR', `Application error: ${error.message}`);
+  console.error('App error:', error);
 });
 
 // Security: Prevent new window creation
@@ -1127,7 +1505,190 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
   }
 });
 
-// IPC Handlers for file system operations
+// IPC Handlers
+// Handle opening external URLs
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    // Validate URL
+    if (!url || typeof url !== 'string') {
+      addLog('ERROR', 'IPC', 'Invalid URL provided to open-external');
+      return { success: false, error: 'Invalid URL' };
+    }
+
+    // Security: Only allow http/https URLs
+    const parsedUrl = new URL(url);
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      addLog('ERROR', 'IPC', `Blocked non-HTTP URL: ${url}`);
+      return { success: false, error: 'Only HTTP/HTTPS URLs are allowed' };
+    }
+
+    await shell.openExternal(url);
+    addLog('INFO', 'IPC', `Opened external URL: ${url}`);
+    return { success: true };
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to open external URL: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// Window control handlers
+ipcMain.handle('minimize-window', async (event) => {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.minimize();
+      addLog('INFO', 'IPC', 'Window minimized');
+      return { success: true };
+    } else {
+      return { success: false, error: 'Window not available' };
+    }
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to minimize window: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('maximize-window', async (event) => {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+        addLog('INFO', 'IPC', 'Window unmaximized');
+      } else {
+        mainWindow.maximize();
+        addLog('INFO', 'IPC', 'Window maximized');
+      }
+      return { success: true, isMaximized: mainWindow.isMaximized() };
+    } else {
+      return { success: false, error: 'Window not available' };
+    }
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to maximize window: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('close-window', async (event) => {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+      addLog('INFO', 'IPC', 'Window closed');
+      return { success: true };
+    } else {
+      return { success: false, error: 'Window not available' };
+    }
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to close window: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// Open settings window
+ipcMain.handle('open-settings', async (event) => {
+  try {
+    createSettingsWindow();
+    addLog('INFO', 'IPC', 'Settings window opened via IPC');
+    return { success: true };
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to open settings: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// Get server status
+ipcMain.handle('get-server-status', async (event) => {
+  try {
+    const status = {
+      isRunning: serverInstance !== null,
+      isDevelopment: isDev,
+      ports: {
+        api: 3001,
+        websocket: 3002,
+      },
+    };
+
+    // Check if server is actually responding
+    if (status.isRunning && !isDev) {
+      try {
+        const response = await new Promise((resolve, reject) => {
+          const req = http.get('http://localhost:3001/health', (res) => {
+            resolve(res.statusCode === 200);
+          });
+          req.on('error', () => resolve(false));
+          req.setTimeout(1000, () => {
+            req.destroy();
+            resolve(false);
+          });
+        });
+        status.isResponding = response;
+      } catch {
+        status.isResponding = false;
+      }
+    } else {
+      status.isResponding = isDev; // In dev mode, assume external server is running
+    }
+
+    // Get debug logs from integrated server if available
+    if (serverInstance && !isDev) {
+      try {
+        const serverLogs = getDebugLogs();
+        status.recentLogs = serverLogs.slice(-10); // Last 10 server logs
+      } catch (error) {
+        addLog('WARN', 'IPC', 'Could not retrieve server logs');
+      }
+    }
+
+    addLog('INFO', 'IPC', `Server status checked: ${JSON.stringify(status)}`);
+    return { success: true, status };
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to get server status: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// Show notification
+ipcMain.handle('show-notification', async (event, { title, body }) => {
+  try {
+    // Validate inputs
+    if (!title || typeof title !== 'string') {
+      return { success: false, error: 'Invalid notification title' };
+    }
+
+    if (body && typeof body !== 'string') {
+      return { success: false, error: 'Invalid notification body' };
+    }
+
+    // Create notification using Electron's Notification API
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title,
+        body: body || '',
+        icon: path.join(__dirname, 'icon.png'),
+        silent: false,
+      });
+
+      notification.show();
+
+      addLog('INFO', 'IPC', `Notification shown: ${title}`);
+      return { success: true };
+    } else {
+      // Fallback: show as dialog if notifications not supported
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title,
+        message: body || title,
+        buttons: ['OK'],
+      });
+
+      addLog('INFO', 'IPC', `Notification shown as dialog (notifications not supported): ${title}`);
+      return { success: true, fallback: true };
+    }
+  } catch (error) {
+    addLog('ERROR', 'IPC', `Failed to show notification: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+});
+
+// File system operations
 ipcMain.handle('show-open-dialog', async (event, options) => {
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -1137,9 +1698,9 @@ ipcMain.handle('show-open-dialog', async (event, options) => {
         { name: 'Text Files', extensions: ['txt'] },
         { name: 'CSV Files', extensions: ['csv'] },
         { name: 'JSON Files', extensions: ['json'] },
-        { name: 'All Files', extensions: ['*'] }
+        { name: 'All Files', extensions: ['*'] },
       ],
-      ...options
+      ...options,
     });
 
     if (!result.canceled && result.filePaths.length > 0) {

@@ -25,20 +25,20 @@ const platforms = [
   {
     name: 'Linux',
     command: 'npm run electron:dist -- --linux',
-    outputs: ['*.AppImage', '*.tar.gz']
+    outputs: ['*.AppImage', '*.tar.gz'],
   },
   {
     name: 'Windows',
     command: 'npm run electron:dist -- --win',
     outputs: ['*.exe', '*.zip'],
-    requiresWine: true
+    requiresWine: true,
   },
   {
     name: 'macOS',
     command: 'npm run electron:dist -- --mac',
     outputs: ['*.dmg', '*.zip'],
-    requiresMac: true
-  }
+    requiresMac: true,
+  },
 ];
 
 // Check current platform
@@ -48,37 +48,37 @@ console.log(`🖥️  Current platform: ${currentPlatform}\n`);
 // Build for each platform
 for (const platform of platforms) {
   console.log(`🔨 Building for ${platform.name}...`);
-  
+
   // Check platform requirements
   if (platform.requiresWine && currentPlatform !== 'win32') {
     console.log(`⚠️  ${platform.name} build requires Wine on Linux/macOS`);
-    console.log(`   Run this on Windows or install Wine first`);
+    console.log('   Run this on Windows or install Wine first');
     console.log(`   Skipping ${platform.name} build...\n`);
     continue;
   }
-  
+
   if (platform.requiresMac && currentPlatform !== 'darwin') {
     console.log(`⚠️  ${platform.name} build requires macOS`);
     console.log(`   Skipping ${platform.name} build...\n`);
     continue;
   }
-  
+
   try {
     execSync(platform.command, { stdio: 'inherit' });
     console.log(`✅ ${platform.name} build completed`);
-    
+
     // List generated files
     const distDir = path.join(__dirname, 'dist-electron');
     if (fs.existsSync(distDir)) {
       const files = fs.readdirSync(distDir);
-      const platformFiles = files.filter(file => 
-        platform.outputs.some(pattern => 
-          file.match(pattern.replace('*', '.*'))
-        )
+      const platformFiles = files.filter(file =>
+        platform.outputs.some(pattern =>
+          file.match(pattern.replace('*', '.*')),
+        ),
       );
-      
+
       if (platformFiles.length > 0) {
-        console.log(`   Generated files:`);
+        console.log('   Generated files:');
         platformFiles.forEach(file => {
           const filePath = path.join(distDir, file);
           const stats = fs.statSync(filePath);
@@ -101,14 +101,14 @@ console.log('\n📁 Check the dist-electron/ directory for your built applicatio
 const distDir = path.join(__dirname, 'dist-electron');
 if (fs.existsSync(distDir)) {
   const files = fs.readdirSync(distDir);
-  const executableFiles = files.filter(file => 
-    file.endsWith('.exe') || 
-    file.endsWith('.AppImage') || 
+  const executableFiles = files.filter(file =>
+    file.endsWith('.exe') ||
+    file.endsWith('.AppImage') ||
     file.endsWith('.dmg') ||
     file.endsWith('.zip') ||
-    file.endsWith('.tar.gz')
+    file.endsWith('.tar.gz'),
   );
-  
+
   if (executableFiles.length > 0) {
     console.log('\n📦 Available distributions:');
     executableFiles.forEach(file => {

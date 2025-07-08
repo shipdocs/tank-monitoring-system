@@ -1,0 +1,229 @@
+import express from 'express';
+import { login, changePassword, createUser, deleteUser, listUsers, verifyToken } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Login endpoint
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Sanitize username to prevent injection
+    const sanitizedUsername = sanitize.sql(username);
+
+    const result = await login(sanitizedUsername, password);
+    
+    res.json({
+      success: true,
+      token: result.token,
+      user: result.user,
+      expiresIn: '24h'
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(401).json({
+      error: 'Authentication failed',
+      message: error.message
+    });
+  }
+});
+
+// Verify token endpoint
+router.get('/verify', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    if (!token) {
+      return res.status(401).json({
+        valid: false,
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = verifyToken(token);
+    
+    res.json({
+      valid: true,
+      user: {
+        username: decoded.username,
+        role: decoded.role
+      }
+    });
+  } catch (error) {
+    res.status(401).json({
+      valid: false,
+      message: error.message
+    });
+  }
+});
+
+// Get auth status endpoint
+router.get('/status', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    if (!token) {
+      return res.json({
+        authenticated: false,
+        user: null
+      });
+    }
+
+    const decoded = verifyToken(token);
+    
+    res.json({
+      authenticated: true,
+      user: {
+        username: decoded.username,
+        role: decoded.role
+      }
+    });
+  } catch (error) {
+    res.json({
+      authenticated: false,
+      user: null
+    });
+  }
+});
+
+// Change password endpoint (requires authentication)
+router.post('/change-password', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = verifyToken(token);
+    const { oldPassword, newPassword } = req.body;
+
+    const result = await changePassword(decoded.username, oldPassword, newPassword);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(400).json({
+      error: 'Password change failed',
+      message: error.message
+    });
+  }
+});
+
+// Create user endpoint (admin only)
+router.post('/users', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = verifyToken(token);
+    const { username, password, role } = req.body;
+
+    // Sanitize username
+    const sanitizedUsername = sanitize.sql(username);
+
+    const result = await createUser(decoded.username, sanitizedUsername, password, role);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(400).json({
+      error: 'User creation failed',
+      message: error.message
+    });
+  }
+});
+
+// Delete user endpoint (admin only)
+router.delete('/users/:username', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = verifyToken(token);
+    const { username } = req.params;
+
+    const result = await deleteUser(decoded.username, username);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(400).json({
+      error: 'User deletion failed',
+      message: error.message
+    });
+  }
+});
+
+// List users endpoint (admin only)
+router.get('/users', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = verifyToken(token);
+    const users = listUsers(decoded.username);
+    
+    res.json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(403).json({
+      error: 'Access denied',
+      message: error.message
+    });
+  }
+});
+
+// Logout endpoint (client-side token removal)
+router.post('/logout', (req, res) => {
+  // JWT tokens are stateless, so logout is handled client-side
+  // This endpoint is provided for consistency
+  res.json({
+    success: true,
+    message: 'Logout successful. Please remove token from client storage.'
+  });
+});
+
+export default router;

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { VesselConfiguration, TankGroup, VESSEL_TEMPLATES, VesselTemplate } from '../types/vessel';
-import { Tank } from '../types/tank';
+import { useCallback, useEffect, useState } from 'react';
+import { type TankGroup, VESSEL_TEMPLATES, type VesselConfiguration, type VesselTemplate } from '../types/vessel';
+import { type Tank } from '../types/tank';
 import { TankStorage } from '../storage/TankStorage';
 
 const storage = TankStorage.getInstance();
@@ -8,42 +8,42 @@ const storage = TankStorage.getInstance();
 interface UseDatabaseVesselConfigurationReturn {
   // Current vessel
   currentVessel: VesselConfiguration | null;
-  
+
   // All vessels
   vessels: VesselConfiguration[];
-  
+
   // Loading state
   isLoading: boolean;
-  
+
   // Vessel management
   createVessel: (config: Omit<VesselConfiguration, 'id' | 'metadata'>) => string;
   updateVessel: (id: string, updates: Partial<VesselConfiguration>) => void;
   deleteVessel: (id: string) => void;
   setActiveVessel: (id: string) => void;
-  
+
   // Tank group management
   addTankGroup: (vesselId: string, group: Omit<TankGroup, 'id'>) => void;
   updateTankGroup: (vesselId: string, groupId: string, updates: Partial<TankGroup>) => void;
   deleteTankGroup: (vesselId: string, groupId: string) => void;
   reorderTankGroups: (vesselId: string, groupIds: string[]) => void;
-  
+
   // Tank assignment
   assignTankToGroup: (vesselId: string, tankId: string, groupId: string) => void;
   removeTankFromGroup: (vesselId: string, tankId: string) => void;
   reorderTanksInGroup: (vesselId: string, groupId: string, tankIds: string[]) => void;
-  
+
   // Templates
   templates: VesselTemplate[];
   createVesselFromTemplate: (templateId: string, vesselName: string) => string;
-  
+
   // Import/Export
   exportVesselConfig: (vesselId: string) => void;
   importVesselConfig: (file: File) => Promise<boolean>;
-  
+
   // Utilities
   getTanksByGroup: (vesselId: string, tanks: Tank[]) => Record<string, Tank[]>;
   getGroupedTanks: (tanks: Tank[]) => Tank[];
-  
+
   // Migration
   migrateFromLocalStorage: () => void;
 }
@@ -91,7 +91,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
       metadata: {
         created: new Date().toISOString(),
         lastModified: new Date().toISOString(),
-      }
+      },
     };
 
     try {
@@ -118,16 +118,16 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
         ...updates,
         metadata: {
           ...existingVessel.metadata,
-          lastModified: new Date().toISOString()
-        }
+          lastModified: new Date().toISOString(),
+        },
       };
 
       storage.saveVessel(updatedVessel);
-      
-      setVessels(prev => prev.map(vessel => 
-        vessel.id === id ? updatedVessel : vessel
+
+      setVessels(prev => prev.map(vessel =>
+        vessel.id === id ? updatedVessel : vessel,
       ));
-      
+
       if (currentVessel?.id === id) {
         setCurrentVessel(updatedVessel);
       }
@@ -178,7 +178,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     if (vessel) {
       const updatedVessel = {
         ...vessel,
-        tankGroups: [...vessel.tankGroups, newGroup]
+        tankGroups: [...vessel.tankGroups, newGroup],
       };
       updateVessel(vesselId, updatedVessel);
     }
@@ -188,7 +188,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     const vessel = storage.getVessel(vesselId);
     if (vessel) {
       const updatedGroups = vessel.tankGroups.map(group =>
-        group.id === groupId ? { ...group, ...updates } : group
+        group.id === groupId ? { ...group, ...updates } : group,
       );
       updateVessel(vesselId, { tankGroups: updatedGroups });
     }
@@ -206,7 +206,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     const vessel = storage.getVessel(vesselId);
     if (vessel) {
       const reorderedGroups = groupIds.map(id =>
-        vessel.tankGroups.find(group => group.id === id)!
+        vessel.tankGroups.find(group => group.id === id)!,
       ).filter(Boolean);
       updateVessel(vesselId, { tankGroups: reorderedGroups });
     }
@@ -218,7 +218,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
       // Remove tank from any existing group
       const updatedGroups = vessel.tankGroups.map(group => ({
         ...group,
-        tanks: group.tanks.filter(id => id !== tankId)
+        tanks: group.tanks.filter(id => id !== tankId),
       }));
 
       // Add tank to new group
@@ -236,7 +236,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     if (vessel) {
       const updatedGroups = vessel.tankGroups.map(group => ({
         ...group,
-        tanks: group.tanks.filter(id => id !== tankId)
+        tanks: group.tanks.filter(id => id !== tankId),
       }));
       updateVessel(vesselId, { tankGroups: updatedGroups });
     }
@@ -246,7 +246,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     const vessel = storage.getVessel(vesselId);
     if (vessel) {
       const updatedGroups = vessel.tankGroups.map(group =>
-        group.id === groupId ? { ...group, tanks: tankIds } : group
+        group.id === groupId ? { ...group, tanks: tankIds } : group,
       );
       updateVessel(vesselId, { tankGroups: updatedGroups });
     }
@@ -259,7 +259,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     const tankGroups: TankGroup[] = template.defaultGroups.map((group, index) => ({
       ...group,
       id: `group-${Date.now()}-${index}`,
-      tanks: []
+      tanks: [],
     }));
 
     return createVessel({
@@ -267,9 +267,9 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
       type: template.vesselType,
       layout: {
         type: template.layoutType,
-        sections: {}
+        sections: {},
       },
-      tankGroups
+      tankGroups,
     });
   }, [createVessel]);
 
@@ -323,7 +323,7 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
 
     vessel.tankGroups.forEach(group => {
       result[group.id] = group.tanks
-        .map(tankId => tanks.find(tank => tank.id.toString() === tankId))
+        .map(tankId => tanks.find(tank => tank.id === tankId))
         .filter(Boolean) as Tank[];
     });
 
@@ -334,14 +334,14 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     if (!currentVessel) return tanks;
 
     const groupedTankIds = new Set(
-      currentVessel.tankGroups.flatMap(group => group.tanks)
+      currentVessel.tankGroups.flatMap(group => group.tanks),
     );
 
     const groupedTanks: Tank[] = [];
     const ungroupedTanks: Tank[] = [];
 
     tanks.forEach(tank => {
-      if (groupedTankIds.has(tank.id.toString())) {
+      if (groupedTankIds.has(tank.id)) {
         groupedTanks.push(tank);
       } else {
         ungroupedTanks.push(tank);
@@ -365,11 +365,11 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
       // Migrate vessel configurations
       const vesselData = localStorage.getItem('vessel-configuration');
       const tankConfigData = localStorage.getItem('tank-configuration');
-      
+
       if (vesselData || tankConfigData) {
         const parsedVesselData = vesselData ? JSON.parse(vesselData) : null;
         const parsedTankConfigData = tankConfigData ? JSON.parse(tankConfigData) : null;
-        
+
         storage.migrateFromLocalStorage(parsedVesselData, parsedTankConfigData);
 
         // Reload data after migration
@@ -403,6 +403,6 @@ export const useDatabaseVesselConfiguration = (): UseDatabaseVesselConfiguration
     importVesselConfig,
     getTanksByGroup,
     getGroupedTanks,
-    migrateFromLocalStorage
+    migrateFromLocalStorage,
   };
 };

@@ -1,69 +1,43 @@
 import React, { useState } from 'react';
-import { Tank } from '../types/tank';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Edit2, GripVertical } from 'lucide-react';
+import { type Tank } from '../types/tank';
+import { AlertTriangle, Edit2, GripVertical, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  getLevelColor,
+  getStatusColor,
+  getTankPercentage,
+  getTrendColor,
+  getTrendIcon,
+  getTrendSpeed,
+  getTrendText,
+  isCriticalState,
+} from '../utils/tankDisplay';
 
 interface EditableTankCylinderProps {
   tank: Tank;
-  onRename: (tankId: number, newName: string) => void;
+  onRename: (tankId: string, newName: string) => void;
   dragHandleProps?: Record<string, unknown>;
 }
 
-export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({ 
-  tank, 
-  onRename, 
-  dragHandleProps 
+export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
+  tank,
+  onRename,
+  dragHandleProps,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
   // Calculate percentage based on configured max height, not max capacity
-  const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
-  const isAlarm = tank.status === 'critical' || tank.status === 'low';
+  const percentage = getTankPercentage(tank.currentLevel, tank.maxCapacity);
+  const isAlarm = isCriticalState(tank.status) || tank.status === 'low';
 
-  const getStatusColor = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'bg-green-500';
-      case 'low': return 'bg-yellow-500';
-      case 'high': return 'bg-orange-500';
-      case 'critical': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getLevelColor = (status: Tank['status']) => {
-    switch (status) {
-      case 'normal': return 'bg-blue-500';
-      case 'low': return 'bg-yellow-400';
-      case 'high': return 'bg-orange-400';
-      case 'critical': return 'bg-red-400';
-      default: return 'bg-gray-400';
-    }
-  };
-
-  const getTrendIcon = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return <TrendingUp className="w-3 h-3 text-green-600" />;
-      case 'unloading': return <TrendingDown className="w-3 h-3 text-red-600" />;
-      case 'stable': return <Minus className="w-3 h-3 text-gray-500" />;
-      default: return <Minus className="w-3 h-3 text-gray-400" />;
-    }
-  };
-
-  const getTrendColor = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return 'text-green-600 bg-green-50';
-      case 'unloading': return 'text-red-600 bg-red-50';
-      case 'stable': return 'text-gray-600 bg-gray-50';
-      default: return 'text-gray-500 bg-gray-50';
-    }
-  };
-
-  const getTrendText = (trend: Tank['trend']) => {
-    switch (trend) {
-      case 'loading': return 'Loading';
-      case 'unloading': return 'Unloading';
-      case 'stable': return 'Stable';
-      default: return 'Unknown';
+  // Helper function to render trend icon based on icon info
+  const renderTrendIcon = (trend: Tank['trend']) => {
+    const iconInfo = getTrendIcon(trend, 'small');
+    switch (iconInfo.name) {
+      case 'TrendingUp': return <TrendingUp className={iconInfo.className} />;
+      case 'TrendingDown': return <TrendingDown className={iconInfo.className} />;
+      case 'Minus': return <Minus className={iconInfo.className} />;
+      default: return <Minus className={iconInfo.className} />;
     }
   };
 
@@ -122,7 +96,7 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
       <div className="flex flex-col items-center mb-3 flex-1 justify-center">
         {/* Tank Top */}
         <div className="w-16 h-2 bg-gray-300 rounded-t-full border-2 border-gray-400"></div>
-        
+
         {/* Tank Body */}
         <div className="relative w-16 h-32 bg-gray-200 border-l-2 border-r-2 border-gray-400">
           {/* Liquid Level */}
@@ -138,7 +112,7 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
             </span>
           </div>
         </div>
-        
+
         {/* Tank Bottom */}
         <div className="w-16 h-2 bg-gray-300 rounded-b-full border-2 border-gray-400"></div>
       </div>
@@ -165,11 +139,11 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
       <div className="flex justify-center h-8 items-center">
         {tank.trend ? (
           <div className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-full text-xs font-medium min-w-[80px] ${getTrendColor(tank.trend)}`}>
-            {getTrendIcon(tank.trend)}
+            {renderTrendIcon(tank.trend)}
             <span className="w-12 text-center">{getTrendText(tank.trend)}</span>
             {tank.trendValue && tank.trendValue > 0 && (
               <span className="text-xs">
-                {tank.trendValue.toFixed(1)}
+                {getTrendSpeed(tank.trend, tank.trendValue).replace(' mm/min', '')}
               </span>
             )}
           </div>

@@ -1,5 +1,5 @@
-import { Tank } from '../types/tank';
-import { DataSourceConfig } from '../types/vessel';
+import { type Tank } from '../types/tank';
+import { type DataSourceConfig } from '../types/vessel';
 
 // Data quality analysis for vertical format
 const analyzeDataQuality = (records: string[][], config: DataSourceConfig) => {
@@ -93,10 +93,9 @@ const analyzeDataQuality = (records: string[][], config: DataSourceConfig) => {
     totalRecords: records.length,
     validRecords,
     suggestedCutoff,
-    outliers
+    outliers,
   };
 };
-
 
 
 // Parse vertical format data
@@ -133,28 +132,26 @@ const parseVerticalFormat = (lines: string[], config: DataSourceConfig): Tank[] 
   }
 
   // Process each record
-  recordsToProcess.forEach((recordLines) => {
-    
+  recordsToProcess.forEach((recordLines, recordIndex) => {
+
     // Create tank object from mapped lines
     const tank: Partial<Tank> = {
       lastUpdated: new Date(),
     };
-    
+
     // Apply line mappings
     recordLines.forEach((line, lineIndex) => {
       const fieldName = lineMapping[lineIndex];
       const value = line.trim();
-      
+
       if (!fieldName || fieldName === 'ignore' || !value) {
         return;
       }
-      
+
       switch (fieldName) {
         case 'id': {
-          const parsedId = parseInt(value);
-          if (!isNaN(parsedId)) {
-            tank.id = parsedId;
-          }
+          // Keep ID as string
+          tank.id = value.trim();
           break;
         }
         case 'name':
@@ -219,17 +216,17 @@ const parseVerticalFormat = (lines: string[], config: DataSourceConfig): Tank[] 
           break;
       }
     });
-    
+
     // Set defaults and calculate status if not set
     if (tank.currentLevel === undefined) {
       tank.currentLevel = 0;
     }
-    
+
     if (!tank.status) {
       const level = tank.currentLevel || 0;
       const minLevel = tank.minLevel || 50;
       const maxLevel = tank.maxLevel || 950;
-      
+
       if (level < 25) {
         tank.status = 'critical';
       } else if (level < minLevel) {
@@ -240,7 +237,12 @@ const parseVerticalFormat = (lines: string[], config: DataSourceConfig): Tank[] 
         tank.status = 'normal';
       }
     }
-    
+
+    // Ensure tank has an ID
+    if (!tank.id) {
+      tank.id = `tank-${recordIndex + 1}`;
+    }
+
     tanks.push(tank as Tank);
   });
 
@@ -255,22 +257,23 @@ const parseHorizontalFormat = (lines: string[], config: DataSourceConfig): Tank[
 
   const dataLines = hasHeaders ? lines.slice(1) : lines;
 
-  dataLines.forEach((line) => {
+  dataLines.forEach((line, lineIndex) => {
     const columns = line.split(delimiter).map(col => col.trim());
-    
+
     const tank: Partial<Tank> = {
+      id: `tank-${lineIndex + 1}`,
       lastUpdated: new Date(),
       currentLevel: 0,
-      status: 'normal'
+      status: 'normal',
     };
-    
+
     // Apply column mappings (simplified for now)
     columns.forEach((value, colIndex) => {
       if (colIndex === 0 && !isNaN(parseFloat(value))) {
         tank.currentLevel = parseFloat(value.replace(',', '.'));
       }
     });
-    
+
     // Calculate status
     const level = tank.currentLevel || 0;
     if (level < 25) {
@@ -282,10 +285,10 @@ const parseHorizontalFormat = (lines: string[], config: DataSourceConfig): Tank[
     } else {
       tank.status = 'normal';
     }
-    
+
     tanks.push(tank as Tank);
   });
-  
+
   return tanks;
 };
 
@@ -293,7 +296,7 @@ const parseHorizontalFormat = (lines: string[], config: DataSourceConfig): Tank[
 const parseJsonFormat = (data: unknown): Tank[] => {
   try {
     let tanksData = data;
-    
+
     // Handle different JSON structures
     if ((data as { tanks?: unknown }).tanks && Array.isArray((data as { tanks: unknown[] }).tanks)) {
       tanksData = (data as { tanks: unknown[] }).tanks;
@@ -307,7 +310,7 @@ const parseJsonFormat = (data: unknown): Tank[] => {
       }
 
       return {
-        id: item.id,
+        id: String(item.id),
         name: item.name,
         currentLevel: parseFloat(item.level || item.currentLevel),
         maxCapacity: parseFloat(item.maxCapacity || 1000),
@@ -334,7 +337,7 @@ export const loadTanksFromDataSource = async (dataSource: DataSourceConfig): Pro
         if (!dataSource.filePath) {
           throw new Error('No file path specified');
         }
-        
+
         // For now, use preview data if available
         if (dataSource.previewData && dataSource.previewData.length > 0) {
           if (dataSource.isVerticalFormat) {
@@ -348,16 +351,16 @@ export const loadTanksFromDataSource = async (dataSource: DataSourceConfig): Pro
             return parseVerticalFormat(allLines, dataSource);
           } else {
             // Convert preview data back to lines for horizontal format
-            const lines = dataSource.previewData.map(row => 
-              Array.isArray(row) ? row.join(dataSource.delimiter || ',') : String(row)
+            const lines = dataSource.previewData.map(row =>
+              Array.isArray(row) ? row.join(dataSource.delimiter || ',') : String(row),
             );
             return parseHorizontalFormat(lines, dataSource);
           }
         }
-        
+
         // No preview data available
         throw new Error('No preview data available for text file');
-        
+
       case 'json-file':
         if (dataSource.previewData && dataSource.previewData.length > 0) {
           return parseJsonFormat(dataSource.previewData);
@@ -381,7 +384,7 @@ export const estimateTankCount = (dataSource: DataSourceConfig): number => {
   if (!dataSource.previewData || dataSource.previewData.length === 0) {
     return 12; // Default
   }
-  
+
   if (dataSource.isVerticalFormat) {
     return dataSource.previewData.length; // Each preview record is one tank
   } else {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface LogoDisplayProps {
   logoUrl?: string;
@@ -21,20 +21,20 @@ export const LogoDisplay: React.FC<LogoDisplayProps> = ({
   // Size mappings
   const sizeClasses = {
     small: 'w-8 h-8',
-    medium: 'w-12 h-12', 
-    large: 'w-16 h-16'
+    medium: 'w-12 h-12',
+    large: 'w-16 h-16',
   };
 
   const iconSizes = {
     small: 'w-4 h-4',
     medium: 'w-6 h-6',
-    large: 'w-8 h-8'
+    large: 'w-8 h-8',
   };
 
   const paddingClasses = {
     small: 'p-2',
     medium: 'p-3',
-    large: 'p-4'
+    large: 'p-4',
   };
 
   // Detect logo shape when image loads
@@ -63,7 +63,7 @@ export const LogoDisplay: React.FC<LogoDisplayProps> = ({
   // If no logo, show fallback
   if (!logoUrl || !imageLoaded) {
     return (
-      <div 
+      <div
         className={`${sizeClasses[size]} ${paddingClasses[size]} rounded-full flex items-center justify-center ${className}`}
         style={{ backgroundColor: primaryColor }}
       >
@@ -79,7 +79,7 @@ export const LogoDisplay: React.FC<LogoDisplayProps> = ({
   // Determine styling based on detected shape
   const getImageClasses = () => {
     const baseClasses = `${sizeClasses[size]} object-contain`;
-    
+
     if (logoShape === 'square') {
       // For square logos, use rounded corners but not fully round
       return `${baseClasses} rounded-lg`;
@@ -90,13 +90,13 @@ export const LogoDisplay: React.FC<LogoDisplayProps> = ({
   };
 
   return (
-    <img 
-      src={logoUrl} 
-      alt="Logo" 
+    <img
+      src={logoUrl}
+      alt="Logo"
       className={`${getImageClasses()} ${className}`}
       style={{
         // Add a subtle border for square logos
-        border: logoShape === 'square' ? '1px solid rgba(0,0,0,0.1)' : 'none'
+        border: logoShape === 'square' ? '1px solid rgba(0,0,0,0.1)' : 'none',
       }}
     />
   );

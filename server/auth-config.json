@@ -1,0 +1,12 @@
+{
+  "users": {
+    "admin": {
+      "username": "admin",
+      "password": "$2b$10$7YAz0REQh/Rw70DPOju3WuBT1eAOJxVNRNK/nyVxTJNw9TpnSOt6i",
+      "role": "admin",
+      "createdAt": "2025-07-08T19:11:19.946Z"
+    }
+  },
+  "jwtSecret": "tankmon-jwt-secret-change-in-production",
+  "lastUpdated": "2025-07-08T19:11:19.946Z"
+}

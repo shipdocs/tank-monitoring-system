@@ -9,17 +9,17 @@ async function checkServerResponse() {
       res.on('end', () => {
         console.log('Server response status:', res.statusCode);
         console.log('HTML length:', data.length);
-        
+
         // Check if React root exists
         const rootMatch = data.match(/<div id="root"[^>]*>(.*?)<\/div>/);
         if (rootMatch) {
           console.log('Root element content length:', rootMatch[1].length);
         }
-        
+
         // Check script tags
         const scriptMatches = data.match(/<script[^>]*>/g);
         console.log('Script tags found:', scriptMatches ? scriptMatches.length : 0);
-        
+
         resolve();
       });
     }).on('error', (err) => {
@@ -31,10 +31,10 @@ async function checkServerResponse() {
 
 async function testPackagedApp() {
   console.log('Starting packaged AppImage...');
-  
+
   const appProcess = spawn('./dist-electron/Tank Monitoring System-2.0.1.AppImage', [], {
     env: { ...process.env, DISPLAY: ':0' },
-    detached: false
+    detached: false,
   });
 
   let serverReady = false;
@@ -42,7 +42,7 @@ async function testPackagedApp() {
   appProcess.stdout.on('data', (data) => {
     const output = data.toString();
     console.log('App:', output.trim());
-    
+
     if (output.includes('Server is ready') || output.includes('HTTP server running')) {
       serverReady = true;
     }
@@ -64,7 +64,7 @@ async function testPackagedApp() {
   if (serverReady) {
     console.log('\nChecking server response...');
     await checkServerResponse();
-    
+
     // Also check a JS asset
     http.get('http://localhost:3001/assets/js/main-D7dUKn1f.js', (res) => {
       console.log('JS asset status:', res.statusCode);

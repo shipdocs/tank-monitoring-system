@@ -3,10 +3,10 @@ import http from 'http';
 
 async function finalCheck() {
   console.log('Starting final check of packaged app...');
-  
+
   const appProcess = spawn('./dist-electron/Tank Monitoring System-2.0.1.AppImage', [], {
     env: { ...process.env, DISPLAY: ':0' },
-    detached: false
+    detached: false,
   });
 
   let serverReady = false;
@@ -20,8 +20,8 @@ async function finalCheck() {
 
   appProcess.stderr.on('data', (data) => {
     const error = data.toString();
-    if (!error.includes('GetVSyncParametersIfAvailable') && 
-        !error.includes('Update error') && 
+    if (!error.includes('GetVSyncParametersIfAvailable') &&
+        !error.includes('Update error') &&
         !error.includes('Cannot find latest-linux.yml')) {
       console.error('ERROR:', error.trim());
     }
@@ -50,15 +50,15 @@ async function finalCheck() {
         console.log('Main page:');
         console.log('- Status:', res.statusCode);
         console.log('- HTML length:', data.length);
-        
+
         // Check for module script
         const moduleScript = data.match(/<script[^>]*type="module"[^>]*>/);
         console.log('- Has module script:', !!moduleScript);
-        
+
         // Check root element
         const rootMatch = data.match(/<div id="root"[^>]*>(.*?)<\/div>/);
         console.log('- Root element empty:', rootMatch ? rootMatch[1].length === 0 : 'no root');
-        
+
         resolve();
       });
     });

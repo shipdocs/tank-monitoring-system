@@ -98,7 +98,7 @@ export const xssProtection = (req, res, next) => {
 // Recursive object sanitization
 function sanitizeObject(obj) {
   for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       if (typeof obj[key] === 'string') {
         // Don't sanitize password fields
         if (!key.toLowerCase().includes('password')) {
@@ -132,7 +132,7 @@ export const sqlInjectionProtection = (req, res, next) => {
 
   const checkObject = (obj) => {
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         if (checkValue(obj[key])) {
           return true;
         }
@@ -301,7 +301,7 @@ export const requestLogger = (req, res, next) => {
 };
 
 // Error handler middleware
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   console.error(`[${new Date().toISOString()}] Error:`, err);
 
   // Don't leak error details in production

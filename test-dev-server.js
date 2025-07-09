@@ -3,11 +3,11 @@ import http from 'http';
 
 async function testDevServer() {
   console.log('Starting development server test...');
-  
+
   // Start dev server
   const viteProcess = spawn('npm', ['run', 'dev:frontend'], {
     shell: true,
-    env: process.env
+    env: process.env,
   });
 
   viteProcess.stdout.on('data', (data) => {
@@ -30,11 +30,11 @@ async function testDevServer() {
         console.log('\nVite dev server response:');
         console.log('- Status:', res.statusCode);
         console.log('- HTML length:', data.length);
-        
+
         // Check for module script
         const moduleScript = data.match(/<script[^>]*type="module"[^>]*src="([^"]+)"/);
         console.log('- Module script:', moduleScript ? moduleScript[1] : 'not found');
-        
+
         resolve();
       });
     }).on('error', (err) => {
@@ -45,14 +45,14 @@ async function testDevServer() {
 
   // Now start Electron pointing to dev server
   console.log('\nStarting Electron with dev server...');
-  
+
   const electronProcess = spawn('electron', ['.'], {
-    env: { 
+    env: {
       ...process.env,
       NODE_ENV: 'development',
-      VITE_DEV_SERVER_URL: 'http://localhost:5173'
+      VITE_DEV_SERVER_URL: 'http://localhost:5173',
     },
-    shell: true
+    shell: true,
   });
 
   electronProcess.stdout.on('data', (data) => {
@@ -71,7 +71,7 @@ async function testDevServer() {
 
   electronProcess.kill();
   viteProcess.kill();
-  
+
   console.log('\nTest complete. Check if the Electron window showed the React app.');
 }
 

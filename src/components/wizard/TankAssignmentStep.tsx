@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { type VesselTemplate, type TankGroup } from '../../types/vessel';
+import { type TankGroup, type VesselTemplate } from '../../types/vessel';
 import { type Tank } from '../../types/tank';
 import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Ship, Users } from 'lucide-react';
 

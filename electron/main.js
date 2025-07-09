@@ -8,7 +8,7 @@ process.on('uncaughtException', (error) => {
   }
 });
 
-import { BrowserWindow, Menu, Notification, app, dialog, ipcMain, shell, protocol } from 'electron';
+import { BrowserWindow, Menu, Notification, app, dialog, ipcMain, shell } from 'electron';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require('electron-updater');
@@ -407,7 +407,7 @@ function createWindow() {
     // Handle window creation errors
     mainWindow.on('unresponsive', () => {
       addLog('ERROR', 'WINDOW', 'Main window became unresponsive');
-      
+
       // Collect JavaScript call stack for debugging
       mainWindow.webContents.executeJavaScript(`
         console.error('Window unresponsive - collecting debug info');
@@ -425,7 +425,7 @@ function createWindow() {
       }).catch(err => {
         addLog('ERROR', 'DEBUG', `Failed to collect debug info: ${err.message}`);
       });
-      
+
       const choice = dialog.showMessageBoxSync(mainWindow, {
         type: 'warning',
         title: 'Application Not Responding',
@@ -557,7 +557,7 @@ function createWindow() {
     // Show error dialog
     dialog.showErrorBox(
       'Renderer Process Crashed',
-      `The renderer process has crashed.\nReason: ${details.reason}\n\nThe application will attempt to reload.`
+      `The renderer process has crashed.\nReason: ${details.reason}\n\nThe application will attempt to reload.`,
     );
 
     // Attempt to reload
@@ -569,12 +569,12 @@ function createWindow() {
   // Add debugging for when content loads
   mainWindow.webContents.on('did-finish-load', () => {
     addLog('INFO', 'PAGE_LOAD', 'Page finished loading');
-    
+
     // Enable DevTools for debugging
     if (!isDev) {
       mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
-    
+
     // Inject debugging script
     mainWindow.webContents.executeJavaScript(`
       console.log('Page loaded, debugging ES module loading...');
@@ -599,7 +599,7 @@ function createWindow() {
     `).then(info => {
       addLog('INFO', 'MODULE_DEBUG', info);
       console.log('Debug info:', info);
-      
+
       // Check if we need to open DevTools
       if (info.includes('Root: 0 chars')) {
         mainWindow.webContents.openDevTools({ mode: 'bottom' });

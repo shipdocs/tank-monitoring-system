@@ -211,7 +211,7 @@ export const sanitize = {
       .replace(/\0/g, '\\0')
       .replace(/\n/g, '\\n')
       .replace(/\r/g, '\\r')
-      .replace(/\x1a/g, '\\Z');
+      .replace(/\u001a/g, '\\Z');
   },
 
   // Escape shell command characters

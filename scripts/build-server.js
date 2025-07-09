@@ -73,7 +73,7 @@ if (!fs.existsSync(outputDir)) {
       'winston-daily-rotate-file',
       'jsonwebtoken',
       'bcrypt',
-      'express-rate-limit'
+      'express-rate-limit',
     ];
 
     // Copy function that preserves dependencies

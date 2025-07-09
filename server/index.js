@@ -39,7 +39,7 @@ function findModule(moduleName) {
       require.resolve(modulePath);
       moduleLogger.debug(`Found ${moduleName} at: ${modulePath}`);
       return require(modulePath);
-    } catch (e) {
+    } catch (_e) {
       // Continue searching
     }
   }
@@ -47,9 +47,9 @@ function findModule(moduleName) {
   // Fallback to normal require
   try {
     return require(moduleName);
-  } catch (e) {
+  } catch (_e) {
     moduleLogger.error(`Failed to find module ${moduleName}`, { searchedPaths: possiblePaths });
-    throw e;
+    throw _e;
   }
 }
 
@@ -72,17 +72,9 @@ import { FlexibleFileMonitor } from './fileMonitor.js';
 import { DataMapper, FlexibleFileParser, TANK_FIELDS } from './fileParser.js';
 import { authenticate } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
-import { joi, sanitize, validate, validateParams, validateQuery } from './middleware/validation.js';
+import { joi, validate, validateParams, validationErrorHandler } from './middleware/validation.js';
 import {
-  brandingSchema,
-  browseQuerySchema,
-  csvFileConfigSchema,
-  dataSourceSchema,
-  mainConfigSchema,
   sourceIdParamSchema,
-  tankConfigSchema,
-  testMappingSchema,
-  validateFileQuerySchema,
 } from './validation/schemas.js';
 import {
   apiLimiter,
@@ -350,7 +342,7 @@ let ReadlineParser = null;
 // CSV File Import state
 let csvFileWatcher = null;
 let csvImportInterval = null;
-let lastCsvData = [];
+let _lastCsvData = [];
 let discoveredColumns = [];
 
 // Try to load SerialPort modules (will fail in WebContainer)
@@ -362,7 +354,7 @@ async function initializeSerialPort() {
     ReadlineParser = parserModule.ReadlineParser;
     serialLogger.info('SerialPort modules loaded successfully');
     return true;
-  } catch (error) {
+  } catch (_error) {
     moduleLogger.info('SerialPort not available in this environment (WebContainer)');
     moduleLogger.info('Running in demo mode with simulated data');
     return false;
@@ -390,7 +382,7 @@ async function loadConfig() {
     };
 
     moduleLogger.info('Configuration loaded', { configFile: CONFIG_FILE });
-  } catch (error) {
+  } catch (_error) {
     moduleLogger.info('No config file found, using defaults');
     currentConfig = { ...DEFAULT_CONFIG };
     await saveConfig();
@@ -711,7 +703,7 @@ async function importCsvData() {
     const tanks = convertCsvToTanks(csvData);
 
     // Store last data and broadcast
-    lastCsvData = tanks;
+    _lastCsvData = tanks;
     broadcastTankData(tanks);
     logTankData('imported from CSV', tanks, { source: 'csv-file' });
 
@@ -928,7 +920,7 @@ function safeSend(client, message) {
 }
 
 // Helper function to broadcast messages with automatic cleanup
-function safeBroadcast(message) {
+function _safeBroadcast(message) {
   const deadClients = [];
 
   connectedClients.forEach(client => {
@@ -1394,7 +1386,7 @@ app.get('/api/status', apiLimiter, (req, res) => {
     (csvFileWatcher !== null || csvImportInterval !== null) :
     (SerialPort ? (serialPort?.isOpen || false) : true);
 
-  const flexibleSourcesActive = fileMonitor ? fileMonitor.getSourceInfo().filter(s => s.lastUpdate).length : 0;
+  const _flexibleSourcesActive = fileMonitor ? fileMonitor.getSourceInfo().filter(s => s.lastUpdate).length : 0;
 
   res.json({
     connected: isConnected,
@@ -1574,8 +1566,8 @@ function setupWebSocket() {
         wsLogger.warn('WebSocket connection rate limited', { ip: clientIp, code, data });
         ws.close(1008, `Rate limited: ${data.message}`);
       } }),
-      getHeader: (name) => null,
-      setHeader: (name, value) => {},
+      getHeader: (_name) => null,
+      setHeader: (_name, _value) => {},
     };
 
     // Check rate limit
@@ -1586,7 +1578,7 @@ function setupWebSocket() {
           else resolve();
         });
       });
-    } catch (error) {
+    } catch (_error) {
       // Rate limit exceeded, connection already closed by mock response
       return;
     }
@@ -1611,7 +1603,7 @@ function setupWebSocket() {
       ws.user = decoded;
       wsLogger.info('WebSocket authenticated', { username: decoded.username, ip: clientIp });
       auditLog('WEBSOCKET_CONNECTED', decoded.username, { ip: clientIp });
-    } catch (error) {
+    } catch (_error) {
       wsLogger.warn('WebSocket connection rejected: Invalid token', { ip: clientIp });
       ws.close(1008, 'Invalid authentication');
       return;
@@ -1669,7 +1661,7 @@ function setupWebSocket() {
     });
 
     // Handle message event (for activity tracking)
-    ws.on('message', (data) => {
+    ws.on('message', (_data) => {
       ws.lastActivity = Date.now();
       // Handle any incoming messages if needed
     });
@@ -1806,7 +1798,7 @@ async function gracefulShutdown() {
       } catch (e) {
         try {
           client.terminate();
-        } catch (e2) {
+        } catch (_e2) {
           // Ignore errors
         }
       }

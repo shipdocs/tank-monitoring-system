@@ -34,7 +34,7 @@ const serverDeps = {
     'winston-daily-rotate-file': '^5.0.0',
     'jsonwebtoken': '^9.0.2',
     'bcrypt': '^6.0.0',
-    'express-rate-limit': '^7.5.1'
+    'express-rate-limit': '^7.5.1',
   },
 };
 

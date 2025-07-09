@@ -4,9 +4,9 @@ import { useAccessibility } from './AccessibilityProvider';
 import { type Tank, type TankData } from '../types/tank';
 import { getTankPercentage, isAlarmState } from '../utils/tankDisplay';
 
-interface TankDataContextType extends TankData {
-  // Additional context methods can be added here if needed
-}
+// TankDataContextType is currently just TankData, but kept as a type alias
+// for future extensibility
+type TankDataContextType = TankData;
 
 const TankDataContext = createContext<TankDataContextType | undefined>(undefined);
 

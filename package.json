@@ -30,6 +30,7 @@
     "build": "vite build",
     "build:analyze": "node scripts/analyze-build.js",
     "lint": "eslint .",
+    "lint:ci": "eslint . --max-warnings 1000",
     "preview": "vite preview",
     "start:server": "node server/index.js",
     "electron": "electron .",

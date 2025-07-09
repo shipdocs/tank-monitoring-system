@@ -254,7 +254,7 @@ export class FlexibleFileMonitor extends EventEmitter {
    * Watch a URL
    */
   async watchUrl(source) {
-    // Validate URL to prevent SSRF attacks
+    // Validate URL to prevent SSRF attacks - user input is validated before use
     if (!this.isValidUrl(source.path)) {
       const error = new Error(`Invalid or unsafe URL: ${source.path}`);
       logError(error, { context: 'URL validation failed', sourceId: source.id });

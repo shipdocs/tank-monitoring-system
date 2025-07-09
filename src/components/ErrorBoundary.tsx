@@ -5,7 +5,7 @@ import { ErrorSeverity, errorMonitoring } from '../services/errorMonitoring';
 interface Props {
   children: ReactNode;
   fallbackComponent?: React.ComponentType<ErrorBoundaryState & { resetError: () => void }>;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  onError?: (error: Error, _errorInfo: ErrorInfo) => void;
   isolate?: boolean;
   componentName?: string;
 }

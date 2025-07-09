@@ -52,7 +52,7 @@ class AuthService {
     const defaultToken = 'electron-default-token';
     const defaultUser: User = {
       username: 'electron-user',
-      role: 'admin'
+      role: 'admin',
     };
 
     this.token = defaultToken;

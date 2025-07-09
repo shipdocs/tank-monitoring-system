@@ -22,16 +22,16 @@ function findModule(moduleName) {
     try {
       require.resolve(modulePath);
       return require(modulePath);
-    } catch (e) {
+    } catch (_e) {
       // Continue searching
     }
   }
 
   try {
     return require(moduleName);
-  } catch (e) {
+  } catch (_e) {
     logger.error(`Failed to find module ${moduleName}`);
-    throw e;
+    throw _e;
   }
 }
 
@@ -68,8 +68,8 @@ async function initAuthConfig() {
         username: 'admin',
         password: hashedPassword,
         role: 'admin',
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     };
     await saveAuthConfig();
     auditLog('DEFAULT_ADMIN_CREATED', 'system', { username: 'admin' });
@@ -96,12 +96,12 @@ function generateToken(user) {
   const payload = {
     username: user.username,
     role: user.role,
-    iat: Date.now()
+    iat: Date.now(),
   };
-  
+
   return jwt.sign(payload, jwtSecret, {
     expiresIn: JWT_EXPIRY,
-    algorithm: 'HS256'
+    algorithm: 'HS256',
   });
 }
 
@@ -136,7 +136,7 @@ export function authenticate(req, res, next) {
     '/login',
     '/login.html'
   ];
-  
+
   // Skip auth for static assets and public routes
   const skipAuth = publicRoutes.some(route => req.path === route) ||
                    req.path.startsWith('/assets/') ||
@@ -145,25 +145,25 @@ export function authenticate(req, res, next) {
                    req.path.endsWith('.png') ||
                    req.path.endsWith('.jpg') ||
                    req.path.endsWith('.ico');
-  
+
   if (skipAuth) {
     return next();
   }
 
   // Extract token from header
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith('Bearer ') 
-    ? authHeader.substring(7) 
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.substring(7)
     : null;
 
   if (!token) {
-    logger.debug('Authentication failed - no token', { 
-      path: req.path, 
-      method: req.method 
+    logger.debug('Authentication failed - no token', {
+      path: req.path,
+      method: req.method,
     });
-    return res.status(401).json({ 
+    return res.status(401).json({
       error: 'Authentication required',
-      message: 'No token provided'
+      message: 'No token provided',
     });
   }
 
@@ -172,10 +172,10 @@ export function authenticate(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    logger.warn('Authentication failed - invalid token', { 
-      path: req.path, 
+    logger.warn('Authentication failed - invalid token', {
+      path: req.path,
       method: req.method,
-      error: error.message 
+      error: _error.message,
     });
     return res.status(401).json({ 
       error: 'Authentication failed',
@@ -392,4 +392,4 @@ export function listUsers(adminUsername) {
 }
 
 // Initialize on module load
-await initAuthConfig();
+initAuthConfig().catch(console.error);

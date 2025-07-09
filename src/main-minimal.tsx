@@ -24,31 +24,31 @@ if (document.readyState === 'loading') {
 
 function initApp() {
   console.log('DOM ready, initializing React...');
-  
+
   const rootElement = document.getElementById('root');
   if (!rootElement) {
     console.error('Root element not found!');
     return;
   }
-  
+
   console.log('Root element found:', rootElement);
-  
+
   try {
     const root = ReactDOM.createRoot(rootElement);
     console.log('React root created');
-    
+
     root.render(
       <React.StrictMode>
         <MinimalApp />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
-    
+
     console.log('React render called');
-    
+
     // Add to window for debugging
     (window as any).__reactRoot = root;
     (window as any).__reactMounted = true;
-    
+
   } catch (error) {
     console.error('Failed to initialize React:', error);
   }

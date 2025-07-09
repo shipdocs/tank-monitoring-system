@@ -4,17 +4,19 @@ export default function electronModuleLoader() {
     name: 'electron-module-loader',
     transformIndexHtml(html) {
       // For IIFE format, remove type="module" and crossorigin, add defer
+      // Fixed regex to properly handle script end tags with optional spaces
       let result = html.replace(
-        /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
-        '<script defer src="$1"></script>'
+        /<script\s+type="module"\s+crossorigin\s+src="([^"]+)"\s*><\s*\/\s*script\s*>/gi,
+        '<script defer src="$1"></script>',
       );
-      
+
       // Also handle plain script tags - add defer if not present
+      // Fixed regex to properly handle script end tags with optional spaces
       result = result.replace(
-        /<script src="([^"]+)"><\/script>/g,
-        '<script defer src="$1"></script>'
+        /<script\s+src="([^"]+)"\s*><\s*\/\s*script\s*>/gi,
+        '<script defer src="$1"></script>',
       );
-      
+
       return result;
     },
   };

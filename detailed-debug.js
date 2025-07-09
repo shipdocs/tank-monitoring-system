@@ -2,15 +2,15 @@ import { chromium } from 'playwright';
 
 async function detailedDebug() {
   console.log('🔍 Detailed debugging of React app...');
-  
-  const browser = await chromium.launch({ 
+
+  const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security'],
   });
-  
+
   try {
     const page = await browser.newPage();
-    
+
     // Capture ALL console messages with more detail
     const allMessages = [];
     page.on('console', msg => {
@@ -23,7 +23,7 @@ async function detailedDebug() {
         console.log(`   at ${location.url}:${location.lineNumber}:${location.columnNumber}`);
       }
     });
-    
+
     // Capture page errors
     const pageErrors = [];
     page.on('pageerror', error => {
@@ -31,7 +31,7 @@ async function detailedDebug() {
       console.log(`[PAGE ERROR] ${error.message}`);
       console.log(`   Stack: ${error.stack}`);
     });
-    
+
     // Capture request failures
     const requestFailures = [];
     page.on('requestfailed', request => {
@@ -39,7 +39,7 @@ async function detailedDebug() {
       console.log(`[REQUEST FAILED] ${request.method()} ${request.url()}`);
       console.log(`   Error: ${request.failure().errorText}`);
     });
-    
+
     // Capture response failures
     const responseFailures = [];
     page.on('response', response => {
@@ -48,45 +48,45 @@ async function detailedDebug() {
         console.log(`[RESPONSE ERROR] ${response.status()} ${response.url()}`);
       }
     });
-    
+
     console.log('\n📱 Loading main page with comprehensive monitoring...');
-    
+
     try {
-      await page.goto('http://localhost:3001', { 
-        waitUntil: 'networkidle', 
-        timeout: 30000 
+      await page.goto('http://localhost:3001', {
+        waitUntil: 'networkidle',
+        timeout: 30000,
       });
     } catch (error) {
       console.log(`[NAVIGATION ERROR] ${error.message}`);
     }
-    
+
     // Wait for potential React loading
     console.log('⏳ Waiting for React to load...');
     await page.waitForTimeout(15000);
-    
+
     // Check DOM state
     const domState = await page.evaluate(() => {
       const root = document.getElementById('root');
       const scripts = Array.from(document.querySelectorAll('script')).map(s => ({
         src: s.src,
         type: s.type,
-        loaded: s.readyState
+        loaded: s.readyState,
       }));
-      
+
       return {
         rootExists: !!root,
         rootHTML: root ? root.innerHTML : 'No root',
         rootChildren: root ? root.children.length : 0,
         bodyChildren: document.body.children.length,
-        scripts: scripts,
+        scripts,
         windowReact: typeof window.React,
         windowReactDOM: typeof window.ReactDOM,
         documentReadyState: document.readyState,
         hasReactRoot: !!document.querySelector('[data-reactroot]'),
-        allText: document.body.innerText || document.body.textContent || ''
+        allText: document.body.innerText || document.body.textContent || '',
       };
     });
-    
+
     // Try to manually trigger React if it exists
     const reactStatus = await page.evaluate(() => {
       try {
@@ -101,7 +101,7 @@ async function detailedDebug() {
         return `Error checking React: ${e.message}`;
       }
     });
-    
+
     console.log('\n📊 Detailed Debug Results:');
     console.log(`✅ Root element exists: ${domState.rootExists}`);
     console.log(`✅ Root children count: ${domState.rootChildren}`);
@@ -113,29 +113,29 @@ async function detailedDebug() {
     console.log(`✅ Window.ReactDOM: ${domState.windowReactDOM}`);
     console.log(`✅ React status: ${reactStatus}`);
     console.log(`✅ All text length: ${domState.allText.length}`);
-    
+
     console.log('\n📜 Scripts loaded:');
     domState.scripts.forEach(script => {
       console.log(`   ${script.src || 'inline'} (type: ${script.type || 'text/javascript'}, state: ${script.loaded || 'unknown'})`);
     });
-    
+
     console.log('\n📝 Summary:');
     console.log(`   Console messages: ${allMessages.length}`);
     console.log(`   Page errors: ${pageErrors.length}`);
     console.log(`   Request failures: ${requestFailures.length}`);
     console.log(`   Response failures: ${responseFailures.length}`);
-    
+
     if (domState.rootHTML.length > 10) {
       console.log(`\n✅ Root content preview: "${domState.rootHTML.substring(0, 300)}..."`);
     }
-    
+
     if (domState.allText.length > 10) {
       console.log(`\n✅ Visible text preview: "${domState.allText.substring(0, 200)}..."`);
     }
-    
+
     // Take final screenshot
     await page.screenshot({ path: 'detailed-debug-test.png', fullPage: true });
-    
+
     // Final diagnosis
     if (domState.rootChildren > 0 || domState.allText.length > 50) {
       console.log('\n🎉 React app appears to be working!');
@@ -147,7 +147,7 @@ async function detailedDebug() {
       console.log('\n❌ React app failed for unknown reasons - silent failure');
       console.log('   The JavaScript loads but React components are not rendering');
     }
-    
+
   } catch (error) {
     console.error('❌ Test error:', error.message);
   } finally {

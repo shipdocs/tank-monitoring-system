@@ -6,7 +6,7 @@ export default function electronModuleFix() {
       // Remove type="module" and add defer instead
       return html.replace(
         /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
-        '<script defer src="$1"></script>'
+        '<script defer src="$1"></script>',
       );
     },
   };

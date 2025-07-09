@@ -1,10 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
-import electronModuleLoader from './electron-module-loader.js';
 
 export default defineConfig({
-  plugins: [react(), electronModuleLoader()],
+  plugins: [react()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

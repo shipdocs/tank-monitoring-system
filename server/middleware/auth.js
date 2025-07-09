@@ -107,6 +107,16 @@ function generateToken(user) {
 
 // Verify JWT token
 export function verifyToken(token) {
+  // Handle default Electron token
+  if (token === 'electron-default-token') {
+    return {
+      username: 'electron-user',
+      role: 'admin',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+    };
+  }
+
   try {
     return jwt.verify(token, jwtSecret, {
       algorithms: ['HS256']

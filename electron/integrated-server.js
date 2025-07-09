@@ -733,8 +733,12 @@ export function startIntegratedServer(isDev = false) {
         }
       });
 
-      // Handle all routes for React app
+      // Handle all routes for React app (except static files and API)
       app.get('*', (req, res) => {
+        // Don't catch static file requests
+        if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
+          return res.status(404).send('File not found');
+        }
         res.sendFile(path.join(staticPath, 'index.html'));
       });
 

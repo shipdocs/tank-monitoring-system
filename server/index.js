@@ -101,17 +101,42 @@ const WS_PORT = 3002;
 // Middleware
 app.use(cors());
 
-// Security headers
+// Security headers middleware
+const securityHeaders = () => (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+};
+
 app.use(securityHeaders());
 
 // Enhanced JSON parsing with size limits
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Content type validation
+// Content type validation middleware
+const validateContentType = (allowedTypes) => (req, res, next) => {
+  if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+    const contentType = req.get('Content-Type');
+    if (contentType && !allowedTypes.some(type => contentType.includes(type))) {
+      return res.status(415).json({ error: 'Unsupported Media Type' });
+    }
+  }
+  next();
+};
+
 app.use(validateContentType(['application/json', 'application/x-www-form-urlencoded']));
 
-// Automation detection
+// Automation detection middleware
+const detectAutomation = () => (req, res, next) => {
+  const userAgent = req.get('User-Agent') || '';
+  const isBot = /bot|crawler|spider|scraper/i.test(userAgent);
+  req.isBot = isBot;
+  next();
+};
+
 app.use(detectAutomation());
 
 // Add request logging middleware

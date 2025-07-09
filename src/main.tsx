@@ -1,76 +1,43 @@
+// Add immediate console log to test if JS is executing
+console.log('🔥 JavaScript is executing!');
+console.log('🔥 Window object:', typeof window);
+console.log('🔥 Document object:', typeof document);
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import { AppErrorBoundary } from './components/AppErrorBoundary';
-import { PerformanceProvider } from './contexts/PerformanceContext';
-import { errorMonitoring } from './services/errorMonitoring';
-import { performanceMonitor } from './services/performanceMonitoring';
 import './index.css';
+import App from './App.tsx';
+import { TankDataProvider } from './components/TankDataProvider';
+import { AccessibilityProvider } from './components/AccessibilityProvider';
 
-// Initialize error monitoring
-errorMonitoring.initialize({
-  enabled: true,
-  service: 'custom', // Change to 'sentry', 'logRocket', etc. when ready
-  // apiKey: process.env.REACT_APP_ERROR_MONITORING_KEY,
-  environment: process.env.NODE_ENV || 'development',
-});
+// Simple test to see if React can mount at all
+console.log('🚀 Starting React app...');
+console.log('Root element:', document.getElementById('root'));
 
-// Initialize performance monitoring
-// Enable by default in development, configurable in production
-const enablePerformanceMonitoring =
-  process.env.NODE_ENV === 'development' ||
-  localStorage.getItem('enablePerformanceMonitoring') === 'true';
+console.log('🎯 About to mount React app...');
+console.log('🎯 Root element:', document.getElementById('root'));
 
-if (enablePerformanceMonitoring) {
-  performanceMonitor.enable();
-  console.log('Performance monitoring enabled');
-}
+try {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    console.error('❌ Root element not found!');
+  } else {
+    console.log('✅ Root element found, creating React root...');
+    const root = createRoot(rootElement);
+    console.log('✅ React root created, rendering app...');
 
-// Set up global error handlers
-window.addEventListener('unhandledrejection', (event) => {
-  errorMonitoring.reportError(
-    new Error(`Unhandled Promise Rejection: ${event.reason}`),
-    undefined,
-    { source: 'unhandledrejection' },
-  );
-});
-
-// Performance monitoring for global events
-if (enablePerformanceMonitoring) {
-  // Track page load performance
-  window.addEventListener('load', () => {
-    // Measure total page load time
-    const loadTime = performance.now();
-    performanceMonitor.addCustomMetric(
-      'Page Load Time',
-      loadTime,
-      'ms',
-      {
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-      },
+    root.render(
+      <StrictMode>
+        <AccessibilityProvider>
+          <TankDataProvider>
+            <App />
+          </TankDataProvider>
+        </AccessibilityProvider>
+      </StrictMode>,
     );
-  });
 
-  // Track navigation performance
-  const lastNavigationTime = performance.now();
-  window.addEventListener('beforeunload', () => {
-    const sessionDuration = performance.now() - lastNavigationTime;
-    performanceMonitor.addCustomMetric(
-      'Session Duration',
-      sessionDuration,
-      'ms',
-      { url: window.location.href },
-    );
-  });
+    console.log('✅ React app rendered successfully!');
+  }
+} catch (error) {
+  console.error('❌ Error mounting React app:', error);
 }
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PerformanceProvider enableByDefault={enablePerformanceMonitoring}>
-      <AppErrorBoundary>
-        <App />
-      </AppErrorBoundary>
-    </PerformanceProvider>
-  </StrictMode>,
-);

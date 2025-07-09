@@ -8,7 +8,7 @@ process.on('uncaughtException', (error) => {
   }
 });
 
-import { BrowserWindow, Menu, Notification, app, dialog, ipcMain, shell } from 'electron';
+import { BrowserWindow, Menu, Notification, app, dialog, ipcMain, shell, protocol } from 'electron';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require('electron-updater');
@@ -392,6 +392,13 @@ function createWindow() {
         enableRemoteModule: false,
         preload: path.join(__dirname, 'preload.cjs'),
         webSecurity: true,
+        // Enable ES modules in renderer
+        experimentalFeatures: true,
+        webviewTag: false,
+        // Allow ES modules to load from file:// protocol
+        allowRunningInsecureContent: false,
+        // Ensure modules can be loaded
+        nodeIntegrationInSubFrames: false,
       },
       show: false, // Don't show until ready-to-show
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -400,6 +407,25 @@ function createWindow() {
     // Handle window creation errors
     mainWindow.on('unresponsive', () => {
       addLog('ERROR', 'WINDOW', 'Main window became unresponsive');
+      
+      // Collect JavaScript call stack for debugging
+      mainWindow.webContents.executeJavaScript(`
+        console.error('Window unresponsive - collecting debug info');
+        const debugInfo = {
+          url: window.location.href,
+          readyState: document.readyState,
+          reactRoot: !!document.getElementById('root'),
+          reactMounted: !!(window.React || window._reactRootContainer),
+          scripts: Array.from(document.scripts).map(s => ({ src: s.src, type: s.type }))
+        };
+        console.error('Debug info:', debugInfo);
+        debugInfo;
+      `).then(info => {
+        addLog('ERROR', 'DEBUG', `Unresponsive window debug: ${JSON.stringify(info)}`);
+      }).catch(err => {
+        addLog('ERROR', 'DEBUG', `Failed to collect debug info: ${err.message}`);
+      });
+      
       const choice = dialog.showMessageBoxSync(mainWindow, {
         type: 'warning',
         title: 'Application Not Responding',
@@ -522,6 +548,66 @@ function createWindow() {
       app.quit();
     }, 5000);
   }
+
+  // Add render process gone detection
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    addLog('ERROR', 'RENDERER_CRASH', `Renderer process crashed: ${details.reason}`);
+    console.error('Renderer process gone:', details);
+
+    // Show error dialog
+    dialog.showErrorBox(
+      'Renderer Process Crashed',
+      `The renderer process has crashed.\nReason: ${details.reason}\n\nThe application will attempt to reload.`
+    );
+
+    // Attempt to reload
+    setTimeout(() => {
+      mainWindow.reload();
+    }, 1000);
+  });
+
+  // Add debugging for when content loads
+  mainWindow.webContents.on('did-finish-load', () => {
+    addLog('INFO', 'PAGE_LOAD', 'Page finished loading');
+    
+    // Enable DevTools for debugging
+    if (!isDev) {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+    
+    // Inject debugging script
+    mainWindow.webContents.executeJavaScript(`
+      console.log('Page loaded, debugging ES module loading...');
+      
+      // Simple debug check
+      const root = document.getElementById('root');
+      const rootContent = root ? root.innerHTML : 'no root';
+      const scriptCount = document.scripts.length;
+      const hasReact = !!(window.React || window.ReactDOM);
+      
+      console.log('Root content length:', rootContent.length);
+      console.log('Scripts loaded:', scriptCount);
+      console.log('React detected:', hasReact);
+      
+      // Check for any script errors
+      window.addEventListener('error', (e) => {
+        console.error('Script error:', e.message, e.filename);
+      });
+      
+      // Return simple string
+      'Root: ' + rootContent.length + ' chars, Scripts: ' + scriptCount + ', React: ' + hasReact;
+    `).then(info => {
+      addLog('INFO', 'MODULE_DEBUG', info);
+      console.log('Debug info:', info);
+      
+      // Check if we need to open DevTools
+      if (info.includes('Root: 0 chars')) {
+        mainWindow.webContents.openDevTools({ mode: 'bottom' });
+      }
+    }).catch(err => {
+      addLog('ERROR', 'MODULE_DEBUG', `Failed to get debug info: ${err.message}`);
+    });
+  });
 
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {

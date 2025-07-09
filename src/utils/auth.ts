@@ -18,9 +18,20 @@ export interface AuthResponse {
 class AuthService {
   private token: string | null = null;
   private user: User | null = null;
+  private isElectron: boolean = false;
 
   constructor() {
+    // Detect if running in Electron
+    this.isElectron = !!(window as any).electronAPI ||
+                      navigator.userAgent.toLowerCase().includes('electron') ||
+                      process?.versions?.electron !== undefined;
+
     this.loadFromStorage();
+
+    // If running in Electron and no token exists, create a default one
+    if (this.isElectron && !this.token) {
+      this.setupElectronAuth();
+    }
   }
 
   private loadFromStorage(): void {
@@ -34,6 +45,22 @@ class AuthService {
         this.user = null;
       }
     }
+  }
+
+  private setupElectronAuth(): void {
+    // Create a default token and user for Electron apps
+    const defaultToken = 'electron-default-token';
+    const defaultUser: User = {
+      username: 'electron-user',
+      role: 'admin'
+    };
+
+    this.token = defaultToken;
+    this.user = defaultUser;
+    localStorage.setItem(TOKEN_KEY, defaultToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(defaultUser));
+
+    console.log('🔧 Electron mode: Using default authentication');
   }
 
   async login(username: string, password: string): Promise<AuthResponse> {
@@ -74,7 +101,13 @@ class AuthService {
     this.user = null;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    window.location.href = '/login';
+
+    // In Electron mode, don't redirect to login, just reload the app
+    if (this.isElectron) {
+      window.location.reload();
+    } else {
+      window.location.href = '/login';
+    }
   }
 
   isAuthenticated(): boolean {

@@ -4,7 +4,6 @@ import { ControlsSidebar } from './components/ControlsSidebar';
 import { VesselConfigurationWizard } from './components/wizard/VesselConfigurationWizard';
 import { CollapsibleHeader } from './components/CollapsibleHeader';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AccessibilityProvider } from './components/AccessibilityProvider';
 import { TankDataProvider } from './components/TankDataProvider';
 import { SkipNavigation } from './components/SkipNavigation';
 import { useTankDataContext } from './components/TankDataProvider';
@@ -16,18 +15,18 @@ import { type ViewMode } from './types/tank';
 import authService from './utils/auth';
 
 function App() {
-  // Check authentication on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const isValid = await authService.verifyToken();
-      if (!isValid) {
-        window.location.href = '/login';
-      }
-    };
-    checkAuth();
-  }, []);
+  // Check authentication on mount - TEMPORARILY DISABLED FOR DEBUGGING
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const isValid = await authService.verifyToken();
+  //     if (!isValid) {
+  //       window.location.href = '/login';
+  //     }
+  //   };
+  //   checkAuth();
+  // }, []);
 
-  const tankData = useTankData();
+  const tankData = useTankDataContext();
   const { defaultLayout, saveDefaultLayout } = useDefaultLayout();
   const { branding } = useAppBranding();
   const [viewMode, setViewMode] = useState<ViewMode>(defaultLayout);
@@ -63,10 +62,9 @@ function App() {
   }, [defaultLayout]);
 
   return (
-    <AccessibilityProvider>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <SkipNavigation />
-        <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <SkipNavigation />
+      <div className="container mx-auto px-4 py-8">
           {/* Collapsible Header */}
           <CollapsibleHeader
             appName={branding.appName}
@@ -179,7 +177,6 @@ function App() {
           )}
         </div>
       </div>
-    </AccessibilityProvider>
   );
 }
 

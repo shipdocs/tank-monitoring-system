@@ -1,7 +1,7 @@
 {
   "name": "tank-monitoring-system",
   "private": true,
-  "version": "1.0.2-beta.2",
+  "version": "2.0.1",
   "description": "Real-time tank monitoring system with CSV file import and serial communication",
   "author": "Martin (shipdocs)",
   "license": "SEE LICENSE IN LICENSE",
@@ -63,6 +63,8 @@
     "react-dom": "^18.3.1",
     "serialport": "^12.0.0",
     "web-vitals": "^5.0.3",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.14.2"
   },
   "devDependencies": {

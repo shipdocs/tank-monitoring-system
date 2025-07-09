@@ -69,6 +69,11 @@ if (!fs.existsSync(outputDir)) {
       'ws',
       'cors',
       'chokidar',
+      'winston',
+      'winston-daily-rotate-file',
+      'jsonwebtoken',
+      'bcrypt',
+      'express-rate-limit'
     ];
 
     // Copy function that preserves dependencies

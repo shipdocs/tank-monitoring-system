@@ -30,6 +30,11 @@ const serverDeps = {
     'csv-parser': '^3.2.0',
     'chokidar': '^4.0.3',
     'serialport': '^12.0.1',
+    'winston': '^3.17.0',
+    'winston-daily-rotate-file': '^5.0.0',
+    'jsonwebtoken': '^9.0.2',
+    'bcrypt': '^6.0.0',
+    'express-rate-limit': '^7.5.1'
   },
 };
 

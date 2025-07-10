@@ -114,7 +114,7 @@ function saveConfig() {
 function getStatus(level) {
   if (level < 25) return 'critical';
   if (level < 50) return 'low';
-  if (level > 950) return 'high';
+  if (level > 1400) return 'high'; // Updated for millimeter measurements
   return 'normal';
 }
 
@@ -136,10 +136,10 @@ function parseVerticalFormatData(fileContent, config) {
       id: `tank_${tanks.length + 1}`,
       name: `Tank ${String.fromCharCode(65 + tanks.length)}`, // Tank A, Tank B, etc.
       currentLevel: 0,
-      maxCapacity: 1000,
+      maxCapacity: 1500, // Updated for millimeter measurements
       minLevel: 50,
-      maxLevel: 950,
-      unit: 'L',
+      maxLevel: 1400, // Updated to be below maxCapacity
+      unit: 'mm', // Changed from 'L' to 'mm' to match data format
       status: 'normal',
       lastUpdated: new Date().toISOString(),
       location: `Position ${tanks.length + 1}`,
@@ -182,10 +182,10 @@ function generateEmptyTanks() {
       id: i,
       name: `Tank ${String.fromCharCode(64 + i)}`, // Tank A, Tank B, etc.
       currentLevel: 0, // Empty tanks
-      maxCapacity: 1000,
+      maxCapacity: 1500, // Updated for millimeter measurements
       minLevel: 50,
-      maxLevel: 950,
-      unit: 'L',
+      maxLevel: 1400, // Updated to be below maxCapacity
+      unit: 'mm', // Changed from 'L' to 'mm' to match data format
       status: 'critical', // Empty tanks are critical
       lastUpdated: timestamp,
       location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,

@@ -110,13 +110,8 @@ function saveConfig() {
   }
 }
 
-// Tank status helper function
-function getStatus(level) {
-  if (level < 25) return 'critical';
-  if (level < 50) return 'low';
-  if (level > 1400) return 'high'; // Updated for millimeter measurements
-  return 'normal';
-}
+// Tank status now determined by Enhanced Tank Data Service
+// based on tank type and calibration data
 
 // Vertical format parser (copied from main server)
 function parseVerticalFormatData(fileContent, config) {
@@ -132,18 +127,12 @@ function parseVerticalFormatData(fileContent, config) {
     const recordLines = lines.slice(i, i + linesPerRecord);
     if (recordLines.length < linesPerRecord) break;
 
-    const tank = {
-      id: `tank_${tanks.length + 1}`,
-      name: `Tank ${String.fromCharCode(65 + tanks.length)}`, // Tank A, Tank B, etc.
+    // Only store raw measurement data - no tank configuration
+    const measurement = {
+      index: tanks.length,
       currentLevel: 0,
-      maxCapacity: 1500, // Updated for millimeter measurements
-      minLevel: 50,
-      maxLevel: 1400, // Updated to be below maxCapacity
-      unit: 'mm', // Changed from 'L' to 'mm' to match data format
-      status: 'normal',
-      lastUpdated: new Date().toISOString(),
-      location: `Position ${tanks.length + 1}`,
-      group: tanks.length < 6 ? 'BB' : 'SB'
+      temperature: 20,
+      lastUpdated: new Date().toISOString()
     };
 
     // Apply line mapping
@@ -163,46 +152,36 @@ function parseVerticalFormatData(fileContent, config) {
       }
     });
 
-    tanks.push(tank);
+    tanks.push(measurement);
   }
 
   addLog('INFO', 'PARSER', `Parsed ${tanks.length} tanks from vertical format`);
   return tanks;
 }
 
-// Generate empty tank data
-function generateEmptyTanks() {
-  const tanks = [];
+// Generate empty measurement data
+function generateEmptyMeasurements() {
+  const measurements = [];
   const timestamp = new Date().toISOString();
 
-  for (let i = 1; i <= 12; i++) {
-    const group = i >= 1 && i <= 6 ? 'BB' : i >= 7 && i <= 12 ? 'SB' : 'CENTER';
-
-    tanks.push({
-      id: i,
-      name: `Tank ${String.fromCharCode(64 + i)}`, // Tank A, Tank B, etc.
-      currentLevel: 0, // Empty tanks
-      maxCapacity: 1500, // Updated for millimeter measurements
-      minLevel: 50,
-      maxLevel: 1400, // Updated to be below maxCapacity
-      unit: 'mm', // Changed from 'L' to 'mm' to match data format
-      status: 'critical', // Empty tanks are critical
-      lastUpdated: timestamp,
-      location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,
-      group: group,
-      temperature: 20 // Default temperature
+  for (let i = 0; i < 12; i++) {
+    measurements.push({
+      index: i,
+      currentLevel: 0, // Empty measurements
+      temperature: 20, // Default temperature
+      lastUpdated: timestamp
     });
   }
 
-  // Store the empty tank data
-  lastTankData = tanks;
+  // Store the empty measurement data
+  lastTankData = measurements;
 
   // Broadcast initial empty data
-  broadcastTankData(tanks);
+  broadcastTankData(measurements);
 
-  addLog('INFO', 'SERVER', '📊 Generated 12 empty tanks - no data source configured');
+  addLog('INFO', 'SERVER', '📊 Generated 12 empty measurements - no data source configured');
 
-  return tanks;
+  return measurements;
 }
 
 // Broadcast data to all connected WebSocket clients
@@ -449,7 +428,7 @@ export function startIntegratedServer(isDev = false) {
         // No file monitoring configured, generate empty tanks
         addLog('INFO', 'SERVER', 'No data source configured, generating empty tanks');
         setTimeout(() => {
-          generateEmptyTanks();
+          generateEmptyMeasurements();
         }, 1000);
       }
 

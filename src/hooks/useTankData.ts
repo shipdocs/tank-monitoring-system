@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Tank, TankData } from '../types/tank';
+import { EnhancedTank } from '../types/tankTable';
+import { EnhancedTankDataService } from '../services/EnhancedTankDataService';
 
-
+// Raw measurement interface from server
+interface RawMeasurement {
+  index: number;
+  currentLevel: number;
+  temperature: number;
+  lastUpdated: string;
+}
 
 // Helper function to calculate trend
 const calculateTrend = (currentLevel: number, previousLevel: number): { trend: Tank['trend'], trendValue: number } => {
@@ -28,22 +36,40 @@ export const useTankData = () => {
     connectionStatus: 'disconnected',
   });
 
-
+  const enhancedDataService = new EnhancedTankDataService();
 
   useEffect(() => {
     let updateInterval: NodeJS.Timeout | null = null;
 
-    // Simple data fetching function
+    // Fetch raw measurements and enhance with tank table data
     const fetchTankData = async () => {
       try {
         const response = await fetch('http://localhost:3001/api/tanks');
         if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Fetched tank data:', data.length, 'tanks');
+          const rawMeasurements: RawMeasurement[] = await response.json();
+          console.log('✅ Fetched raw measurements:', rawMeasurements.length, 'measurements');
+
+          // Convert raw measurements to basic Tank objects
+          const basicTanks: Tank[] = rawMeasurements.map(measurement => ({
+            id: measurement.index + 1, // Convert 0-based index to 1-based ID
+            name: `Measurement ${measurement.index + 1}`,
+            currentLevel: measurement.currentLevel,
+            maxCapacity: 1000, // Temporary - will be overridden by tank table
+            minLevel: 0,
+            maxLevel: 1000,
+            unit: 'mm',
+            status: 'normal' as const,
+            lastUpdated: new Date(measurement.lastUpdated),
+            location: `Source ${measurement.index + 1}`,
+            temperature: measurement.temperature
+          }));
+
+          // Enhance with tank table data
+          const enhancedTanks = enhancedDataService.enhanceTankData(basicTanks);
 
           setTankData(prev => {
             // Calculate trends by comparing with previous data
-            const tanksWithTrends = data.map((newTank: Tank) => {
+            const tanksWithTrends = enhancedTanks.map((newTank: EnhancedTank) => {
               const prevTank = prev.tanks.find(t => t.id === newTank.id);
               const previousLevel = prevTank?.currentLevel || newTank.currentLevel;
               const { trend, trendValue } = calculateTrend(newTank.currentLevel, previousLevel);

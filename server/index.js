@@ -123,17 +123,12 @@ function parseVerticalFormatData(fileContent, config) {
     const recordLines = lines.slice(i, i + linesPerRecord);
     if (recordLines.length < linesPerRecord) break;
 
-    const tank = {
-      id: tanks.length + 1,
-      name: `Tank ${tanks.length + 1}`,
+    // Only extract raw measurement data - no tank configuration
+    const rawMeasurement = {
+      index: tanks.length,
       currentLevel: 0,
-      maxCapacity: 1500, // Updated for millimeter measurements
-      minLevel: 50,
-      maxLevel: 1400, // Updated to be below maxCapacity
-      unit: 'mm', // Changed from 'L' to 'mm' to match data format
-      status: 'normal',
-      lastUpdated: new Date().toISOString(),
-      location: `Position ${tanks.length + 1}`
+      temperature: 20, // Default temperature
+      lastUpdated: new Date().toISOString()
     };
 
     // Apply line mapping
@@ -143,19 +138,17 @@ function parseVerticalFormatData(fileContent, config) {
         const value = recordLines[lineNum];
 
         if (fieldName === 'level') {
-          tank.currentLevel = parseFloat(value) || 0;
+          rawMeasurement.currentLevel = parseFloat(value) || 0;
         } else if (fieldName === 'temperature') {
-          tank.temperature = parseFloat(value) || 0;
-        } else if (fieldName === 'name') {
-          tank.name = value || tank.name;
+          rawMeasurement.temperature = parseFloat(value) || 0;
         }
       }
     });
 
-    tanks.push(tank);
+    tanks.push(rawMeasurement);
   }
 
-  console.log(`Parsed ${tanks.length} tanks from vertical format`);
+  console.log(`Parsed ${tanks.length} raw measurements from vertical format`);
   return tanks;
 }
 
@@ -330,45 +323,23 @@ function parseTankData(data) {
     if (currentConfig.dataFormat === 'json') {
       // Expect JSON format: {"tanks": [{"id": 1, "level": 123.4}, ...]}
       const parsed = JSON.parse(data);
-      return parsed.tanks?.map(tank => {
-        const tankId = tank.id;
-        const group = tankId >= 1 && tankId <= 6 ? 'BB' :
-                     tankId >= 7 && tankId <= 12 ? 'SB' : 'CENTER';
-
+      return parsed.tanks?.map((tank, index) => {
         return {
-          id: tankId,
-          name: `Tank ${String.fromCharCode(64 + tankId)}`,
+          index: index,
           currentLevel: parseFloat(tank.level) || 0,
-          maxCapacity: 1500, // Updated for millimeter measurements
-          minLevel: 50,
-          maxLevel: 1400, // Updated to be below maxCapacity
-          unit: 'mm', // Changed from 'L' to 'mm' to match data format
-          status: getStatus(parseFloat(tank.level) || 0),
-          lastUpdated: timestamp,
-          location: `Zone ${Math.floor((tankId - 1) / 3) + 1}-${((tankId - 1) % 3) + 1}`,
-          group: group
+          temperature: parseFloat(tank.temperature) || 20,
+          lastUpdated: timestamp
         };
       }) || [];
     } else {
       // Default CSV format: "123.4,234.5,345.6,..." (12 values)
       const values = data.trim().split(',').map(v => parseFloat(v.trim()) || 0);
       return values.slice(0, currentConfig.tankCount).map((level, index) => {
-        const tankId = index + 1;
-        const group = tankId >= 1 && tankId <= 6 ? 'BB' :
-                     tankId >= 7 && tankId <= 12 ? 'SB' : 'CENTER';
-
         return {
-          id: tankId,
-          name: `Tank ${String.fromCharCode(65 + index)}`,
+          index: index,
           currentLevel: level,
-          maxCapacity: 1500, // Updated for millimeter measurements
-          minLevel: 50,
-          maxLevel: 1400, // Updated to be below maxCapacity
-          unit: 'mm', // Changed from 'L' to 'mm' to match data format
-          status: getStatus(level),
-          lastUpdated: timestamp,
-          location: `Zone ${Math.floor(index / 3) + 1}-${(index % 3) + 1}`,
-          group: group
+          temperature: 20, // Default temperature
+          lastUpdated: timestamp
         };
       });
     }
@@ -380,13 +351,8 @@ function parseTankData(data) {
 
 
 
-// Determine tank status based on level
-function getStatus(level) {
-  if (level < 25) return 'critical';
-  if (level < 50) return 'low';
-  if (level > 1400) return 'high'; // Updated for millimeter measurements
-  return 'normal';
-}
+// Tank status now determined by Enhanced Tank Data Service
+// based on tank type and calibration data
 
 // Auto-discover CSV columns and suggest mappings
 async function discoverCsvColumns(filePath) {
@@ -617,7 +583,7 @@ async function connectDataSource() {
   // Serial port mode
   if (!SerialPort) {
     console.log('SerialPort not available, generating empty tanks');
-    generateEmptyTanks();
+    generateEmptyMeasurements();
     return true;
   }
 
@@ -747,39 +713,29 @@ function stopCsvFileMonitoring() {
 
 
 
-// Generate empty tank data
-function generateEmptyTanks() {
-  const tanks = [];
+// Generate empty measurement data
+function generateEmptyMeasurements() {
+  const measurements = [];
   const timestamp = new Date().toISOString();
 
-  for (let i = 1; i <= 12; i++) {
-    const group = i >= 1 && i <= 6 ? 'BB' : i >= 7 && i <= 12 ? 'SB' : 'CENTER';
-
-    tanks.push({
-      id: i,
-      name: `Tank ${String.fromCharCode(64 + i)}`, // Tank A, Tank B, etc.
-      currentLevel: 0, // Empty tanks
-      maxCapacity: 1500, // Updated for millimeter measurements
-      minLevel: 50,
-      maxLevel: 1400, // Updated to be below maxCapacity
-      unit: 'mm', // Changed from 'L' to 'mm' to match data format
-      status: 'critical', // Empty tanks are critical
-      lastUpdated: timestamp,
-      location: `Zone ${Math.floor((i - 1) / 3) + 1}-${((i - 1) % 3) + 1}`,
-      group: group,
-      temperature: 20 // Default temperature
+  for (let i = 0; i < 12; i++) {
+    measurements.push({
+      index: i,
+      currentLevel: 0, // Empty measurements
+      temperature: 20, // Default temperature
+      lastUpdated: timestamp
     });
   }
 
-  // Store the empty tank data
-  lastTankData = tanks;
+  // Store the empty measurement data
+  lastTankData = measurements;
 
   // Broadcast initial empty data
-  broadcastTankData(tanks);
+  broadcastTankData(measurements);
 
-  console.log('📊 Generated 12 empty tanks - no data source configured');
+  console.log('📊 Generated 12 empty measurements - no data source configured');
 
-  return tanks;
+  return measurements;
 }
 
 // Disconnect data source
@@ -838,10 +794,17 @@ app.get('/api/config', (req, res) => {
   res.json(currentConfig);
 });
 
-// Tank data endpoint
+// Tank data endpoint - returns raw measurements
 app.get('/api/tanks', (req, res) => {
   if (lastTankData && lastTankData.length > 0) {
-    res.json(lastTankData);
+    // Ensure we return raw measurement format
+    const rawMeasurements = lastTankData.map((data, index) => ({
+      index: data.index !== undefined ? data.index : index,
+      currentLevel: data.currentLevel || data.level || 0,
+      temperature: data.temperature || 20,
+      lastUpdated: data.lastUpdated || new Date().toISOString()
+    }));
+    res.json(rawMeasurements);
   } else {
     res.status(503).json({
       error: 'No tank data available',
@@ -1294,7 +1257,7 @@ async function init() {
     }, 1000);
   } else if (!SerialPort) {
     setTimeout(() => {
-      generateEmptyTanks();
+      generateEmptyMeasurements();
     }, 1000);
   } else if (currentConfig.autoConnect && currentConfig.selectedPort) {
     setTimeout(() => {

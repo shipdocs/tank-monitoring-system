@@ -1,9 +1,0 @@
-ID    NAME         LEVEL   CAPACITY TEMP  PRESS STATUS   LOCATION  TYPE    
-T001  Alpha Tank   245.5   1000     22.5  1.2   OK       Zone A-1  Fuel    
-T002  Beta Tank    678.2   1200     23.1  1.1   OK       Zone A-2  Water   
-T003  Gamma Tank   892.7   1500     21.8  1.3   WARNING  Zone B-1  Chemical
-T004  Delta Tank   156.3   800      24.2  1.0   OK       Zone B-2  Oil     
-T005  Epsilon Tank 445.8   1000     22.9  1.2   OK       Zone C-1  Fuel    
-T006  Zeta Tank    723.4   1300     23.5  1.1   OK       Zone C-2  Water   
-T007  Eta Tank     334.1   900      25.1  1.4   ERROR    Zone D-1  Chemical
-T008  Theta Tank   567.9   1100     22.3  1.2   OK       Zone D-2  Oil     

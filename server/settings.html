@@ -301,7 +301,7 @@
                                 <thead>
                                     <tr class="bg-gray-50">
                                         <th class="border border-gray-300 px-3 py-2 text-left">Tank Name</th>
-                                        <th class="border border-gray-300 px-3 py-2 text-left">Max Height (mm)</th>
+                                        <th class="border border-gray-300 px-3 py-2 text-left">Max Height</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">Allowed Height (mm)</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">Current (mm)</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">%</th>
@@ -808,12 +808,8 @@
                 const maxCapacity = tank.maxCapacity || 1000;
                 const unit = tank.unit || 'L';
 
-                const config = tankConfig.tanks[tankId] || {
-                    maxHeight: 1500,
-                    allowedHeight: 1400
-                };
-
-                const percentage = config.allowedHeight > 0 ? (currentLevel / config.allowedHeight * 100) : 0;
+                // Tank configuration now comes from tank table imports
+                const percentage = maxCapacity > 0 ? (currentLevel / maxCapacity * 100) : 0;
                 const status = getStatusFromPercentage(percentage);
 
                 const row = document.createElement('tr');
@@ -826,15 +822,8 @@
                                oninput="handleTankNameInput('${tankId}', this.value)"
                                class="w-full p-1 border border-gray-300 rounded text-sm">
                     </td>
-                    <td class="border border-gray-300 px-3 py-2">
-                        <input type="number"
-                               id="maxHeight_${tankId}"
-                               value="${config.maxHeight}"
-                               min="0"
-                               step="1"
-                               onchange="updateTankConfig('${tankId}', 'maxHeight', this.value)"
-                               oninput="handleTankConfigInput('${tankId}', 'maxHeight', this.value)"
-                               class="w-full p-1 border border-gray-300 rounded text-sm">
+                    <td class="border border-gray-300 px-3 py-2 text-gray-500">
+                        <span class="text-sm">From Tank Table</span>
                     </td>
                     <td class="border border-gray-300 px-3 py-2">
                         <input type="number"
@@ -903,17 +892,8 @@
             console.log(`Tank ${tankId} name changed to: ${name}`);
         }
 
-        // Full update handlers (called on blur/change)
-        function updateTankConfig(tankId, field, value) {
-            if (!tankConfig.tanks[tankId]) {
-                tankConfig.tanks[tankId] = {};
-            }
-            tankConfig.tanks[tankId][field] = parseFloat(value) || 0;
-
-            // Only update the specific row, not the entire table
-            updateTankRowStatus(tankId);
-            addLog(`Tank ${tankId} ${field} updated to ${value}`, 'info');
-        }
+        // Tank configuration now comes from tank table imports
+        // Individual tank height settings removed
 
         function updateTankName(tankId, name) {
             // This would need to be implemented on the server side
@@ -921,40 +901,8 @@
             addLog(`Tank ${tankId} name updated to: ${name}`, 'info');
         }
 
-        // Update only the status and percentage for a specific tank row
-        function updateTankRowStatus(tankId) {
-            const tank = currentTanks.find(t => t.id === tankId);
-            if (!tank) return;
-
-            const config = tankConfig.tanks[tankId] || {
-                maxHeight: 1500,
-                allowedHeight: 1400
-            };
-
-            const percentage = config.allowedHeight > 0 ? (tank.currentLevel / config.allowedHeight * 100) : 0;
-            const status = getStatusFromPercentage(percentage);
-
-            // Find the row and update only the percentage and status cells
-            const rows = document.querySelectorAll('#tankConfigTable tr');
-            rows.forEach(row => {
-                const nameInput = row.querySelector(`input[id="tankName_${tankId}"]`);
-                if (nameInput) {
-                    // This is the correct row, update percentage and status
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length >= 6) {
-                        // Update percentage cell (index 4)
-                        cells[4].textContent = `${percentage.toFixed(1)}%`;
-
-                        // Update status cell (index 5)
-                        cells[5].innerHTML = `
-                            <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}">
-                                ${status}
-                            </span>
-                        `;
-                    }
-                }
-            });
-        }
+        // Tank status now calculated from tank table data
+        // Individual tank row updates removed
 
         function saveTankConfiguration() {
             const saveButton = document.getElementById('saveTankConfig');

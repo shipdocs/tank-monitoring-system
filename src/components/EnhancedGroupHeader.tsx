@@ -50,51 +50,53 @@ export const EnhancedGroupHeader: React.FC<EnhancedGroupHeaderProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+    <div className="bg-gray-100 border border-gray-400 rounded-sm p-2 mb-2 shadow-sm">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h3 className="text-lg font-semibold text-gray-800">{groupTotals.groupName}</h3>
-          <div className="h-px bg-gray-300 flex-1 mx-4"></div>
-          <span className="text-sm text-gray-500">{groupTotals.tankCount} tanks</span>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-sm font-black text-gray-900">{groupTotals.groupName}</h3>
+          <div className="h-px bg-gray-500 flex-1 mx-2"></div>
+          <span className="text-xs font-bold text-gray-700 bg-gray-200 px-1 py-0.5 rounded">
+            {groupTotals.tankCount}
+          </span>
         </div>
-        
-        {/* Group Totals */}
-        <div className="flex items-center space-x-6">
+
+        {/* Ultra Compact Group Totals */}
+        <div className="flex items-center space-x-3">
           <div className="text-center">
-            <div className="text-sm text-gray-600">Volume</div>
-            <div className="text-lg font-bold text-blue-600">
-              {groupTotals.totalVolume.toFixed(1)} m³
+            <div className="text-xs font-bold text-gray-700">VOL</div>
+            <div className="text-xs font-black text-blue-800">
+              {groupTotals.totalVolume.toFixed(0)} m³
             </div>
           </div>
-          
+
           <div className="text-center">
-            <div className="text-sm text-gray-600">Weight</div>
-            <div className="text-lg font-bold text-green-600">
-              {groupTotals.totalMetricTons.toFixed(1)} MT
+            <div className="text-xs font-bold text-gray-700">WT</div>
+            <div className="text-xs font-black text-green-800">
+              {groupTotals.totalMetricTons.toFixed(0)} MT
             </div>
           </div>
-          
+
           <div className="text-center">
-            <div className="text-sm text-gray-600">Avg Fill</div>
-            <div className="text-lg font-bold text-purple-600">
-              {groupTotals.averageFillPercentage.toFixed(1)}%
+            <div className="text-xs font-bold text-gray-700">FILL</div>
+            <div className="text-xs font-black text-purple-800">
+              {groupTotals.averageFillPercentage.toFixed(0)}%
             </div>
           </div>
-          
+
           {groupTotals.averageTemperature !== null && (
             <div className="text-center">
-              <div className="text-sm text-gray-600">Avg Temp</div>
-              <div className="text-lg font-bold text-blue-600">
-                {groupTotals.averageTemperature.toFixed(1)}°C
+              <div className="text-xs font-bold text-gray-700">TEMP</div>
+              <div className="text-xs font-black text-blue-800">
+                {groupTotals.averageTemperature.toFixed(0)}°C
               </div>
             </div>
           )}
-          
+
           <div className="text-center">
-            <div className="text-sm text-gray-600">Trend</div>
-            <div className="flex items-center justify-center space-x-1">
+            <div className="text-xs font-bold text-gray-700">FLOW</div>
+            <div className="flex items-center justify-center space-x-0.5">
               {getTrendIcon(groupTotals.trend)}
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-xs font-black text-gray-900">
                 {getFlowRateDisplay(groupTotals.flowRate)}
               </span>
             </div>

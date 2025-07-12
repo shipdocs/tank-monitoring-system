@@ -1,7 +1,7 @@
 {
   "name": "tank-monitoring-system",
   "private": true,
-  "version": "1.2.3",
+  "version": "1.1.0",
   "description": "Real-time tank monitoring system with CSV file import and serial communication",
   "author": "Martin (shipdocs)",
   "license": "SEE LICENSE IN LICENSE",
@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/shipdocs/tank-monitoring-system#readme",
   "type": "module",
-  "main": "electron/main.js",
+  "main": "electron/main-debug.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "vite",
@@ -134,12 +134,6 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "shipdocs",
-      "repo": "tank-monitoring-system",
-      "releaseType": "release"
     }
   }
 }

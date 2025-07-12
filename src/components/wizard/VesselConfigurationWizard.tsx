@@ -28,7 +28,7 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
   });
 
   const [currentTanks, setCurrentTanks] = useState<Tank[]>(tanks);
-  const [isLoadingTanks, setIsLoadingTanks] = useState(false);
+  const [isLoadingTanks] = useState(false);
   const [isApplyingConfig, setIsApplyingConfig] = useState(false);
 
   const totalSteps = 5;

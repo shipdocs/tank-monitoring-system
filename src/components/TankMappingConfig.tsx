@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Link, Unlink, Save, AlertCircle } from 'lucide-react';
+import { Settings, Unlink, Save, AlertCircle } from 'lucide-react';
 import { TankMapping } from '../types/tankTable';
 import { TankTableStorage } from '../storage/TankTableStorage';
 import { EnhancedTankDataService } from '../services/EnhancedTankDataService';
@@ -17,18 +17,14 @@ export const TankMappingConfig: React.FC<TankMappingConfigProps> = ({
 }) => {
   const [mappings, setMappings] = useState<TankMapping[]>([]);
   const [activeTankTableId, setActiveTankTableId] = useState<string>('');
-  const [tankTables, setTankTables] = useState<any[]>([]);
-  const [availableTanks, setAvailableTanks] = useState<any[]>([]);
+  const [tankTables, setTankTables] = useState<{ id: string; name: string; tanks: Array<{ tank_id: string; tank_name: string; tank_type: string }> }[]>([]);
+  const [availableTanks, setAvailableTanks] = useState<{ tank_id: string; tank_name: string; tank_type: string }[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
   const storage = TankTableStorage.getInstance();
   const dataService = new EnhancedTankDataService();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
+  const loadData = React.useCallback(() => {
     // Load tank tables
     const tables = storage.getTankTables();
     setTankTables(tables);
@@ -43,7 +39,11 @@ export const TankMappingConfig: React.FC<TankMappingConfigProps> = ({
       const activeTable = storage.getTankTable(config.active_tank_table_id);
       setAvailableTanks(activeTable?.tanks || []);
     }
-  };
+  }, [storage]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleTankTableChange = (tableId: string) => {
     setActiveTankTableId(tableId);
@@ -63,7 +63,7 @@ export const TankMappingConfig: React.FC<TankMappingConfigProps> = ({
     setHasChanges(true);
   };
 
-  const updateMapping = (index: number, field: keyof TankMapping, value: any) => {
+  const updateMapping = (index: number, field: keyof TankMapping, value: string | boolean) => {
     const newMappings = [...mappings];
     if (!newMappings[index]) {
       newMappings[index] = {

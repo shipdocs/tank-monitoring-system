@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Tank, TankData } from '../types/tank';
 import { EnhancedTank } from '../types/tankTable';
 import { EnhancedTankDataService } from '../services/EnhancedTankDataService';
@@ -36,7 +36,7 @@ export const useTankData = () => {
     connectionStatus: 'disconnected',
   });
 
-  const enhancedDataService = new EnhancedTankDataService();
+  const enhancedDataService = useMemo(() => new EnhancedTankDataService(), []);
 
   useEffect(() => {
     let updateInterval: NodeJS.Timeout | null = null;
@@ -116,7 +116,7 @@ export const useTankData = () => {
 
         if (enhancedTanks.length > 0) {
           console.log(`✅ Created ${enhancedTanks.length} enhanced tanks from tank table data`);
-          setTankData(prev => ({
+          setTankData(() => ({
             tanks: enhancedTanks.map((tank: EnhancedTank) => ({
               ...tank,
               trend: 'stable' as const,
@@ -151,7 +151,7 @@ export const useTankData = () => {
         clearInterval(updateInterval);
       }
     };
-  }, []); // Empty dependency array - run once on mount
+  }, [enhancedDataService]); // Include enhancedDataService in dependency array
 
   return tankData;
 };

@@ -2,9 +2,22 @@ import { Product } from '../types/product';
 
 export class ProductService {
   private static instance: ProductService;
-  
+
   // Storage key
   private readonly PRODUCTS_KEY = 'tankmon_products';
+
+  // UUID generation with fallback for browser compatibility
+  private generateUUID(): string {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback UUID generation for older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
 
   static getInstance(): ProductService {
     if (!ProductService.instance) {
@@ -50,7 +63,12 @@ export class ProductService {
 
   // CRUD operations
   getProducts(): Product[] {
-    return this.getItem<Product[]>(this.PRODUCTS_KEY) || [];
+    const products = this.getItem<Product[]>(this.PRODUCTS_KEY) || [];
+    return products.map(product => ({
+      ...product,
+      created_at: product.created_at ? new Date(product.created_at) : new Date(),
+      updated_at: product.updated_at ? new Date(product.updated_at) : new Date()
+    }));
   }
 
   getProduct(id: string): Product | null {
@@ -68,7 +86,7 @@ export class ProductService {
     const now = new Date();
     const updatedProduct: Product = {
       ...product,
-      id: product.id || crypto.randomUUID(),
+      id: product.id || this.generateUUID(),
       updated_at: now,
       created_at: existingIndex >= 0 ? products[existingIndex].created_at : now
     };
@@ -164,9 +182,10 @@ export class ProductService {
         
         // Add/update imported products
         importedProducts.forEach((p: Product) => {
-          productMap.set(p.id || crypto.randomUUID(), {
+          const productId = p.id || this.generateUUID();
+          productMap.set(productId, {
             ...p,
-            id: p.id || crypto.randomUUID(),
+            id: productId,
             created_at: p.created_at || new Date(),
             updated_at: new Date()
           });

@@ -94,44 +94,15 @@ export const useTankData = () => {
         }
       } catch (error) {
         console.error('❌ Error fetching tank data:', error.message);
+        console.warn('⚠️ No tank data available - connection failed');
 
-        // Fallback: Create mock tank data and enhance with tank table data
-        console.log('🔄 Creating fallback tank data for tank table integration...');
-        const mockTanks: Tank[] = Array.from({ length: 12 }, (_, index) => ({
-          id: index + 1,
-          name: `Tank ${index + 1}`,
-          currentLevel: 500 + (index * 50), // Mock levels
-          maxCapacity: 1000,
-          minLevel: 0,
-          maxLevel: 1000,
-          unit: 'mm',
-          status: 'normal' as const,
-          lastUpdated: new Date(),
-          location: `Location ${index + 1}`,
-          temperature: 20 + (index % 5) // Mock temperatures
+        // CRITICAL: Do NOT show mock data to users in a tank monitoring system
+        // Users must know when there is no real data available
+        setTankData(prev => ({
+          tanks: [], // Empty tanks array - no fake data
+          lastSync: prev.lastSync, // Keep previous sync time
+          connectionStatus: 'disconnected'
         }));
-
-        // Enhance mock tanks with tank table data
-        const enhancedTanks = enhancedDataService.enhanceTankData(mockTanks);
-
-        if (enhancedTanks.length > 0) {
-          console.log(`✅ Created ${enhancedTanks.length} enhanced tanks from tank table data`);
-          setTankData(() => ({
-            tanks: enhancedTanks.map((tank: EnhancedTank) => ({
-              ...tank,
-              trend: 'stable' as const,
-              trendValue: 0,
-              previousLevel: tank.currentLevel
-            })),
-            lastSync: new Date(),
-            connectionStatus: 'disconnected' // Still disconnected, but we have tank table data
-          }));
-        } else {
-          setTankData(prev => ({
-            ...prev,
-            connectionStatus: 'disconnected'
-          }));
-        }
       }
     };
 

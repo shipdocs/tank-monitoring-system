@@ -45,7 +45,7 @@ export const TimeTableViewExample: React.FC<{
         }
         
         data.set(tank.id.toString(), {
-          temperature: tank.temperature || 20, // Default to 20°C if no temperature
+          temperature: tank.temperature || 0, // Only use actual temperature, 0 if none available
           setpoint: setpoint,
           flowRate: flowRate
         });

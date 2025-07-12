@@ -160,7 +160,7 @@ export const TimeTableView: React.FC<TimeTableViewProps> = ({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           <span className={entry.flowRate > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {entry.flowRate > 0 ? '+' : ''}{entry.flowRate.toFixed(1)} L/min
+                            {entry.flowRate > 0 ? '+' : ''}{(entry.flowRate ?? 0).toFixed(1)} L/min
                           </span>
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${getTimeRemainingColor(entry.minutesRemaining)}`}>

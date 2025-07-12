@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Tank, TankData } from '../types/tank';
 import { EnhancedTank } from '../types/tankTable';
-import { EnhancedTankDataService } from '../services/EnhancedTankDataService';
+import { UnifiedTankConfigurationService } from '../services/UnifiedTankConfigurationService';
 
 // Raw measurement interface from server
 interface RawMeasurement {
@@ -36,7 +36,7 @@ export const useTankData = () => {
     connectionStatus: 'disconnected',
   });
 
-  const enhancedDataService = useMemo(() => new EnhancedTankDataService(), []);
+  const unifiedConfigService = useMemo(() => new UnifiedTankConfigurationService(), []);
 
   useEffect(() => {
     let updateInterval: NodeJS.Timeout | null = null;
@@ -64,8 +64,8 @@ export const useTankData = () => {
             temperature: measurement.temperature
           }));
 
-          // Enhance with tank table data
-          const enhancedTanks = enhancedDataService.enhanceTankData(basicTanks);
+          // Enhance with unified tank configuration
+          const enhancedTanks = unifiedConfigService.getEnhancedTankData(basicTanks);
 
           setTankData(prev => {
             // Calculate trends by comparing with previous data
@@ -122,7 +122,17 @@ export const useTankData = () => {
         clearInterval(updateInterval);
       }
     };
-  }, [enhancedDataService]); // Include enhancedDataService in dependency array
+  }, [unifiedConfigService]); // Include unifiedConfigService in dependency array
 
-  return tankData;
+  // Debug function for troubleshooting configuration issues
+  const debugConfiguration = () => {
+    const status = unifiedConfigService.getConfigurationStatus();
+    console.log('🔍 Tank Configuration Debug:', status);
+    return status;
+  };
+
+  return {
+    ...tankData,
+    debugConfiguration
+  };
 };

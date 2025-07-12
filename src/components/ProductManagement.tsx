@@ -148,7 +148,7 @@ export const ProductManagement: React.FC = () => {
                       {product.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.density_15c_vacuum.toFixed(1)} kg/m³
+                      {(product.density_15c_vacuum ?? 0).toFixed(1)} kg/m³
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {product.product_type || '-'}

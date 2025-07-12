@@ -55,7 +55,7 @@ const SortableTankItem: React.FC<SortableTankItemProps> = ({ tank, isAssigned })
       <div className="flex-1">
         <div className="font-medium text-gray-900">{tank.name}</div>
         <div className="text-sm text-gray-500">
-          {tank.level?.toFixed(1)}L / {tank.capacity?.toFixed(0)}L
+          {(tank.level ?? 0).toFixed(1)}L / {(tank.capacity ?? 0).toFixed(0)}L
         </div>
       </div>
       
@@ -302,7 +302,7 @@ export const TankAssignmentStep: React.FC<TankAssignmentStepProps> = ({
           <div className="p-3 bg-white border border-gray-300 rounded-lg shadow-lg opacity-90">
             <div className="font-medium text-gray-900">{activeTank.name}</div>
             <div className="text-sm text-gray-500">
-              {activeTank.level?.toFixed(1)}L / {activeTank.capacity?.toFixed(0)}L
+              {(activeTank.level ?? 0).toFixed(1)}L / {(activeTank.capacity ?? 0).toFixed(0)}L
             </div>
           </div>
         ) : null}

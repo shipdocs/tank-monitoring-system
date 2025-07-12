@@ -131,7 +131,7 @@ function parseVerticalFormatData(fileContent, config) {
     const measurement = {
       index: tanks.length,
       currentLevel: 0,
-      temperature: 20,
+      temperature: undefined, // No temperature data when no real data
       lastUpdated: new Date().toISOString()
     };
 
@@ -142,12 +142,12 @@ function parseVerticalFormatData(fileContent, config) {
         const value = recordLines[lineNum];
 
         if (fieldName === 'level') {
-          tank.currentLevel = parseFloat(value) || 0;
-          tank.level = tank.currentLevel; // Also set level for compatibility
+          measurement.currentLevel = parseFloat(value) || 0;
+          measurement.level = measurement.currentLevel; // Also set level for compatibility
         } else if (fieldName === 'temperature') {
-          tank.temperature = parseFloat(value) || 0;
+          measurement.temperature = parseFloat(value) || undefined;
         } else if (fieldName === 'name') {
-          tank.name = value || tank.name;
+          measurement.name = value || measurement.name;
         }
       }
     });
@@ -168,7 +168,7 @@ function generateEmptyMeasurements() {
     measurements.push({
       index: i,
       currentLevel: 0, // Empty measurements
-      temperature: 20, // Default temperature
+      temperature: undefined, // No temperature data when no real data
       lastUpdated: timestamp
     });
   }
@@ -330,6 +330,86 @@ export function startIntegratedServer(isDev = false) {
         } catch (error) {
           res.status(400).json({ error: error.message });
         }
+      });
+
+      // Data source configuration endpoints
+      app.post('/api/test-data-source', async (req, res) => {
+        const config = req.body;
+        try {
+          // Test if file exists and is readable
+          if (!fs.existsSync(config.filePath)) {
+            return res.status(400).json({ error: 'File not found' });
+          }
+
+          const content = fs.readFileSync(config.filePath, config.encoding || 'utf8');
+
+          if (config.format === 'vertical') {
+            const tanks = parseVerticalFormatData(content, {
+              linesPerRecord: config.linesPerRecord || 4,
+              lineMapping: config.lineMapping || {},
+              maxRecords: config.maxRecords || 12
+            });
+            res.json({
+              success: true,
+              recordCount: tanks.length,
+              format: 'vertical',
+              preview: tanks.slice(0, 3) // First 3 records for preview
+            });
+          } else {
+            // CSV format testing would go here
+            res.json({ success: true, recordCount: 0, format: 'csv' });
+          }
+        } catch (error) {
+          res.status(400).json({ error: error.message });
+        }
+      });
+
+      app.post('/api/configure-data-source', async (req, res) => {
+        const config = req.body;
+        try {
+          // Update current configuration
+          currentConfig.csvFile = {
+            ...currentConfig.csvFile,
+            enabled: config.enabled,
+            filePath: config.filePath,
+            importInterval: config.importInterval || 3000,
+            encoding: config.encoding || 'utf8',
+            isVerticalFormat: config.format === 'vertical',
+            linesPerRecord: config.linesPerRecord || 4,
+            lineMapping: config.lineMapping || {},
+            maxRecords: config.maxRecords || 12,
+            delimiter: config.delimiter || ',',
+            hasHeaders: config.hasHeaders || false
+          };
+
+          // Save configuration
+          saveConfig();
+
+          // Restart file monitoring with new configuration
+          if (fileMonitor && fileMonitor.stop) {
+            fileMonitor.stop();
+          }
+
+          if (config.enabled && config.filePath) {
+            startFileMonitoring();
+            addLog('INFO', 'CONFIG', `Data source configured: ${config.filePath}`);
+          }
+
+          res.json({ success: true, message: 'Configuration applied successfully' });
+        } catch (error) {
+          addLog('ERROR', 'CONFIG', `Failed to configure data source: ${error.message}`);
+          res.status(500).json({ error: error.message });
+        }
+      });
+
+      app.get('/api/data-source-status', (req, res) => {
+        res.json({
+          connected: !!(currentConfig.csvFile.enabled && currentConfig.csvFile.filePath),
+          filePath: currentConfig.csvFile.filePath,
+          format: currentConfig.csvFile.isVerticalFormat ? 'vertical' : 'csv',
+          recordCount: lastTankData.length,
+          lastUpdate: lastTankData.length > 0 ? lastTankData[0].lastUpdated : null
+        });
       });
 
       // Tank data endpoint

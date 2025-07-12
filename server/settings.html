@@ -302,7 +302,6 @@
                                     <tr class="bg-gray-50">
                                         <th class="border border-gray-300 px-3 py-2 text-left">Tank Name</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">Max Height</th>
-                                        <th class="border border-gray-300 px-3 py-2 text-left">Allowed Height (mm)</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">Current (mm)</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">%</th>
                                         <th class="border border-gray-300 px-3 py-2 text-left">Status</th>
@@ -825,16 +824,7 @@
                     <td class="border border-gray-300 px-3 py-2 text-gray-500">
                         <span class="text-sm">From Tank Table</span>
                     </td>
-                    <td class="border border-gray-300 px-3 py-2">
-                        <input type="number"
-                               id="allowedHeight_${tankId}"
-                               value="${config.allowedHeight}"
-                               min="0"
-                               step="1"
-                               onchange="updateTankConfig('${tankId}', 'allowedHeight', this.value)"
-                               oninput="handleTankConfigInput('${tankId}', 'allowedHeight', this.value)"
-                               class="w-full p-1 border border-gray-300 rounded text-sm">
-                    </td>
+
                     <td class="border border-gray-300 px-3 py-2 text-center">
                         ${(currentLevel || 0).toFixed(0)} ${unit}
                     </td>
@@ -876,16 +866,8 @@
             }
         }
 
-        // Input handlers that don't trigger full table refresh
-        function handleTankConfigInput(tankId, field, value) {
-            if (!tankConfig.tanks[tankId]) {
-                tankConfig.tanks[tankId] = {};
-            }
-            tankConfig.tanks[tankId][field] = parseFloat(value) || 0;
-
-            // Update only the percentage and status for this tank without full refresh
-            updateTankRowStatus(tankId);
-        }
+        // Tank configuration now comes from tank table imports
+        // Individual tank height settings removed
 
         function handleTankNameInput(tankId, name) {
             // Store the name change locally (could be saved to server later)
@@ -2013,9 +1995,7 @@
                 // Only update if no input field is currently focused
                 const activeElement = document.activeElement;
                 const isEditingTankConfig = activeElement &&
-                    (activeElement.id.startsWith('tankName_') ||
-                     activeElement.id.startsWith('maxHeight_') ||
-                     activeElement.id.startsWith('allowedHeight_'));
+                    (activeElement.id.startsWith('tankName_'));
 
                 if (!isEditingTankConfig) {
                     loadCurrentTanks();

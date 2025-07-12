@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { SidebarViewControls } from './SidebarViewControls';
 import { DefaultLayoutSettings } from './DefaultLayoutSettings';
 import { TankTableManagement } from './TankTableManagement';
+import { ProductManagement } from './ProductManagement';
 import { ViewMode } from '../types/tank';
-import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard, Database } from 'lucide-react';
+import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard, Database, Package } from 'lucide-react';
 
 interface ControlsSidebarProps {
   currentView: ViewMode;
@@ -27,7 +28,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
   onMigrate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<'view' | 'layout' | 'tank-tables' | 'config'>('view');
+  const [activeSection, setActiveSection] = useState<'view' | 'layout' | 'tank-tables' | 'products' | 'config'>('view');
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -80,15 +81,16 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
 
         {/* Navigation Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex space-x-4 md:space-x-8 px-6 overflow-x-auto">
             {[
               { id: 'view', label: 'View', icon: LayoutDashboard },
               { id: 'tank-tables', label: 'Tank Tables', icon: Database },
+              { id: 'products', label: 'Products', icon: Package },
               { id: 'config', label: 'Config', icon: Settings }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setActiveSection(id as any)}
+                onClick={() => setActiveSection(id as 'view' | 'tank-tables' | 'products' | 'config')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeSection === id
                     ? 'border-blue-500 text-blue-600'
@@ -131,6 +133,12 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
           {activeSection === 'tank-tables' && (
             <div className="p-6">
               <TankTableManagement />
+            </div>
+          )}
+
+          {activeSection === 'products' && (
+            <div className="p-6">
+              <ProductManagement />
             </div>
           )}
 

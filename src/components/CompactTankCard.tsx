@@ -7,6 +7,9 @@ interface CompactTankCardProps {
 }
 
 export const CompactTankCard: React.FC<CompactTankCardProps> = ({ tank }) => {
+  // Use real volume from tank table calibration data if available
+  const currentVolume = (tank as any).current_volume_liters || 0;
+
   const getStatusColor = (status: Tank['status']) => {
     switch (status) {
       case 'normal': return 'bg-green-500';
@@ -26,7 +29,7 @@ export const CompactTankCard: React.FC<CompactTankCardProps> = ({ tank }) => {
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
 
   return (
@@ -48,10 +51,13 @@ export const CompactTankCard: React.FC<CompactTankCardProps> = ({ tank }) => {
         {/* Level Display */}
         <div className="text-center">
           <div className="text-lg font-bold text-gray-800">
-            {tank.currentLevel.toFixed(0)} <span className="text-xs text-gray-500">mm</span>
+            {(tank.currentLevel ?? 0).toFixed(0)} <span className="text-xs text-gray-500">mm</span>
           </div>
           <div className="text-sm font-medium text-blue-600">
-            {percentage.toFixed(1)}%
+            {(percentage ?? 0).toFixed(1)}%
+          </div>
+          <div className="text-sm font-medium text-green-600">
+            {((currentVolume ?? 0) / 1000).toFixed(2)} <span className="text-xs text-gray-500">m³</span>
           </div>
         </div>
 
@@ -73,7 +79,7 @@ export const CompactTankCard: React.FC<CompactTankCardProps> = ({ tank }) => {
         <div className="text-xs text-gray-600 text-center">
           <div className="font-medium">{tank.location}</div>
           {tank.temperature !== undefined && (
-            <div className="text-blue-600">{tank.temperature.toFixed(1)}°C</div>
+            <div className="text-blue-600">{(tank.temperature ?? 0).toFixed(1)}°C</div>
           )}
         </div>
 

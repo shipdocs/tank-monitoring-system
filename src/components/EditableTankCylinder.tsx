@@ -16,7 +16,9 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Use real volume from tank table calibration data if available
+  const currentVolume = (tank as any).current_volume_liters || 0;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const getStatusColor = (status: Tank['status']) => {
@@ -133,7 +135,7 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
           {/* Level Percentage Text */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-xs font-bold text-white drop-shadow-lg">
-              {percentage.toFixed(0)}%
+              {(percentage ?? 0).toFixed(0)}%
             </span>
           </div>
         </div>
@@ -143,16 +145,19 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
       </div>
 
       {/* Tank Details - Fixed Height */}
-      <div className="text-center space-y-1 h-16 flex flex-col justify-center">
+      <div className="text-center space-y-1 h-20 flex flex-col justify-center">
         <div className="text-sm font-bold text-gray-900">
-          {tank.currentLevel.toFixed(0)} mm
+          {(tank.currentLevel ?? 0).toFixed(0)} mm
         </div>
         <div className="text-xs text-gray-500">
-          {percentage.toFixed(1)}%
+          {(percentage ?? 0).toFixed(1)}%
+        </div>
+        <div className="text-xs text-green-600 font-medium">
+          {((currentVolume ?? 0) / 1000).toFixed(2)} m³
         </div>
         {tank.temperature !== undefined && (
           <div className="text-xs text-blue-600 font-medium">
-            {tank.temperature.toFixed(1)}°C
+            {(tank.temperature ?? 0).toFixed(1)}°C
           </div>
         )}
         <div className="text-xs text-gray-600 truncate">
@@ -168,7 +173,7 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
             <span className="w-12 text-center">{getTrendText(tank.trend)}</span>
             {tank.trendValue && tank.trendValue > 0 && (
               <span className="text-xs">
-                {tank.trendValue.toFixed(1)}
+                {(tank.trendValue ?? 0).toFixed(1)}
               </span>
             )}
           </div>

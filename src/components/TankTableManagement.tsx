@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, Settings, Database, FileText, Trash2, Eye, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Upload, Settings, Database, FileText, Trash2, Download } from 'lucide-react';
 import { TankTableImport } from './TankTableImport';
 import { TankMappingConfig } from './TankMappingConfig';
 import { TankTableStorage } from '../storage/TankTableStorage';
@@ -11,28 +11,29 @@ export const TankTableManagement: React.FC = () => {
   const [showMapping, setShowMapping] = useState(false);
   const [tankTables, setTankTables] = useState<TankTable[]>([]);
   const [activeTankTableId, setActiveTankTableId] = useState<string>('');
-  const [tankTableInfo, setTankTableInfo] = useState<any>(null);
+  const [tankTableInfo, setTankTableInfo] = useState<{ totalTables: number; activeTables: number; totalTanks: number } | null>(null);
 
   const storage = TankTableStorage.getInstance();
-  const dataService = new EnhancedTankDataService();
+  const dataService = useMemo(() => new EnhancedTankDataService(), []);
 
-  useEffect(() => {
-    loadTankTables();
-    loadTankTableInfo();
-  }, []);
-
-  const loadTankTables = () => {
+  const loadTankTables = React.useCallback(() => {
     const tables = storage.getTankTables();
     setTankTables(tables);
     
     const config = storage.getTankTableConfiguration();
     setActiveTankTableId(config.active_tank_table_id || '');
-  };
+  }, [storage]);
 
-  const loadTankTableInfo = () => {
+  const loadTankTableInfo = React.useCallback(() => {
     const info = dataService.getActiveTankTableInfo();
     setTankTableInfo(info);
-  };
+  }, [dataService]);
+
+  useEffect(() => {
+    loadTankTables();
+    loadTankTableInfo();
+  }, [loadTankTables, loadTankTableInfo]);
+
 
   const handleImportComplete = (result: TankTableImportResult) => {
     if (result.success) {

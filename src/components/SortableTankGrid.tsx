@@ -18,7 +18,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Tank, ViewMode, TankGroup } from '../types/tank';
+import { Product } from '../types/product';
 import { SortableTankItem } from './SortableTankItem';
+import { EnhancedGroupHeader } from './EnhancedGroupHeader';
 import { groupTanks } from '../utils/tankGrouping';
 
 interface SortableTankGridProps {
@@ -26,6 +28,7 @@ interface SortableTankGridProps {
   viewMode: ViewMode;
   onReorder: (oldIndex: number, newIndex: number) => void;
   onRename: (tankId: number, newName: string) => void;
+  products?: Product[];
 }
 
 export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
@@ -33,6 +36,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
   viewMode,
   onReorder,
   onRename,
+  products = [],
 }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const tankGroups = groupTanks(tanks);
@@ -134,23 +138,16 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
     };
 
     return (
-      <div key={group.id} className={`${isCompactSideBySide ? "space-y-4" : "space-y-6"} bg-white rounded-xl shadow-sm border border-gray-200 p-6`}>
-        {/* Enhanced Group Header */}
-        <div className={`bg-gradient-to-r ${getGroupColor(group.displayName)} text-white p-4 rounded-lg shadow-md`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-white rounded-full opacity-80"></div>
-              <h3 className={`font-bold ${isCompactSideBySide ? 'text-lg' : 'text-xl'}`}>
-                {group.displayName}
-              </h3>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                {group.tanks.length} tank{group.tanks.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div key={group.id} className={`${isCompactSideBySide ? "space-y-4" : "space-y-6"}`}>
+        {/* Enhanced Group Header with Totals */}
+        <EnhancedGroupHeader
+          groupId={group.id}
+          tanks={tanks}
+          products={products}
+        />
+
+        {/* Tank Cards Container */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
 
         {/* Group Tanks */}
         <SortableContext
@@ -168,6 +165,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
             ))}
           </div>
         </SortableContext>
+        </div>
       </div>
     );
   };
@@ -210,6 +208,57 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
       </DndContext>
     );
   }
+
+  // Show empty state when no tanks are available
+  if (tanks.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-label="No data icon"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No Tank Data Available
+          </h3>
+          <p className="text-gray-500 mb-4">
+            No real-time tank data is currently available. Please check your
+            data source connection.
+          </p>
+          <div className="text-sm text-gray-400">
+            <p>• Verify data source is connected</p>
+            <p>• Check tank table configuration</p>
+            <p>• Ensure data mappings are enabled</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If only one group or no grouping needed, render without group headers
+  if (tankGroups.length <= 1) {
+    return (
+      <div className="grid grid-cols-1 gap-4">
+        {tanks.map((tank) => (
+          <TankCard key={tank.id} tank={tank} />
+        ))}
+      </div>
+    );
+  }
+
+  // ...rest of grouped rendering logic...
 
   return (
     <DndContext

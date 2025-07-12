@@ -16,7 +16,7 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const getStatusColor = (status: Tank['status']) => {
@@ -124,7 +124,7 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
           <div className="flex-1 max-w-xs">
             <div className="flex justify-between text-sm text-gray-600 mb-1">
               <span>Level</span>
-              <span>{percentage.toFixed(1)}%</span>
+              <span>{(percentage ?? 0).toFixed(1)}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div 
@@ -136,14 +136,14 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
           
           <div className="text-right">
             <div className="text-xl font-bold text-gray-900">
-              {tank.currentLevel.toFixed(0)} mm
+              {(tank.currentLevel ?? 0).toFixed(0)} mm
             </div>
             <div className="text-sm text-gray-500">
-              {percentage.toFixed(1)}%
+              {(percentage ?? 0).toFixed(1)}%
             </div>
             {tank.temperature !== undefined && (
               <div className="text-sm text-blue-600 font-medium">
-                {tank.temperature.toFixed(1)}°C
+                {(tank.temperature ?? 0).toFixed(1)}°C
               </div>
             )}
           </div>
@@ -176,7 +176,7 @@ export const EditableTankListItem: React.FC<EditableTankListItemProps> = ({
             <span>{getTrendText(tank.trend)}</span>
             {tank.trendValue && tank.trendValue > 0 && (
               <span className="text-xs">
-                {tank.trendValue.toFixed(1)} {tank.unit}/min
+                {(tank.trendValue ?? 0).toFixed(1)} {tank.unit}/min
               </span>
             )}
           </div>

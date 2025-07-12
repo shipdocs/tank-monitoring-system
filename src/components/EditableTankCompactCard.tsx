@@ -16,7 +16,9 @@ export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = (
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  // Use real volume from tank table calibration data if available
+  const currentVolume = (tank as any).current_volume_liters || 0;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const getStatusColor = (status: Tank['status']) => {
@@ -82,7 +84,7 @@ export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = (
       <div className="mb-3">
         <div className="flex justify-between text-xs text-gray-600 mb-1">
           <span>Level</span>
-          <span>{percentage.toFixed(1)}%</span>
+          <span>{(percentage ?? 0).toFixed(1)}%</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
@@ -94,14 +96,17 @@ export const EditableTankCompactCard: React.FC<EditableTankCompactCardProps> = (
 
       <div className="text-center">
         <div className="text-sm font-bold text-gray-900">
-          {tank.currentLevel.toFixed(0)} mm
+          {(tank.currentLevel ?? 0).toFixed(0)} mm
         </div>
         <div className="text-xs text-gray-500">
-          {percentage.toFixed(1)}%
+          {(percentage ?? 0).toFixed(1)}%
+        </div>
+        <div className="text-xs text-green-600 font-medium">
+          {((currentVolume ?? 0) / 1000).toFixed(2)} m³
         </div>
         {tank.temperature !== undefined && (
           <div className="text-xs text-blue-600 font-medium">
-            {tank.temperature.toFixed(1)}°C
+            {(tank.temperature ?? 0).toFixed(1)}°C
           </div>
         )}
         <div className="text-xs text-gray-500">

@@ -105,7 +105,7 @@ export class TankTableImportService {
       const tank_name = rowData.tank_name?.trim();
       const max_height_mm = parseFloat(rowData.max_height_mm);
       const max_volume_liters = parseFloat(rowData.max_volume_liters);
-      const tank_type = rowData.tank_type?.trim() as any || 'other';
+      const tank_type = (rowData.tank_type?.trim() as 'fuel' | 'fresh_water' | 'waste' | 'other') || 'other';
       const location = rowData.location?.trim() || '';
       const calibration_data_str = rowData.calibration_data?.trim();
 

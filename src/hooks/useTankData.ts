@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Tank, TankData } from '../types/tank';
 import { EnhancedTank } from '../types/tankTable';
 import { EnhancedTankDataService } from '../services/EnhancedTankDataService';
@@ -36,7 +36,7 @@ export const useTankData = () => {
     connectionStatus: 'disconnected',
   });
 
-  const enhancedDataService = new EnhancedTankDataService();
+  const enhancedDataService = useMemo(() => new EnhancedTankDataService(), []);
 
   useEffect(() => {
     let updateInterval: NodeJS.Timeout | null = null;
@@ -94,8 +94,13 @@ export const useTankData = () => {
         }
       } catch (error) {
         console.error('❌ Error fetching tank data:', error.message);
+        console.warn('⚠️ No tank data available - connection failed');
+
+        // CRITICAL: Do NOT show mock data to users in a tank monitoring system
+        // Users must know when there is no real data available
         setTankData(prev => ({
-          ...prev,
+          tanks: [], // Empty tanks array - no fake data
+          lastSync: prev.lastSync, // Keep previous sync time
           connectionStatus: 'disconnected'
         }));
       }
@@ -117,7 +122,7 @@ export const useTankData = () => {
         clearInterval(updateInterval);
       }
     };
-  }, []); // Empty dependency array - run once on mount
+  }, [enhancedDataService]); // Include enhancedDataService in dependency array
 
   return tankData;
 };

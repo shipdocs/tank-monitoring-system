@@ -7,7 +7,7 @@ interface TankCylinderProps {
 }
 
 export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const getStatusColor = (status: Tank['status']) => {
@@ -83,7 +83,7 @@ export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
           {/* Level Percentage Text */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-lg font-bold text-white drop-shadow-lg">
-              {percentage.toFixed(0)}%
+              {(percentage ?? 0).toFixed(0)}%
             </span>
           </div>
         </div>
@@ -95,14 +95,14 @@ export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
       {/* Tank Details - Fixed Height */}
       <div className="text-center space-y-2 h-24 flex flex-col justify-center">
         <div className="text-lg font-bold text-gray-900">
-          {tank.currentLevel.toFixed(0)} mm
+          {(tank.currentLevel ?? 0).toFixed(0)} mm
         </div>
         <div className="text-base text-gray-500">
-          {percentage.toFixed(1)}%
+          {(percentage ?? 0).toFixed(1)}%
         </div>
         {tank.temperature !== undefined && (
           <div className="text-sm text-blue-600 font-medium">
-            {tank.temperature.toFixed(1)}°C
+            {(tank.temperature ?? 0).toFixed(1)}°C
           </div>
         )}
         <div className="text-sm text-gray-600 truncate">
@@ -118,7 +118,7 @@ export const TankCylinder: React.FC<TankCylinderProps> = ({ tank }) => {
             <span className="w-14 text-center">{getTrendText(tank.trend)}</span>
             {tank.trendValue && tank.trendValue > 0 && (
               <span className="text-sm">
-                {tank.trendValue.toFixed(1)}
+                {(tank.trendValue ?? 0).toFixed(1)}
               </span>
             )}
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Download, X } from 'lucide-react';
 import { TankTableImportService } from '../services/TankTableImportService';
 import { TankTableImportResult } from '../types/tankTable';
@@ -17,7 +17,7 @@ export const TankTableImport: React.FC<TankTableImportProps> = ({
   const [importResult, setImportResult] = useState<TankTableImportResult | null>(null);
   const [tableName, setTableName] = useState('');
 
-  const importService = new TankTableImportService();
+  const importService = useMemo(() => new TankTableImportService(), []);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -50,7 +50,7 @@ export const TankTableImport: React.FC<TankTableImportProps> = ({
     } finally {
       setIsImporting(false);
     }
-  }, [tableName, onImportComplete]);
+  }, [tableName, onImportComplete, importService]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

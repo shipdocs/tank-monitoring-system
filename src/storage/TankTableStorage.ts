@@ -1,9 +1,6 @@
 import { 
   TankTable, 
-  TankTableEntry, 
-  TankTableConfiguration, 
-  TankMapping,
-  TankCalibrationPoint 
+  TankTableConfiguration
 } from '../types/tankTable';
 
 export class TankTableStorage {

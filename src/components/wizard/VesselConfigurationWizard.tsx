@@ -7,7 +7,6 @@ import { WizardSummary } from './WizardSummary';
 import { VesselType, VesselTemplate, WizardState, DataSourceConfig } from '../../types/vessel';
 import { Tank } from '../../types/tank';
 import { useDatabaseVesselConfiguration } from '../../hooks/useDatabaseVesselConfiguration';
-import { loadTanksFromDataSource } from '../../utils/dataSourceParser';
 import { applyWizardConfigToServer } from '../../utils/serverConfig';
 import { ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
 
@@ -29,35 +28,22 @@ export const VesselConfigurationWizard: React.FC<VesselConfigurationWizardProps>
   });
 
   const [currentTanks, setCurrentTanks] = useState<Tank[]>(tanks);
-  const [isLoadingTanks, setIsLoadingTanks] = useState(false);
+  const [isLoadingTanks] = useState(false);
   const [isApplyingConfig, setIsApplyingConfig] = useState(false);
 
   const totalSteps = 5;
 
-  // Load tanks from data source when reaching step 4
+  // Use existing enhanced tanks when reaching step 4
   useEffect(() => {
-    const loadTanksForAssignment = async () => {
-      if (wizardState.step === 4 && wizardState.dataSource) {
-        setIsLoadingTanks(true);
-        try {
-          const loadedTanks = await loadTanksFromDataSource(wizardState.dataSource);
-          setCurrentTanks(loadedTanks);
-          console.log(`🔄 Loaded ${loadedTanks.length} tanks from data source:`, wizardState.dataSource.type);
-        } catch (error) {
-          console.error('Failed to load tanks from data source:', error);
-          // Fallback to original tanks
-          setCurrentTanks(tanks);
-        } finally {
-          setIsLoadingTanks(false);
-        }
-      } else if (wizardState.step !== 4) {
-        // Reset to original tanks when not in assignment step
-        setCurrentTanks(tanks);
-      }
-    };
-
-    loadTanksForAssignment();
-  }, [wizardState.step, wizardState.dataSource, tanks]);
+    if (wizardState.step === 4) {
+      // Use the tanks passed from the main app (already enhanced with tank table data)
+      setCurrentTanks(tanks);
+      console.log(`✅ Using ${tanks.length} enhanced tanks from main application`);
+    } else if (wizardState.step !== 4) {
+      // Reset to original tanks when not in assignment step
+      setCurrentTanks(tanks);
+    }
+  }, [wizardState.step, tanks]);
 
   const updateWizardState = (updates: Partial<WizardState>) => {
     setWizardState(prev => ({ ...prev, ...updates }));

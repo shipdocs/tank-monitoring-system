@@ -223,7 +223,7 @@ export function startIntegratedServer(isDev = false) {
       // Serve static files
       let staticPath = isDev
         ? path.join(__dirname, '..', 'dist')
-        : path.join(process.resourcesPath, 'dist');
+        : path.join(process.resourcesPath || __dirname, 'dist');
 
       // Check if the static path exists and log it
       if (fs.existsSync(staticPath)) {
@@ -232,11 +232,12 @@ export function startIntegratedServer(isDev = false) {
         addLog('WARN', 'SERVER', `Static path does not exist: ${staticPath}`);
         // Try alternative paths
         const alternatives = [
-          path.join(process.resourcesPath || '', 'app.asar', 'dist'),
+          process.resourcesPath ? path.join(process.resourcesPath, 'app.asar', 'dist') : null,
+          process.resourcesPath ? path.join(process.resourcesPath, 'dist') : null,
           path.join(__dirname, '../../dist'),
           path.join(__dirname, '../../../dist'),
           path.join(process.cwd(), 'dist')
-        ];
+        ].filter(Boolean);
 
         for (const altPath of alternatives) {
           if (fs.existsSync(altPath)) {

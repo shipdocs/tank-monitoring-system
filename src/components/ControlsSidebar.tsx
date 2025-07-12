@@ -3,6 +3,7 @@ import { SidebarViewControls } from './SidebarViewControls';
 import { DefaultLayoutSettings } from './DefaultLayoutSettings';
 import { TankTableManagement } from './TankTableManagement';
 import { ProductManagement } from './ProductManagement';
+import { DataSourceConfiguration } from './DataSourceConfiguration';
 import { ViewMode } from '../types/tank';
 import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard, Database, Package } from 'lucide-react';
 
@@ -15,6 +16,7 @@ interface ControlsSidebarProps {
   onImport: (file: File) => Promise<boolean>;
   onReset: () => void;
   onMigrate?: () => void;
+  onDebug?: () => any;
 }
 
 export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
@@ -26,6 +28,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
   onImport,
   onReset,
   onMigrate,
+  onDebug,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'view' | 'layout' | 'tank-tables' | 'products' | 'config'>('view');
@@ -40,7 +43,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
       <button
         onClick={toggleSidebar}
         className={`fixed top-4 z-50 bg-white shadow-lg rounded-lg p-3 border-2 border-gray-200 hover:bg-gray-50 transition-all duration-300 ${
-          isOpen ? 'right-80' : 'right-4'
+          isOpen ? 'right-[600px]' : 'right-4'
         }`}
         title={isOpen ? 'Hide View Controls' : 'Show View Controls'}
       >
@@ -61,7 +64,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -81,7 +84,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
 
         {/* Navigation Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-4 md:space-x-8 px-6 overflow-x-auto">
+          <nav className="flex flex-wrap space-x-1 px-2 py-1">
             {[
               { id: 'view', label: 'View', icon: LayoutDashboard },
               { id: 'tank-tables', label: 'Tank Tables', icon: Database },
@@ -91,7 +94,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
               <button
                 key={id}
                 onClick={() => setActiveSection(id as 'view' | 'tank-tables' | 'products' | 'config')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs transition-colors flex-shrink-0 ${
                   activeSection === id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -144,6 +147,13 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
 
           {activeSection === 'config' && (
             <div className="p-6 space-y-6">
+              {/* Data Source Configuration Section */}
+              <div>
+                <h3 className="text-md font-semibold text-gray-800 mb-3">Data Source Configuration</h3>
+                <p className="text-sm text-gray-600 mb-4">Configure where tank data comes from</p>
+                <DataSourceConfiguration />
+              </div>
+
               {/* Tank Configuration Section */}
               <div>
                 <h3 className="text-md font-semibold text-gray-800 mb-3">Tank Configuration</h3>
@@ -197,6 +207,21 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
                     <RotateCcw className="w-4 h-4" />
                     <span className="font-medium">Reset Configuration</span>
                   </button>
+
+                  {onDebug && (
+                    <button
+                      onClick={() => {
+                        const status = onDebug();
+                        console.log('🔍 Tank Configuration Debug:', status);
+                        alert('Configuration debug info logged to console. Check browser developer tools.');
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors"
+                      title="Debug tank configuration"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span className="font-medium">Debug Configuration</span>
+                    </button>
+                  )}
 
                   {onMigrate && (
                     <button

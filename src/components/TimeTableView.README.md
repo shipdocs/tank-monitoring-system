@@ -58,7 +58,7 @@ function TankOperationsPanel() {
           : -tank.trendValue;
           
         data.set(tank.id.toString(), {
-          temperature: tank.temperature || 20,
+          temperature: tank.temperature || 0, // Only use actual temperature
           setpoint: calculateSetpoint(tank), // Your logic here
           flowRate: flowRate
         });

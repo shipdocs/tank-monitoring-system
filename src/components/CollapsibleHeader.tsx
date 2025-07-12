@@ -14,7 +14,7 @@ interface CollapsibleHeaderProps {
   connectionStatus: 'connected' | 'disconnected' | 'error';
   lastSync?: Date;
   tanks: Tank[];
-  onVesselSetup: () => void;
+
 }
 
 export const CollapsibleHeader: React.FC<CollapsibleHeaderProps> = ({
@@ -25,7 +25,7 @@ export const CollapsibleHeader: React.FC<CollapsibleHeaderProps> = ({
   connectionStatus,
   lastSync,
   tanks,
-  onVesselSetup,
+
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -92,14 +92,7 @@ export const CollapsibleHeader: React.FC<CollapsibleHeaderProps> = ({
 
               {/* Expanded Controls */}
               <div className="flex items-center space-x-4">
-                <button
-                  onClick={onVesselSetup}
-                  className="flex items-center space-x-2 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <Ship className="w-4 h-4" />
-                  <span>Vessel Setup</span>
-                </button>
+
                 <a
                   href="http://localhost:3001/settings"
                   target="_blank"

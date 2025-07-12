@@ -127,7 +127,7 @@ function parseVerticalFormatData(fileContent, config) {
     const rawMeasurement = {
       index: tanks.length,
       currentLevel: 0,
-      temperature: 20, // Default temperature
+      temperature: undefined, // No temperature data when no real data
       lastUpdated: new Date().toISOString()
     };
 
@@ -327,7 +327,7 @@ function parseTankData(data) {
         return {
           index: index,
           currentLevel: parseFloat(tank.level) || 0,
-          temperature: parseFloat(tank.temperature) || 20,
+          temperature: tank.temperature ? parseFloat(tank.temperature) : undefined,
           lastUpdated: timestamp
         };
       }) || [];
@@ -338,7 +338,7 @@ function parseTankData(data) {
         return {
           index: index,
           currentLevel: level,
-          temperature: 20, // Default temperature
+          temperature: undefined, // No temperature data when no real data
           lastUpdated: timestamp
         };
       });
@@ -722,7 +722,7 @@ function generateEmptyMeasurements() {
     measurements.push({
       index: i,
       currentLevel: 0, // Empty measurements
-      temperature: 20, // Default temperature
+      temperature: undefined, // No temperature data when no real data
       lastUpdated: timestamp
     });
   }
@@ -801,7 +801,7 @@ app.get('/api/tanks', (req, res) => {
     const rawMeasurements = lastTankData.map((data, index) => ({
       index: data.index !== undefined ? data.index : index,
       currentLevel: data.currentLevel || data.level || 0,
-      temperature: data.temperature || 20,
+      temperature: data.temperature || undefined,
       lastUpdated: data.lastUpdated || new Date().toISOString()
     }));
     res.json(rawMeasurements);

@@ -1,6 +1,7 @@
 import { Tank } from '../types/tank';
 import { EnhancedTank, TankMapping } from '../types/tankTable';
 import { TankTableStorage } from '../storage/TankTableStorage';
+import { sortTanksNaturally } from '../utils/tankSorting';
 
 export class EnhancedTankDataService {
   private storage = TankTableStorage.getInstance();
@@ -14,7 +15,8 @@ export class EnhancedTankDataService {
 
     if (!activeTankTable || config.tank_mappings.length === 0) {
       // No tank table configured, return tanks as enhanced tanks with basic data
-      return rawTanks.map(tank => this.convertToEnhancedTank(tank));
+      const enhancedTanks = rawTanks.map(tank => this.convertToEnhancedTank(tank));
+      return sortTanksNaturally(enhancedTanks);
     }
 
     const enhancedTanks: EnhancedTank[] = [];
@@ -36,12 +38,13 @@ export class EnhancedTankDataService {
       enhancedTanks.push(enhancedTank);
     });
 
-    return enhancedTanks;
+    // Apply natural sorting to the enhanced tanks
+    return sortTanksNaturally(enhancedTanks);
   }
 
   private convertToEnhancedTank(tank: Tank): EnhancedTank {
     const percentage = tank.maxCapacity > 0 ? (tank.currentLevel / tank.maxCapacity) * 100 : 0;
-    
+
     return {
       ...tank,
       height_percentage: percentage,
@@ -50,13 +53,38 @@ export class EnhancedTankDataService {
       max_volume_liters: undefined,
       tank_table_id: undefined,
       tank_type: undefined,
-      calibration_data: undefined
+      calibration_data: undefined,
+      group: this.determineGroupFromTankName(tank.name)
     };
   }
 
+  /**
+   * Determines tank group based on tank name
+   * BB prefix = Port (BB group)
+   * SB prefix = Starboard (SB group)
+   */
+  private determineGroupFromTankName(tankName: string): 'BB' | 'SB' | 'CENTER' {
+    const upperName = tankName.toUpperCase();
+
+    if (upperName.startsWith('BB')) {
+      return 'BB';
+    } else if (upperName.startsWith('SB')) {
+      return 'SB';
+    } else {
+      return 'CENTER';
+    }
+  }
+
   private createEnhancedTank(
-    rawTank: Tank, 
-    tankTableEntry: any, 
+    rawTank: Tank,
+    tankTableEntry: {
+      max_height_mm: number;
+      calibration_data: unknown;
+      max_volume_liters: number;
+      tank_type: string;
+      tank_name: string;
+      location: string;
+    },
     mapping: TankMapping
   ): EnhancedTank {
     const currentHeight = rawTank.currentLevel;
@@ -79,9 +107,13 @@ export class EnhancedTankDataService {
     // Determine status based on fill percentage
     const status = this.calculateStatus(fillPercentage, tankTableEntry.tank_type);
 
+    // Determine group based on tank name
+    const tankName = mapping.custom_name || tankTableEntry.tank_name;
+    const group = this.determineGroupFromTankName(tankName);
+
     return {
       id: rawTank.id,
-      name: mapping.custom_name || tankTableEntry.tank_name,
+      name: tankName,
       currentLevel: currentHeight,
       maxCapacity: maxHeight,
       minLevel: rawTank.minLevel,
@@ -95,7 +127,7 @@ export class EnhancedTankDataService {
       previousLevel: rawTank.previousLevel,
       position: rawTank.position,
       temperature: rawTank.temperature,
-      group: rawTank.group,
+      group: group,
       
       // Enhanced properties
       tank_table_id: tankTableEntry.tank_id,
@@ -108,7 +140,7 @@ export class EnhancedTankDataService {
     };
   }
 
-  private calculateVolumeFromHeight(calibrationData: any[], height: number): number {
+  private calculateVolumeFromHeight(calibrationData: { height_mm: number; volume_liters: number }[], height: number): number {
     if (!calibrationData || calibrationData.length === 0) return 0;
 
     const sortedData = calibrationData.sort((a, b) => a.height_mm - b.height_mm);

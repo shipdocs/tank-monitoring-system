@@ -1,4 +1,5 @@
 import { Tank, TankGroup } from '../types/tank';
+import { sortTanksNaturally } from './tankSorting';
 
 /**
  * Groups tanks based on their ID or configured group
@@ -29,14 +30,15 @@ export function groupTanks(tanks: Tank[]): TankGroup[] {
   ];
 
   tanks.forEach(tank => {
-    // Use tank.group if explicitly set, otherwise determine by ID
+    // Use tank.group if explicitly set, otherwise determine by tank name
     let groupId = tank.group;
-    
+
     if (!groupId) {
-      // Default grouping logic based on tank ID
-      if (tank.id >= 1 && tank.id <= 6) {
+      // Determine group by tank name prefix
+      const upperName = tank.name.toUpperCase();
+      if (upperName.startsWith('BB')) {
         groupId = 'BB';
-      } else if (tank.id >= 7 && tank.id <= 12) {
+      } else if (upperName.startsWith('SB')) {
         groupId = 'SB';
       } else {
         groupId = 'CENTER';
@@ -49,9 +51,9 @@ export function groupTanks(tanks: Tank[]): TankGroup[] {
     }
   });
 
-  // Sort tanks within each group by ID
+  // Sort tanks within each group using natural sorting
   groups.forEach(group => {
-    group.tanks.sort((a, b) => a.id - b.id);
+    group.tanks = sortTanksNaturally(group.tanks);
   });
 
   // Return only groups that have tanks
@@ -61,14 +63,28 @@ export function groupTanks(tanks: Tank[]): TankGroup[] {
 }
 
 /**
- * Assigns group to tanks based on default logic if not already set
+ * Assigns group to tanks based on tank name if not already set
  */
 export function assignDefaultGroups(tanks: Tank[]): Tank[] {
-  return tanks.map(tank => ({
-    ...tank,
-    group: tank.group || (tank.id >= 1 && tank.id <= 6 ? 'BB' : 
-                         tank.id >= 7 && tank.id <= 12 ? 'SB' : 'CENTER')
-  }));
+  return tanks.map(tank => {
+    if (tank.group) {
+      return tank;
+    }
+
+    // Determine group by tank name prefix
+    const upperName = tank.name.toUpperCase();
+    let group: 'BB' | 'SB' | 'CENTER';
+
+    if (upperName.startsWith('BB')) {
+      group = 'BB';
+    } else if (upperName.startsWith('SB')) {
+      group = 'SB';
+    } else {
+      group = 'CENTER';
+    }
+
+    return { ...tank, group };
+  });
 }
 
 /**

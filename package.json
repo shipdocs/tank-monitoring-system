@@ -34,7 +34,7 @@
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run build\" \"wait-on http://localhost:3001 && electron .\"",
     "electron:pack": "npm run build && electron-builder",
-    "electron:dist": "npm run build && electron-builder --publish=never",
+    "electron:dist": "npm run build && electron-builder --publish=onTagOrDraft",
     "build:all": "node build-all-platforms.js",
     "release": "node scripts/release.js",
     "postinstall": "electron-builder install-app-deps"
@@ -139,7 +139,8 @@
       "provider": "github",
       "owner": "shipdocs",
       "repo": "tank-monitoring-system",
-      "releaseType": "release"
+      "releaseType": "release",
+      "publishAutoUpdate": true
     }
   }
 }

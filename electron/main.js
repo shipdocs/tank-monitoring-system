@@ -17,6 +17,22 @@ let mainWindow;
 let serverInstance = null; // Integrated server instance
 
 // Configure auto-updater (will be called after window creation)
+// Only enable auto-updates for stable releases (exclude RC, beta, alpha, testing versions)
+function isStableVersion(version) {
+  // Check if version contains any pre-release identifiers
+  const preReleasePatterns = [
+    /rc/i,           // Release Candidate
+    /beta/i,         // Beta versions
+    /alpha/i,        // Alpha versions
+    /test/i,         // Testing versions
+    /dev/i,          // Development versions
+    /pre/i,          // Pre-release
+    /snapshot/i,     // Snapshot builds
+    /-/              // Any version with dash (e.g., 1.2.3-rc1)
+  ];
+
+  return !preReleasePatterns.some(pattern => pattern.test(version));
+}
 
 // Auto-updater event handlers
 autoUpdater.on('checking-for-update', () => {
@@ -26,12 +42,18 @@ autoUpdater.on('checking-for-update', () => {
 autoUpdater.on('update-available', (info) => {
   addLog('INFO', 'UPDATER', `Update available: ${info.version}`);
 
-  // Show notification to user
+  // Check if the available version is stable
+  if (!isStableVersion(info.version)) {
+    addLog('INFO', 'UPDATER', `Skipping pre-release version: ${info.version} (RC/beta/testing version)`);
+    return; // Skip pre-release versions
+  }
+
+  // Show notification to user for stable versions only
   if (mainWindow) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
-      message: `A new version (${info.version}) is available!`,
+      message: `A new stable version (${info.version}) is available!`,
       detail: 'The update will be downloaded in the background. You will be notified when it\'s ready to install.',
       buttons: ['OK']
     });
@@ -54,12 +76,18 @@ autoUpdater.on('download-progress', (progressObj) => {
 autoUpdater.on('update-downloaded', (info) => {
   addLog('INFO', 'UPDATER', `Update downloaded: ${info.version}`);
 
-  // Show restart dialog
+  // Double-check that the downloaded version is stable
+  if (!isStableVersion(info.version)) {
+    addLog('WARN', 'UPDATER', `Refusing to install pre-release version: ${info.version}`);
+    return; // Don't install pre-release versions
+  }
+
+  // Show restart dialog for stable versions only
   if (mainWindow) {
     const response = dialog.showMessageBoxSync(mainWindow, {
       type: 'info',
-      title: 'Update Ready',
-      message: `Update ${info.version} has been downloaded and is ready to install.`,
+      title: 'Stable Update Ready',
+      message: `Stable update ${info.version} has been downloaded and is ready to install.`,
       detail: 'The application will restart to apply the update.',
       buttons: ['Restart Now', 'Later'],
       defaultId: 0,
@@ -76,12 +104,14 @@ autoUpdater.on('update-downloaded', (info) => {
 function checkForUpdatesManually() {
   addLog('INFO', 'UPDATER', 'Manual update check initiated');
 
+  const currentVersion = app.getVersion();
+
   if (mainWindow) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Checking for Updates',
-      message: 'Checking for updates...',
-      detail: 'Please wait while we check for the latest version.',
+      message: 'Checking for stable updates...',
+      detail: `Current version: ${currentVersion}\nLooking for stable releases only (excluding RC/beta/testing versions).`,
       buttons: ['OK']
     });
   }
@@ -236,13 +266,20 @@ function createWindow() {
       mainWindow.focus();
     }
 
-    // Start auto-updater after window is ready (only in production)
+    // Start auto-updater after window is ready (only in production and for stable versions)
     if (!isDev) {
-      setTimeout(() => {
-        autoUpdater.checkForUpdatesAndNotify().catch(err => {
-          addLog('ERROR', 'UPDATER', `Update error: ${err.message}`);
-        });
-      }, 5000); // Wait 5 seconds after startup
+      // Check if current version is stable before enabling auto-updates
+      const currentVersion = app.getVersion();
+      if (isStableVersion(currentVersion)) {
+        addLog('INFO', 'UPDATER', `Current version ${currentVersion} is stable - enabling auto-updates`);
+        setTimeout(() => {
+          autoUpdater.checkForUpdatesAndNotify().catch(err => {
+            addLog('ERROR', 'UPDATER', `Update error: ${err.message}`);
+          });
+        }, 5000); // Wait 5 seconds after startup
+      } else {
+        addLog('INFO', 'UPDATER', `Current version ${currentVersion} is pre-release - auto-updates disabled`);
+      }
     }
   });
 

@@ -84,8 +84,8 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
       const tempValue = parseFloat(temperature);
       if (isNaN(tempValue)) {
         errors.push('Temperature must be a valid number');
-      } else if (tempValue < -50 || tempValue > 100) {
-        errors.push('Temperature must be between -50°C and 100°C');
+      } else if (tempValue < -50 || tempValue > 150) {
+        errors.push('Temperature must be between -50°C and 150°C');
       }
     }
 

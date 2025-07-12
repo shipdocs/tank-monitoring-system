@@ -16,6 +16,9 @@ export const EditableTankCard: React.FC<EditableTankCardProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(tank.name);
 
+  // Use real volume from tank table calibration data if available
+  const currentVolume = (tank as any).current_volume_liters || 0;
+
   const getStatusColor = (status: Tank['status']) => {
     switch (status) {
       case 'normal': return 'bg-green-500';
@@ -54,7 +57,7 @@ export const EditableTankCard: React.FC<EditableTankCardProps> = ({
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 
   const handleNameSubmit = () => {
@@ -112,7 +115,7 @@ export const EditableTankCard: React.FC<EditableTankCardProps> = ({
       <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-600 mb-2">
           <span>Level</span>
-          <span>{percentage.toFixed(1)}%</span>
+          <span>{(percentage ?? 0).toFixed(1)}%</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
           <div 
@@ -130,14 +133,21 @@ export const EditableTankCard: React.FC<EditableTankCardProps> = ({
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Current Level:</span>
           <span className="font-semibold text-gray-900">
-            {tank.currentLevel.toFixed(0)} mm
+            {(tank.currentLevel ?? 0).toFixed(0)} mm
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">Volume:</span>
+          <span className="font-semibold text-green-600">
+            {((currentVolume ?? 0) / 1000).toFixed(2)} m³
           </span>
         </div>
 
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Fill Level:</span>
           <span className="font-semibold text-gray-700">
-            {percentage.toFixed(1)}%
+            {(percentage ?? 0).toFixed(1)}%
           </span>
         </div>
         
@@ -169,7 +179,7 @@ export const EditableTankCard: React.FC<EditableTankCardProps> = ({
           <span>{getTrendText(tank.trend)}</span>
           {tank.trendValue && tank.trendValue > 0 && (
             <span className="text-xs">
-              {tank.trendValue.toFixed(1)} {tank.unit}/min
+              {(tank.trendValue ?? 0).toFixed(1)} {tank.unit}/min
             </span>
           )}
         </div>

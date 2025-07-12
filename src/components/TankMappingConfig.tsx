@@ -47,19 +47,24 @@ export const TankMappingConfig: React.FC<TankMappingConfigProps> = ({
 
   const handleTankTableChange = (tableId: string) => {
     setActiveTankTableId(tableId);
-    
+
     if (tableId) {
       const table = storage.getTankTable(tableId);
       setAvailableTanks(table?.tanks || []);
-      
-      // Create default mappings
-      const defaultMappings = dataService.createDefaultMappings(tableId);
-      setMappings(defaultMappings.slice(0, dataSourceCount));
+
+      // Only create empty mappings for data sources, don't auto-assign tanks
+      // This allows users to manually select which tanks to map
+      const emptyMappings: TankMapping[] = Array.from({ length: dataSourceCount }, (_, index) => ({
+        data_source_index: index,
+        tank_table_id: '',
+        enabled: false
+      }));
+      setMappings(emptyMappings);
     } else {
       setAvailableTanks([]);
       setMappings([]);
     }
-    
+
     setHasChanges(true);
   };
 
@@ -101,10 +106,29 @@ export const TankMappingConfig: React.FC<TankMappingConfigProps> = ({
   const saveMappings = () => {
     dataService.saveTankMappings(mappings, activeTankTableId);
     setHasChanges(false);
-    
+
     if (onMappingsChange) {
       onMappingsChange(mappings);
     }
+  };
+
+  const createQuickSetup = () => {
+    if (!activeTankTableId) return;
+
+    // Create default mappings (1:1 mapping)
+    const defaultMappings = dataService.createDefaultMappings(activeTankTableId);
+    setMappings(defaultMappings.slice(0, dataSourceCount));
+    setHasChanges(true);
+  };
+
+  const clearAllMappings = () => {
+    const emptyMappings: TankMapping[] = Array.from({ length: dataSourceCount }, (_, index) => ({
+      data_source_index: index,
+      tank_table_id: '',
+      enabled: false
+    }));
+    setMappings(emptyMappings);
+    setHasChanges(true);
   };
 
   const getUsedTankIds = () => {
@@ -176,13 +200,34 @@ export const TankMappingConfig: React.FC<TankMappingConfigProps> = ({
           {activeTankTableId && availableTanks.length > 0 && (
             <div className="mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Tank Mappings</h3>
-                <button
-                  onClick={addMapping}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                >
-                  Add Mapping
-                </button>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Tank Mappings</h3>
+                  <p className="text-sm text-gray-500">
+                    {mappings.filter(m => m.enabled).length} of {dataSourceCount} data sources mapped
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={createQuickSetup}
+                    className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                    title="Create 1:1 mapping for all data sources"
+                  >
+                    Quick Setup
+                  </button>
+                  <button
+                    onClick={clearAllMappings}
+                    className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                    title="Clear all mappings"
+                  >
+                    Clear All
+                  </button>
+                  <button
+                    onClick={addMapping}
+                    className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    Add Mapping
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">

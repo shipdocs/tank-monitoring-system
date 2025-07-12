@@ -15,7 +15,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [operationalData, setOperationalData] = useState<TankOperationalData>({
-    temperature: tank.temperature || 15,
+    temperature: tank.temperature || 0, // Only use actual temperature, 0 as placeholder for input
     setpoint: 0,
     flowRate: 0
   });
@@ -86,7 +86,8 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  const currentVolume = calculateVolumeFromLevel(tank.currentLevel);
+  // Use real volume from tank table calibration data if available
+  const currentVolume = (tank as any).current_volume_liters || 0;
   const selectedProduct = products.find(p => p.id === selectedProductId);
   const getStatusColor = (status: Tank['status']) => {
     switch (status) {
@@ -135,7 +136,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
 
   return (
@@ -161,10 +162,14 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
           {/* Level and percentage */}
           <div className="text-center">
             <div className="text-3xl font-bold text-gray-800 mb-1">
-              {tank.currentLevel.toFixed(0)} <span className="text-lg text-gray-500">mm</span>
+              {(tank.currentLevel ?? 0).toFixed(0)} <span className="text-lg text-gray-500">mm</span>
             </div>
             <div className="text-lg font-semibold text-blue-600">
-              {percentage.toFixed(1)}%
+              {(percentage ?? 0).toFixed(1)}%
+            </div>
+            {/* Add volume display */}
+            <div className="text-sm font-medium text-green-600 mt-1">
+              {((currentVolume ?? 0) / 1000).toFixed(2)} <span className="text-xs text-gray-500">m³</span>
             </div>
           </div>
           
@@ -173,7 +178,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
             <div className="bg-gray-50 rounded-lg p-2 text-center">
               <div className="text-xs text-gray-600 font-medium">Volume</div>
               <div className="text-sm font-bold text-gray-700">
-                {(currentVolume / 1000).toFixed(1)} m³
+                {((currentVolume ?? 0) / 1000).toFixed(2)} m³
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-2 text-center">
@@ -215,7 +220,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
             <div className="bg-blue-50 rounded-lg p-2 text-center">
               <div className="text-xs text-blue-600 font-medium">Temperature</div>
               <div className="text-lg font-bold text-blue-700">
-                {tank.temperature.toFixed(1)}°C
+                {(tank.temperature ?? 0).toFixed(1)}°C
               </div>
             </div>
           )}
@@ -235,7 +240,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
             <span className="text-sm font-medium">{getTrendText(tank.trend)}</span>
             {tank.trendValue && tank.trendValue > 0 && (
               <span className="text-xs opacity-75">
-                {tank.trendValue.toFixed(1)} mm/min
+                {(tank.trendValue ?? 0).toFixed(1)} mm/min
               </span>
             )}
           </div>
@@ -346,7 +351,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">VCF:</span>
                     <span className="font-medium text-gray-800">
-                      {calculationResult.vcf.toFixed(4)}
+                      {(calculationResult.vcf ?? 0).toFixed(4)}
                     </span>
                   </div>
                   

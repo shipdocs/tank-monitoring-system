@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { SortableTankGrid } from './components/SortableTankGrid';
 import { ControlsSidebar } from './components/ControlsSidebar';
-import { VesselConfigurationWizard } from './components/wizard/VesselConfigurationWizard';
+import { TotalsDashboard } from './components/TotalsDashboard';
+import { ProductService } from './services/ProductService';
+
 import { CollapsibleHeader } from './components/CollapsibleHeader';
 import { useTankData } from './hooks/useTankData';
 import { useDatabaseTankConfiguration } from './hooks/useDatabaseTankConfiguration';
@@ -9,13 +11,16 @@ import { useDatabaseVesselConfiguration } from './hooks/useDatabaseVesselConfigu
 import { useDefaultLayout } from './hooks/useDefaultLayout';
 import { useAppBranding } from './hooks/useAppBranding';
 import { ViewMode } from './types/tank';
+import { Product } from './types/product';
 
 function App() {
-  const tankData = useTankData();
+  const { tanks, lastSync, connectionStatus, debugConfiguration } = useTankData();
   const { defaultLayout, saveDefaultLayout } = useDefaultLayout();
   const { branding } = useAppBranding();
   const [viewMode, setViewMode] = useState<ViewMode>(defaultLayout);
-  const [showWizard, setShowWizard] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productService] = useState(() => ProductService.getInstance());
+
   const {
     configuredTanks,
     reorderTanks,
@@ -24,7 +29,7 @@ function App() {
     importConfig,
     resetConfiguration,
     migrateFromLocalStorage: migrateTankConfig,
-  } = useDatabaseTankConfiguration(tankData.tanks);
+  } = useDatabaseTankConfiguration(tanks);
   const {
     setActiveVessel,
     migrateFromLocalStorage: migrateVesselConfig,
@@ -46,6 +51,16 @@ function App() {
     setViewMode(defaultLayout);
   }, [defaultLayout]);
 
+  // Load products
+  useEffect(() => {
+    try {
+      const loadedProducts = productService.getProducts();
+      setProducts(loadedProducts);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    }
+  }, [productService]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
@@ -55,13 +70,19 @@ function App() {
           appSlogan={branding.appSlogan}
           logoUrl={branding.logoUrl}
           primaryColor={branding.primaryColor}
-          connectionStatus={tankData.connectionStatus}
-          lastSync={tankData.lastSync}
+          connectionStatus={connectionStatus}
+          lastSync={lastSync}
           tanks={configuredTanks}
-          onVesselSetup={() => setShowWizard(true)}
+
         />
 
 
+
+        {/* Totals Dashboard */}
+        <TotalsDashboard
+          tanks={configuredTanks}
+          products={products}
+        />
 
         {/* Dashboard Layout */}
         <div className="mb-8">
@@ -70,6 +91,7 @@ function App() {
             viewMode={viewMode}
             onReorder={reorderTanks}
             onRename={renameTank}
+            products={products}
           />
         </div>
 
@@ -78,12 +100,12 @@ function App() {
           <div className="bg-white rounded-lg shadow-sm p-4">
             <div className="flex items-center justify-center space-x-4 mb-2">
               <div className={`w-3 h-3 rounded-full ${
-                tankData.connectionStatus === 'connected' ? 'bg-green-500' : 
-                tankData.connectionStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
+                connectionStatus === 'connected' ? 'bg-green-500' :
+                connectionStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
               }`}></div>
               <span className="font-medium">
-                {tankData.connectionStatus === 'connected' ? 'Connected to Data Source' :
-                 tankData.connectionStatus === 'error' ? 'Data Source Error' :
+                {connectionStatus === 'connected' ? 'Connected to Data Source' :
+                 connectionStatus === 'error' ? 'Data Source Error' :
                  'No Data Source Connected'}
               </span>
             </div>
@@ -112,19 +134,10 @@ function App() {
             migrateTankConfig();
             migrateVesselConfig();
           }}
+          onDebug={debugConfiguration}
         />
 
-        {/* Vessel Configuration Wizard */}
-        {showWizard && (
-          <VesselConfigurationWizard
-            tanks={configuredTanks}
-            onComplete={(vesselId) => {
-              setActiveVessel(vesselId);
-              setShowWizard(false);
-            }}
-            onCancel={() => setShowWizard(false)}
-          />
-        )}
+
       </div>
     </div>
   );

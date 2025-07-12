@@ -83,7 +83,7 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
   const isCritical = tank.status === 'critical';
 
@@ -141,10 +141,10 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
         {/* Level Display */}
         <div className="text-center">
           <div className={`text-xl font-bold ${isCritical ? 'text-red-600' : isAlarm ? 'text-orange-600' : 'text-gray-800'}`}>
-            {tank.currentLevel.toFixed(0)} <span className="text-sm text-gray-500">mm</span>
+            {(tank.currentLevel ?? 0).toFixed(0)} <span className="text-sm text-gray-500">mm</span>
           </div>
           <div className={`text-lg font-bold ${isCritical ? 'text-red-600' : isAlarm ? 'text-orange-600' : 'text-blue-600'}`}>
-            {percentage.toFixed(1)}%
+            {(percentage ?? 0).toFixed(1)}%
           </div>
         </div>
 
@@ -174,7 +174,7 @@ export const EditableCompactTankCard: React.FC<EditableCompactTankCardProps> = (
         <div className="text-xs text-gray-600 text-center">
           <div className="font-medium">{tank.location}</div>
           {tank.temperature !== undefined && (
-            <div className="text-blue-600">{tank.temperature.toFixed(1)}°C</div>
+            <div className="text-blue-600">{(tank.temperature ?? 0).toFixed(1)}°C</div>
           )}
         </div>
 

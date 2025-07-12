@@ -7,6 +7,9 @@ interface TankCompactCardProps {
 }
 
 export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
+  // Use real volume from tank table calibration data if available
+  const currentVolume = (tank as any).current_volume_liters || 0;
+
   const getStatusColor = (status: Tank['status']) => {
     switch (status) {
       case 'normal': return 'bg-green-500';
@@ -35,7 +38,7 @@ export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
     }
   };
 
-  const percentage = (tank.currentLevel / tank.maxCapacity) * 100;
+  const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'low' || tank.status === 'high' || tank.status === 'critical';
 
   return (
@@ -46,7 +49,7 @@ export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
         <h3 className="text-sm font-semibold text-gray-800 truncate">{tank.name}</h3>
         <div className="flex items-center space-x-1">
           {tank.trend && (
-            <div className={`${getTrendColor(tank.trend)}`} title={`${tank.trend} ${tank.trendValue?.toFixed(1) || ''} ${tank.unit}/min`}>
+            <div className={`${getTrendColor(tank.trend)}`} title={`${tank.trend} ${(tank.trendValue ?? 0).toFixed(1)} ${tank.unit}/min`}>
               {getTrendIcon(tank.trend)}
             </div>
           )}
@@ -57,12 +60,15 @@ export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
       <div className="space-y-2">
         <div className="text-center">
           <div className="text-lg font-bold text-gray-900">
-            {tank.currentLevel.toFixed(0)} mm
+            {(tank.currentLevel ?? 0).toFixed(0)} mm
           </div>
-          <div className="text-xs text-gray-500">{percentage.toFixed(1)}%</div>
+          <div className="text-xs text-gray-500">{(percentage ?? 0).toFixed(1)}%</div>
+          <div className="text-xs text-green-600 font-medium">
+            {((currentVolume ?? 0) / 1000).toFixed(2)} m³
+          </div>
           {tank.temperature !== undefined && (
             <div className="text-xs text-blue-600 font-medium">
-              {tank.temperature.toFixed(1)}°C
+              {(tank.temperature ?? 0).toFixed(1)}°C
             </div>
           )}
         </div>
@@ -76,7 +82,7 @@ export const TankCompactCard: React.FC<TankCompactCardProps> = ({ tank }) => {
         
         <div className="flex justify-between text-xs text-gray-500">
           <span>0</span>
-          <span>{percentage.toFixed(0)}%</span>
+          <span>{(percentage ?? 0).toFixed(0)}%</span>
           <span>{tank.maxCapacity}</span>
         </div>
         

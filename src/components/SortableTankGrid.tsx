@@ -18,7 +18,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Tank, ViewMode, TankGroup } from '../types/tank';
+import { Product } from '../types/product';
 import { SortableTankItem } from './SortableTankItem';
+import { EnhancedGroupHeader } from './EnhancedGroupHeader';
 import { groupTanks } from '../utils/tankGrouping';
 
 interface SortableTankGridProps {
@@ -26,6 +28,7 @@ interface SortableTankGridProps {
   viewMode: ViewMode;
   onReorder: (oldIndex: number, newIndex: number) => void;
   onRename: (tankId: number, newName: string) => void;
+  products?: Product[];
 }
 
 export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
@@ -33,6 +36,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
   viewMode,
   onReorder,
   onRename,
+  products = [],
 }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const tankGroups = groupTanks(tanks);
@@ -134,23 +138,16 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
     };
 
     return (
-      <div key={group.id} className={`${isCompactSideBySide ? "space-y-4" : "space-y-6"} bg-white rounded-xl shadow-sm border border-gray-200 p-6`}>
-        {/* Enhanced Group Header */}
-        <div className={`bg-gradient-to-r ${getGroupColor(group.displayName)} text-white p-4 rounded-lg shadow-md`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-white rounded-full opacity-80"></div>
-              <h3 className={`font-bold ${isCompactSideBySide ? 'text-lg' : 'text-xl'}`}>
-                {group.displayName}
-              </h3>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                {group.tanks.length} tank{group.tanks.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div key={group.id} className={`${isCompactSideBySide ? "space-y-4" : "space-y-6"}`}>
+        {/* Enhanced Group Header with Totals */}
+        <EnhancedGroupHeader
+          groupId={group.id}
+          tanks={tanks}
+          products={products}
+        />
+
+        {/* Tank Cards Container */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
 
         {/* Group Tanks */}
         <SortableContext
@@ -168,6 +165,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
             ))}
           </div>
         </SortableContext>
+        </div>
       </div>
     );
   };

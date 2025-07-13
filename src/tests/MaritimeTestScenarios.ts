@@ -579,7 +579,7 @@ export interface StepResult {
   passed: boolean;
   error?: string;
   executionTime: number;
-  actualValues: Record<string, any>;
+  actualValues: Record<string, string | number | boolean>;
 }
 
 export interface ValidationResult {

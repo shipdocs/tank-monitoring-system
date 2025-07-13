@@ -54,16 +54,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     return Math.max(0, target);
   }, [operationType, operationQuantity, initialVolume, grandTotals, targetVolume]);
 
-  // Calculate operation progress for display (for future use)
-  // const operationProgress = useMemo(() => {
-  //   if (!grandTotals || !initialVolume) return 0;
-  //
-  //   const currentVolume = grandTotals.totalVolume;
-  //   const volumeChange = Math.abs(currentVolume - initialVolume);
-  //   const progressPercentage = operationQuantity > 0 ? (volumeChange / operationQuantity) * 100 : 0;
-  //
-  //   return Math.min(progressPercentage, 100);
-  // }, [grandTotals, initialVolume, operationQuantity]);
+  // Operation progress calculation removed - not currently used
 
   // Calculate totals and alarm states whenever tanks data changes
   useEffect(() => {

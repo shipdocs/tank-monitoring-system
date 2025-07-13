@@ -302,8 +302,8 @@ export class AudioAlarmService {
     if (this.audioContext.oscillator) {
       try {
         this.audioContext.oscillator.stop();
-      } catch {
-        // Oscillator might already be stopped
+      } catch (error) {
+        console.warn('Failed to stop oscillator. It might already be stopped.', error);
       }
       this.audioContext.oscillator = null;
     }
@@ -329,8 +329,8 @@ export class AudioAlarmService {
     try {
       await this.playAudioType(audioType, { volume, enabled: true });
       return true;
-    } catch {
-      console.error('Audio test failed');
+    } catch (error) {
+      console.error('Audio test failed:', error);
       return false;
     }
   }

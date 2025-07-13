@@ -55,7 +55,7 @@ export class AlarmConfigurationService {
     try {
       config.lastUpdated = new Date().toISOString();
       localStorage.setItem(this.storageKey, JSON.stringify(config));
-      console.log('✅ Alarm configuration saved:', config);
+      // Configuration saved successfully (removed console.log for production)
     } catch (error) {
       console.error('❌ Failed to save alarm configuration:', error);
       throw error;

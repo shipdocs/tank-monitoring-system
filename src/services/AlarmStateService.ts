@@ -27,9 +27,9 @@ export class AlarmStateService {
   private currentStatus: AlarmStatus | null = null;
   private alarmHistory: AlarmEvent[] = [];
   
-  // Timing management (browser-compatible timer types)
-  private stateChangeTimer: number | null = null;
-  private alarmDelayTimer: number | null = null;
+  // Timing management (cross-platform timer types)
+  private stateChangeTimer: ReturnType<typeof setTimeout> | null = null;
+  private alarmDelayTimer: ReturnType<typeof setTimeout> | null = null;
   
   // Event listeners
   private statusChangeListeners: ((status: AlarmStatus | null) => void)[] = [];

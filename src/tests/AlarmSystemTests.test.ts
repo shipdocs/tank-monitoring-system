@@ -14,7 +14,7 @@ import { AlarmConfigurationService } from '../services/AlarmConfigurationService
 import { AlarmStateService } from '../services/AlarmStateService';
 import { AudioAlarmService } from '../services/AudioAlarmService';
 import { FlowRateCalculationService } from '../services/FlowRateCalculationService';
-import { DEFAULT_ALARM_CONFIG, AlarmState, OperationType } from '../types/alarm';
+import { DEFAULT_ALARM_CONFIG } from '../types/alarm';
 import { Tank } from '../types/tank';
 
 // Mock localStorage
@@ -150,11 +150,9 @@ describe('AlarmConfigurationService', () => {
 
 describe('AlarmStateService', () => {
   let alarmStateService: AlarmStateService;
-  let configService: AlarmConfigurationService;
 
   beforeEach(() => {
     alarmStateService = AlarmStateService.getInstance();
-    configService = AlarmConfigurationService.getInstance();
     alarmStateService.resetAlarmState();
   });
 

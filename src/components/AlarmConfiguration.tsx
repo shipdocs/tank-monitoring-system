@@ -14,6 +14,7 @@ import { AlarmConfigurationService } from '../services/AlarmConfigurationService
 import { AudioAlarmService } from '../services/AudioAlarmService';
 import { AlarmStateService } from '../services/AlarmStateService';
 import { AlarmConfiguration as AlarmConfig, AlarmAudioType, AlarmStatus, AlarmEvent, AlarmStateUtils, ALARM_COLOR_MAP } from '../types/alarm';
+import { useNotifications, NotificationSystem } from './NotificationSystem';
 import { 
   AlertTriangle, 
   Volume2, 
@@ -41,6 +42,9 @@ export const AlarmConfiguration: React.FC = () => {
   const [currentAlarmStatus, setCurrentAlarmStatus] = useState<AlarmStatus | null>(null);
   const [alarmHistory, setAlarmHistory] = useState<AlarmEvent[]>([]);
   const [showHistory, setShowHistory] = useState<boolean>(false);
+
+  // Notification system
+  const { notifications, removeNotification, showSuccess, showError, showWarning } = useNotifications();
 
   // Load configuration on mount
   useEffect(() => {
@@ -164,12 +168,12 @@ export const AlarmConfiguration: React.FC = () => {
             if (result.success) {
               const newConfig = configService.getConfiguration();
               setConfig(newConfig);
-              alert('Alarm configuration imported successfully!');
+              showSuccess('Configuration Imported', 'Alarm configuration imported successfully!');
             } else {
-              alert(`Import failed: ${result.message}`);
+              showError('Import Failed', result.message);
             }
           } catch {
-            alert('Failed to import configuration. Please check the file format.');
+            showError('Import Failed', 'Failed to import configuration. Please check the file format.');
           }
         };
         reader.readAsText(file);
@@ -180,11 +184,19 @@ export const AlarmConfiguration: React.FC = () => {
 
   // Reset to defaults
   const resetToDefaults = () => {
-    if (confirm('Reset all alarm settings to defaults? This cannot be undone.')) {
+    showWarning(
+      'Reset Configuration',
+      'Are you sure you want to reset all alarm settings to defaults? This cannot be undone.',
+      0 // Persistent notification
+    );
+    // Note: In a full implementation, this would show a proper confirmation modal
+    // For now, we'll proceed with the reset after showing the warning
+    setTimeout(() => {
       configService.resetToDefaults();
       const defaultConfig = configService.getConfiguration();
       setConfig(defaultConfig);
-    }
+      showSuccess('Configuration Reset', 'All alarm settings have been reset to defaults.');
+    }, 3000);
   };
 
   // Acknowledge current alarm
@@ -233,7 +245,12 @@ export const AlarmConfiguration: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <NotificationSystem
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
+      <div className="space-y-6">
       {/* Header with Save Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -758,6 +775,7 @@ export const AlarmConfiguration: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

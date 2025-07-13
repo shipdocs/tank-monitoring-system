@@ -41,6 +41,9 @@ export class FlowRateCalculationService {
   // Store current flow rate data
   private currentFlowRates: Map<number, FlowRateData> = new Map();
 
+  // Track tanks that have been warned about missing calibration data
+  private warnedTanks: Set<number> = new Set();
+
   private constructor() {
     this.dataSourceService = DataSourceConfigurationService.getInstance();
   }
@@ -254,7 +257,11 @@ export class FlowRateCalculationService {
     }
     
     // Final fallback: assume 10L per mm (this should be avoided)
-    console.warn(`Tank ${tank.id} has no calibration data, using fallback calculation`);
+    // Rate-limited warning to prevent log flooding
+    if (!this.warnedTanks.has(tank.id)) {
+      console.warn(`Tank ${tank.id} has no calibration data, using fallback calculation`);
+      this.warnedTanks.add(tank.id);
+    }
     return tank.currentLevel * 10;
   }
 

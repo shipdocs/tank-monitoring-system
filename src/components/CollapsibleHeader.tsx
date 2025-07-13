@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gauge, Settings, Ship, ChevronUp, ChevronDown } from 'lucide-react';
+import { Gauge, Settings, ChevronUp, ChevronDown } from 'lucide-react';
 import { ConnectionStatus } from './ConnectionStatus';
 import { AlarmSummary } from './AlarmSummary';
 import { ServerStatusIndicator } from './ServerStatusIndicator';

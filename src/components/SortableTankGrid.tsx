@@ -127,15 +127,7 @@ export const SortableTankGrid: React.FC<SortableTankGridProps> = ({
   const renderGroup = (group: TankGroup) => {
     const isCompactSideBySide = viewMode === 'side-by-side';
 
-    // Get group color based on name
-    const getGroupColor = (groupName: string) => {
-      if (groupName.includes('BB') || groupName.includes('Port')) {
-        return 'from-red-500 to-red-600';
-      } else if (groupName.includes('SB') || groupName.includes('Starboard')) {
-        return 'from-green-500 to-green-600';
-      }
-      return 'from-blue-500 to-blue-600';
-    };
+
 
     return (
       <div key={group.id} className={`${isCompactSideBySide ? "space-y-4" : "space-y-6"}`}>

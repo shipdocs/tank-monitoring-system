@@ -87,7 +87,7 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
   };
 
   // Use real volume from tank table calibration data if available
-  const currentVolume = (tank as any).current_volume_liters || 0;
+  const currentVolume = (tank as Tank & { current_volume_liters?: number }).current_volume_liters || 0;
   const selectedProduct = products.find(p => p.id === selectedProductId);
   const getStatusColor = (status: Tank['status']) => {
     switch (status) {

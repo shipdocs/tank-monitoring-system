@@ -31,7 +31,6 @@ function App() {
     migrateFromLocalStorage: migrateTankConfig,
   } = useDatabaseTankConfiguration(tanks);
   const {
-    setActiveVessel,
     migrateFromLocalStorage: migrateVesselConfig,
   } = useDatabaseVesselConfiguration();
 

@@ -1,6 +1,7 @@
 import { Tank } from '../types/tank';
 import { Product } from '../types/product';
 import { ASTM54BService } from './ASTM54BService';
+import { FlowRateCalculationService } from './FlowRateCalculationService';
 
 export interface GroupTotals {
   groupId: string;
@@ -41,6 +42,12 @@ export class TankTotalsService {
     density_15c_vacuum: 1.025, // Typical seawater density
     description: 'Default ballast water for calculations'
   };
+
+  private flowRateService: FlowRateCalculationService;
+
+  constructor() {
+    this.flowRateService = FlowRateCalculationService.getInstance();
+  }
 
   /**
    * Calculate totals for a specific group of tanks
@@ -89,10 +96,10 @@ export class TankTotalsService {
         temperatureCount++;
       }
 
-      // Flow rate calculation (from trend data)
-      if (tank.trendValue !== undefined && tank.trend !== 'stable') {
-        const flowRate = this.calculateTankFlowRate(tank);
-        flowRateSum += flowRate;
+      // Flow rate calculation using new volume-based service
+      const flowRateData = this.flowRateService.calculateTankFlowRate(tank);
+      if (flowRateData.trend !== 'stable') {
+        flowRateSum += flowRateData.flowRateL_per_hour;
         flowRateCount++;
       }
 
@@ -151,10 +158,10 @@ export class TankTotalsService {
       const fillPercentage = this.getTankFillPercentage(tank);
       totalFillPercentage += fillPercentage;
 
-      // Flow rate calculation
-      if (tank.trendValue !== undefined && tank.trend !== 'stable') {
-        const flowRate = this.calculateTankFlowRate(tank);
-        flowRateSum += flowRate;
+      // Flow rate calculation using new volume-based service
+      const flowRateData = this.flowRateService.calculateTankFlowRate(tank);
+      if (flowRateData.trend !== 'stable') {
+        flowRateSum += flowRateData.flowRateL_per_hour;
         flowRateCount++;
         activeTankCount++;
       }
@@ -244,19 +251,10 @@ export class TankTotalsService {
   }
 
   /**
-   * Calculate tank flow rate in L/h from trend data
+   * Get tank flow rate data from the flow rate service
    */
-  private calculateTankFlowRate(tank: Tank): number {
-    if (!tank.trendValue || tank.trend === 'stable') {
-      return 0;
-    }
-
-    // Convert mm/min to L/h
-    // Assuming trendValue is in mm/min and using 10L per mm conversion
-    const flowRateLPerHour = tank.trendValue * 10 * 60; // mm/min * 10L/mm * 60min/h
-
-    // Apply direction based on trend
-    return tank.trend === 'loading' ? flowRateLPerHour : -flowRateLPerHour;
+  getTankFlowRateData(tankId: number) {
+    return this.flowRateService.getTankFlowRate(tankId);
   }
 
   /**

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Tank, TankData } from '../types/tank';
 import { EnhancedTank } from '../types/tankTable';
 import { UnifiedTankConfigurationService } from '../services/UnifiedTankConfigurationService';
+import { FlowRateCalculationService } from '../services/FlowRateCalculationService';
 
 // Raw measurement interface from server
 interface RawMeasurement {
@@ -11,21 +12,15 @@ interface RawMeasurement {
   lastUpdated: string;
 }
 
-// Helper function to calculate trend
-const calculateTrend = (currentLevel: number, previousLevel: number): { trend: Tank['trend'], trendValue: number } => {
-  const difference = currentLevel - previousLevel;
-  const threshold = 0.5; // Minimum change to consider as trend
-
-  if (Math.abs(difference) < threshold) {
+// Helper function to get trend from flow rate service
+const getTrendFromFlowRate = (flowRateData: { trend: string; flowRateL_per_min: number } | null): { trend: Tank['trend'], trendValue: number } => {
+  if (!flowRateData || flowRateData.trend === 'stable') {
     return { trend: 'stable', trendValue: 0 };
   }
 
-  // Convert to rate per minute (assuming 3-second updates)
-  const ratePerMinute = (difference / 3) * 60;
-
   return {
-    trend: difference > 0 ? 'loading' : 'unloading',
-    trendValue: Math.abs(ratePerMinute)
+    trend: flowRateData.trend,
+    trendValue: Math.abs(flowRateData.flowRateL_per_min) // Use L/min for consistency
   };
 };
 
@@ -37,6 +32,7 @@ export const useTankData = () => {
   });
 
   const unifiedConfigService = useMemo(() => new UnifiedTankConfigurationService(), []);
+  const flowRateService = useMemo(() => FlowRateCalculationService.getInstance(), []);
 
   useEffect(() => {
     let updateInterval: NodeJS.Timeout | null = null;
@@ -68,17 +64,17 @@ export const useTankData = () => {
           const enhancedTanks = unifiedConfigService.getEnhancedTankData(basicTanks);
 
           setTankData(prev => {
-            // Calculate trends by comparing with previous data
+            // Calculate flow rates and trends using the new service
             const tanksWithTrends = enhancedTanks.map((newTank: EnhancedTank) => {
-              const prevTank = prev.tanks.find(t => t.id === newTank.id);
-              const previousLevel = prevTank?.currentLevel || newTank.currentLevel;
-              const { trend, trendValue } = calculateTrend(newTank.currentLevel, previousLevel);
+              // Calculate flow rate using the new service
+              const flowRateData = flowRateService.calculateTankFlowRate(newTank);
+              const { trend, trendValue } = getTrendFromFlowRate(flowRateData);
 
               return {
                 ...newTank,
                 trend,
                 trendValue,
-                previousLevel
+                previousLevel: prev.tanks.find(t => t.id === newTank.id)?.currentLevel || newTank.currentLevel
               };
             });
 
@@ -122,7 +118,7 @@ export const useTankData = () => {
         clearInterval(updateInterval);
       }
     };
-  }, [unifiedConfigService]); // Include unifiedConfigService in dependency array
+  }, [unifiedConfigService, flowRateService]); // Include unifiedConfigService in dependency array
 
   // Debug function for troubleshooting configuration issues
   const debugConfiguration = () => {

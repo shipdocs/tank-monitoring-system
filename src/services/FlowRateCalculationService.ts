@@ -41,6 +41,9 @@ export class FlowRateCalculationService {
   // Store current flow rate data
   private currentFlowRates: Map<number, FlowRateData> = new Map();
 
+  // Track tanks that have been warned about missing calibration data
+  private warnedTanks: Set<number> = new Set();
+
   private constructor() {
     this.dataSourceService = DataSourceConfigurationService.getInstance();
   }
@@ -111,8 +114,8 @@ export class FlowRateCalculationService {
     const actualInterval = currentTime.getTime() - previousReading.timestamp.getTime();
     
     // Use configured interval if actual interval is close (within 50% tolerance)
-    const timeInterval = Math.abs(actualInterval - configuredInterval) < (configuredInterval * 0.5) 
-      ? configuredInterval 
+    const timeInterval = configuredInterval > 0 && Math.abs(actualInterval - configuredInterval) < (configuredInterval * 0.5)
+      ? configuredInterval
       : actualInterval;
     
     // Calculate volume change and flow rates
@@ -254,7 +257,11 @@ export class FlowRateCalculationService {
     }
     
     // Final fallback: assume 10L per mm (this should be avoided)
-    console.warn(`Tank ${tank.id} has no calibration data, using fallback calculation`);
+    // Rate-limited warning to prevent log flooding
+    if (!this.warnedTanks.has(tank.id)) {
+      console.warn(`Tank ${tank.id} has no calibration data, using fallback calculation`);
+      this.warnedTanks.add(tank.id);
+    }
     return tank.currentLevel * 10;
   }
 

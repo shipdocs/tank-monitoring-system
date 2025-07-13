@@ -258,37 +258,4 @@ describe('AlarmConfigurationService', () => {
   });
 });
 
-// Run a simple integration test
-console.log('🧪 Running Alarm Configuration Service Tests...');
-
-try {
-  const service = AlarmConfigurationService.getInstance();
-  
-  // Test 1: Basic configuration
-  console.log('✅ Test 1: Basic configuration retrieval');
-  const config = service.getConfiguration();
-  console.log('   Default config loaded:', config.enabled);
-
-  // Test 2: Threshold calculation
-  console.log('✅ Test 2: Threshold calculation');
-  const thresholds = service.calculateAlarmThresholds('loading', 500, 1000);
-  console.log('   Loading thresholds:', {
-    target: thresholds.targetVolume,
-    preAlarm: thresholds.preAlarmVolume
-  });
-
-  // Test 3: Alarm state determination
-  console.log('✅ Test 3: Alarm state determination');
-  const state = service.determineAlarmState(1450, thresholds);
-  console.log('   Alarm state for 1450m³:', state);
-
-  // Test 4: Progress calculation
-  console.log('✅ Test 4: Progress calculation');
-  const progress = service.calculateProgress(1300, thresholds);
-  console.log('   Progress at 1300m³:', progress);
-
-  console.log('🎉 All tests passed! Alarm Configuration Service is working correctly.');
-
-} catch (error) {
-  console.error('❌ Test failed:', error);
-}
+// Integration code and manual console logs removed to keep the test suite focused.

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Tank, TankData } from '../types/tank';
 import { EnhancedTank } from '../types/tankTable';
 import { UnifiedTankConfigurationService } from '../services/UnifiedTankConfigurationService';
-import { FlowRateCalculationService } from '../services/FlowRateCalculationService';
+import { FlowRateCalculationService, FlowRateData } from '../services/FlowRateCalculationService';
 
 // Raw measurement interface from server
 interface RawMeasurement {
@@ -13,7 +13,7 @@ interface RawMeasurement {
 }
 
 // Helper function to get trend from flow rate service
-const getTrendFromFlowRate = (flowRateData: { trend: string; flowRateL_per_min: number } | null): { trend: Tank['trend'], trendValue: number } => {
+const getTrendFromFlowRate = (flowRateData: FlowRateData | null): { trend: Tank['trend'], trendValue: number } => {
   if (!flowRateData || flowRateData.trend === 'stable') {
     return { trend: 'stable', trendValue: 0 };
   }
@@ -32,7 +32,7 @@ export const useTankData = () => {
   });
 
   const unifiedConfigService = useMemo(() => new UnifiedTankConfigurationService(), []);
-  const flowRateService = useMemo(() => FlowRateCalculationService.getInstance(), []);
+  const flowRateService = FlowRateCalculationService.getInstance();
 
   useEffect(() => {
     let updateInterval: NodeJS.Timeout | null = null;

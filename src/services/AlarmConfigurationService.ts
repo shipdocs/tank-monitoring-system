@@ -55,7 +55,7 @@ export class AlarmConfigurationService {
     try {
       config.lastUpdated = new Date().toISOString();
       localStorage.setItem(this.storageKey, JSON.stringify(config));
-      console.log('✅ Alarm configuration saved:', config);
+      // Configuration saved successfully (removed console.log for production)
     } catch (error) {
       console.error('❌ Failed to save alarm configuration:', error);
       throw error;
@@ -81,6 +81,14 @@ export class AlarmConfigurationService {
     initialVolume: number,
     config?: AlarmConfiguration
   ): AlarmThresholds {
+    // Validate input parameters
+    if (operationQuantity <= 0) {
+      throw new Error('Operation quantity must be positive');
+    }
+    if (initialVolume < 0) {
+      throw new Error('Initial volume cannot be negative');
+    }
+
     const alarmConfig = config || this.getConfiguration();
     
     // Calculate target volume
@@ -230,10 +238,34 @@ export class AlarmConfigurationService {
       }
     }
 
-    // Validate audio volume
+    // Validate audio settings
     if (config.audioVolume !== undefined) {
       if (config.audioVolume < 0 || config.audioVolume > 100) {
         errors.push('Audio volume must be between 0% and 100%');
+      }
+    }
+
+    if (config.audioFrequency !== undefined) {
+      if (config.audioFrequency < 200 || config.audioFrequency > 2000) {
+        errors.push('Audio frequency must be between 200Hz and 2000Hz');
+      }
+    }
+
+    if (config.beepDuration !== undefined) {
+      if (config.beepDuration < 50 || config.beepDuration > 2000) {
+        errors.push('Beep duration must be between 50ms and 2000ms');
+      }
+    }
+
+    if (config.beepInterval !== undefined) {
+      if (config.beepInterval < 100 || config.beepInterval > 5000) {
+        errors.push('Beep interval must be between 100ms and 5000ms');
+      }
+    }
+
+    if (config.patternRepeat !== undefined) {
+      if (config.patternRepeat < 1 || config.patternRepeat > 10) {
+        errors.push('Pattern repeat must be between 1 and 10');
       }
     }
 
@@ -278,6 +310,49 @@ export class AlarmConfigurationService {
   exportConfiguration(): string {
     const config = this.getConfiguration();
     return JSON.stringify(config, null, 2);
+  }
+
+  /**
+   * Get audio configuration for AudioAlarmService
+   */
+  getAudioConfiguration() {
+    const config = this.getConfiguration();
+    return {
+      enabled: config.audioEnabled,
+      volume: config.audioVolume,
+      audioType: config.audioType,
+      frequency: config.audioFrequency,
+      beepDuration: config.beepDuration,
+      beepInterval: config.beepInterval,
+      patternRepeat: config.patternRepeat
+    };
+  }
+
+  /**
+   * Update audio configuration
+   */
+  updateAudioConfiguration(audioConfig: {
+    enabled?: boolean;
+    volume?: number;
+    audioType?: string;
+    frequency?: number;
+    beepDuration?: number;
+    beepInterval?: number;
+    patternRepeat?: number;
+  }): void {
+    const currentConfig = this.getConfiguration();
+    const updatedConfig = {
+      ...currentConfig,
+      audioEnabled: audioConfig.enabled ?? currentConfig.audioEnabled,
+      audioVolume: audioConfig.volume ?? currentConfig.audioVolume,
+      audioType: audioConfig.audioType ?? currentConfig.audioType,
+      audioFrequency: audioConfig.frequency ?? currentConfig.audioFrequency,
+      beepDuration: audioConfig.beepDuration ?? currentConfig.beepDuration,
+      beepInterval: audioConfig.beepInterval ?? currentConfig.beepInterval,
+      patternRepeat: audioConfig.patternRepeat ?? currentConfig.patternRepeat
+    };
+
+    this.saveConfiguration(updatedConfig);
   }
 
   /**

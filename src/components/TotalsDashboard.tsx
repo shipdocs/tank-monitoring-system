@@ -4,8 +4,9 @@ import { Product } from '../types/product';
 import { TankTotalsService, GrandTotals, SetpointCalculation } from '../services/TankTotalsService';
 import { AlarmStateService } from '../services/AlarmStateService';
 import { AlarmConfigurationService } from '../services/AlarmConfigurationService';
-import { AlarmStatus, AlarmState, ALARM_COLOR_MAP, AlarmStateUtils } from '../types/alarm';
-import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, CheckCircle } from 'lucide-react';
+import { AudioAlarmService } from '../services/AudioAlarmService';
+import { AlarmStatus, AlarmState, ALARM_COLOR_MAP, AlarmStateUtils, AlarmAudioType } from '../types/alarm';
+import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, CheckCircle, VolumeX } from 'lucide-react';
 
 interface TotalsDashboardProps {
   tanks: Tank[];
@@ -19,6 +20,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
   const [totalsService] = useState(() => new TankTotalsService());
   const [alarmStateService] = useState(() => AlarmStateService.getInstance());
   const [alarmConfigService] = useState(() => AlarmConfigurationService.getInstance());
+  const [audioService] = useState(() => AudioAlarmService.getInstance());
   const [targetVolume] = useState<number>(1500); // Legacy fallback, kept for compatibility
   const [grandTotals, setGrandTotals] = useState<GrandTotals | null>(null);
   const [setpointCalc, setSetpointCalc] = useState<SetpointCalculation | null>(null);
@@ -29,13 +31,17 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
   const [operationQuantity, setOperationQuantity] = useState<number>(500);
   const [initialVolume, setInitialVolume] = useState<number>(0);
 
+  // Audio test state
+  const [audioTestVolume, setAudioTestVolume] = useState<number>(50);
+  const [isAudioTesting, setIsAudioTesting] = useState<boolean>(false);
+
   // Calculate target based on operation (auto-calculated from operation + current volume)
   const calculatedTarget = useMemo(() => {
     if (!grandTotals) return targetVolume; // Fallback to manual target
 
     // For new operations, use current volume as initial
     const currentVolume = grandTotals.totalVolume;
-    const baseVolume = initialVolume || currentVolume;
+    const baseVolume = initialVolume !== null && initialVolume >= 0 ? initialVolume : currentVolume;
 
     let target: number;
     if (operationType === 'loading') {
@@ -48,16 +54,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     return Math.max(0, target);
   }, [operationType, operationQuantity, initialVolume, grandTotals, targetVolume]);
 
-  // Calculate operation progress for display (for future use)
-  // const operationProgress = useMemo(() => {
-  //   if (!grandTotals || !initialVolume) return 0;
-  //
-  //   const currentVolume = grandTotals.totalVolume;
-  //   const volumeChange = Math.abs(currentVolume - initialVolume);
-  //   const progressPercentage = operationQuantity > 0 ? (volumeChange / operationQuantity) * 100 : 0;
-  //
-  //   return Math.min(progressPercentage, 100);
-  // }, [grandTotals, initialVolume, operationQuantity]);
+  // Operation progress calculation removed - not currently used
 
   // Calculate totals and alarm states whenever tanks data changes
   useEffect(() => {
@@ -68,7 +65,6 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
       const setpoint = totalsService.calculateSetpointProgress(totals, calculatedTarget);
       setSetpointCalc(setpoint);
 
-      // Update alarm state based on current operation
       // Update alarm state based on current operation
       if (totals && initialVolume !== null && initialVolume >= 0) {
         const alarmState = alarmStateService.updateAlarmState(
@@ -95,6 +91,29 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     if (grandTotals) {
       setInitialVolume(grandTotals.totalVolume);
     }
+  };
+
+  // Audio test functions
+  const testAudioType = async (audioType: AlarmAudioType) => {
+    if (isAudioTesting) return;
+
+    setIsAudioTesting(true);
+    try {
+      await audioService.playAudioType(audioType, {
+        volume: audioTestVolume,
+        enabled: true
+      });
+    } catch (error) {
+      console.error('Audio test failed:', error);
+    } finally {
+      // Reset testing state after a delay
+      setTimeout(() => setIsAudioTesting(false), 2000);
+    }
+  };
+
+  const stopAudioTest = () => {
+    audioService.stopAlarm();
+    setIsAudioTesting(false);
   };
 
   // Initialize operation with current volume (for future manual reset functionality)
@@ -295,6 +314,46 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
           </div>
         </div>
 
+        {/* Audio Test Controls */}
+        <div className="bg-gray-800 border border-gray-600 rounded-sm p-1.5 text-white text-center shadow">
+          <div className="text-xs font-bold text-gray-200 mb-1">AUDIO TEST</div>
+          <div className="flex items-center space-x-1 mb-1">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={audioTestVolume}
+              onChange={(e) => setAudioTestVolume(parseInt(e.target.value))}
+              className="flex-1 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+              disabled={isAudioTesting}
+            />
+            <span className="text-xs text-gray-300 w-8">{audioTestVolume}%</span>
+          </div>
+          <div className="flex space-x-1">
+            <button
+              onClick={() => testAudioType('beep')}
+              disabled={isAudioTesting}
+              className="flex-1 px-1 py-0.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded transition-colors"
+            >
+              Beep
+            </button>
+            <button
+              onClick={() => testAudioType('pattern')}
+              disabled={isAudioTesting}
+              className="flex-1 px-1 py-0.5 text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded transition-colors"
+            >
+              Pattern
+            </button>
+            <button
+              onClick={stopAudioTest}
+              disabled={!isAudioTesting}
+              className="px-1 py-0.5 text-xs bg-red-600 hover:bg-red-700 disabled:bg-gray-600 rounded transition-colors"
+            >
+              <VolumeX className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
         {/* Time to Complete - Larger Display */}
         <div className="bg-orange-900 border border-orange-700 rounded-sm p-2 text-white text-center shadow">
           <div className="text-xs font-bold text-orange-200">ETC</div>
@@ -308,7 +367,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
       </div>
       
       {/* Ultra Compact Progress Bar - Alarm State Aware with Thresholds */}
-      <div className="bg-gray-800 border border-gray-600 rounded-sm h-3 mb-2 relative shadow-inner overflow-hidden">
+      <div className="bg-gray-800 border border-gray-600 rounded-sm h-3 mb-2 relative shadow-inner overflow-visible">
         {/* Alarm threshold indicators */}
         {alarmStatus && (() => {
           const thresholds = getAlarmThresholdPositions();

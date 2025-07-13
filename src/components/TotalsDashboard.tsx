@@ -179,7 +179,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
             <div className="flex items-center space-x-1">
               <Target className="w-2 h-2 text-green-800" />
               <span className="text-xs text-green-900 font-black">
-                🎯 TARGET REACHED: {setpointCalc.currentVolume.toFixed(0)} m³
+                🎯 TARGET REACHED: {setpointCalc.targetVolume.toFixed(0)} m³
               </span>
             </div>
           </div>

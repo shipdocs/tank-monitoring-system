@@ -23,6 +23,12 @@ Object.defineProperty(global.window, 'localStorage', {
   writable: true,
 });
 
+// Make localStorage available globally (not just on window)
+Object.defineProperty(global, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+});
+
 // Mock sessionStorage
 Object.defineProperty(global.window, 'sessionStorage', {
   value: localStorageMock,
@@ -73,7 +79,26 @@ Object.defineProperty(global.window, 'speechSynthesis', {
   writable: true,
 });
 
+// Make speechSynthesis available globally (not just on window)
+Object.defineProperty(global, 'speechSynthesis', {
+  value: mockSpeechSynthesis,
+  writable: true,
+});
+
 Object.defineProperty(global.window, 'SpeechSynthesisUtterance', {
+  value: vi.fn(() => ({
+    text: '',
+    volume: 1,
+    rate: 1,
+    pitch: 1,
+    onend: null,
+    onerror: null,
+  })),
+  writable: true,
+});
+
+// Make SpeechSynthesisUtterance available globally
+Object.defineProperty(global, 'SpeechSynthesisUtterance', {
   value: vi.fn(() => ({
     text: '',
     volume: 1,

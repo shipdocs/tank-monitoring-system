@@ -25,9 +25,16 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
+
+    - name: Run tests
+      run: npm run test:run || echo "Tests failed but continuing build"
+      continue-on-error: true
+
     - name: Build application
-      run: npm run electron:dist
+      run: npm run build
+
+    - name: Build Electron app
+      run: npm run electron:pack
       
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

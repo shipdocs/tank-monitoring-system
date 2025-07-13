@@ -26,6 +26,8 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
   onRemove
 }) => {
   useEffect(() => {
+    const timers: NodeJS.Timeout[] = [];
+
     notifications.forEach(notification => {
       if (notification.duration && notification.duration > 0) {
         const timer = setTimeout(() => {
@@ -33,9 +35,14 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
           notification.onClose?.();
         }, notification.duration);
 
-        return () => clearTimeout(timer);
+        timers.push(timer);
       }
     });
+
+    // Return cleanup function that clears all timers
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
   }, [notifications, onRemove]);
 
   const getNotificationStyles = (type: Notification['type']) => {

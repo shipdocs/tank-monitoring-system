@@ -182,21 +182,31 @@ export const AlarmConfiguration: React.FC = () => {
     input.click();
   };
 
-  // Reset to defaults
+  // Reset to defaults with proper confirmation
+  const [resetConfirmationStep, setResetConfirmationStep] = useState<number>(0);
+
   const resetToDefaults = () => {
-    showWarning(
-      'Reset Configuration',
-      'Are you sure you want to reset all alarm settings to defaults? This cannot be undone.',
-      0 // Persistent notification
-    );
-    // Note: In a full implementation, this would show a proper confirmation modal
-    // For now, we'll proceed with the reset after showing the warning
-    setTimeout(() => {
+    if (resetConfirmationStep === 0) {
+      // First click - show warning and start confirmation process
+      showWarning(
+        'Reset Configuration',
+        'Click the reset button again within 10 seconds to confirm resetting all alarm settings to defaults.',
+        10000
+      );
+      setResetConfirmationStep(1);
+
+      // Reset confirmation after 10 seconds
+      setTimeout(() => {
+        setResetConfirmationStep(0);
+      }, 10000);
+    } else if (resetConfirmationStep === 1) {
+      // Second click within 10 seconds - proceed with reset
       configService.resetToDefaults();
       const defaultConfig = configService.getConfiguration();
       setConfig(defaultConfig);
+      setResetConfirmationStep(0);
       showSuccess('Configuration Reset', 'All alarm settings have been reset to defaults.');
-    }, 3000);
+    }
   };
 
   // Acknowledge current alarm
@@ -768,10 +778,14 @@ export const AlarmConfiguration: React.FC = () => {
 
           <button
             onClick={resetToDefaults}
-            className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+            className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg transition-colors ${
+              resetConfirmationStep === 1
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-red-100 text-red-700 hover:bg-red-200'
+            }`}
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Reset</span>
+            <span>{resetConfirmationStep === 1 ? 'Confirm Reset' : 'Reset'}</span>
           </button>
         </div>
       </div>

@@ -100,7 +100,7 @@ export class DataSourceConfigurationService {
   /**
    * Test connection to data source
    */
-  async testConnection(config: DataSourceConfiguration): Promise<{ success: boolean; message: string; data?: any }> {
+  async testConnection(config: DataSourceConfiguration): Promise<{ success: boolean; message: string; data?: unknown }> {
     try {
       const response = await fetch('/api/test-data-source', {
         method: 'POST',
@@ -149,7 +149,7 @@ export class DataSourceConfigurationService {
         throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      await response.json();
       return {
         success: true,
         message: 'Configuration applied successfully! Data source is now active.'

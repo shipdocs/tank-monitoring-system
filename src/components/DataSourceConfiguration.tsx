@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DataSourceConfigurationService, DataSourceConfiguration } from '../services/DataSourceConfigurationService';
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
@@ -10,6 +10,15 @@ export const DataSourceConfiguration: React.FC = () => {
 
   const service = DataSourceConfigurationService.getInstance();
 
+  const loadServerStatus = useCallback(async () => {
+    try {
+      const status = await service.getServerStatus();
+      setServerStatus(status);
+    } catch (error) {
+      console.warn('Failed to load server status:', error);
+    }
+  }, [service]);
+
   useEffect(() => {
     // Load current configuration
     const currentConfig = service.getConfiguration();
@@ -18,15 +27,6 @@ export const DataSourceConfiguration: React.FC = () => {
     // Load server status
     loadServerStatus();
   }, [service, loadServerStatus]);
-
-  const loadServerStatus = async () => {
-    try {
-      const status = await service.getServerStatus();
-      setServerStatus(status);
-    } catch (error) {
-      console.warn('Failed to load server status:', error);
-    }
-  };
 
   const handleInputChange = (field: keyof DataSourceConfiguration, value: string | number | boolean) => {
     if (!config) return;

@@ -221,7 +221,7 @@ export class TankTotalsService {
    */
   private getTankVolume(tank: Tank): number {
     // Use enhanced tank data if available
-    const enhancedTank = tank as any;
+    const enhancedTank = tank as Tank & { current_volume_liters?: number };
     if (enhancedTank.current_volume_liters !== undefined) {
       return enhancedTank.current_volume_liters;
     }
@@ -234,7 +234,7 @@ export class TankTotalsService {
    * Get tank fill percentage
    */
   private getTankFillPercentage(tank: Tank): number {
-    const enhancedTank = tank as any;
+    const enhancedTank = tank as Tank & { fill_percentage?: number };
     if (enhancedTank.fill_percentage !== undefined) {
       return enhancedTank.fill_percentage;
     }

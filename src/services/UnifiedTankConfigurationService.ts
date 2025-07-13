@@ -108,17 +108,10 @@ export class UnifiedTankConfigurationService {
    * Sync tank mappings to legacy storage for backward compatibility
    */
   private syncToLegacyStorage(tankMappings: TankMapping[]): void {
-    const legacyTanks = tankMappings
-      .filter(mapping => mapping.enabled)
-      .map((mapping, index) => ({
-        id: mapping.data_source_index + 1, // Convert to 1-based ID
-        customName: mapping.custom_name,
-        position: index
-      }));
-
-    // Note: We don't call saveTankConfiguration to avoid circular updates
-    // This is just for compatibility, Tank Table Storage is authoritative
-    // Legacy tanks are available in legacyTanks variable if needed
+    // Note: Legacy sync is disabled to avoid circular updates
+    // Tank Table Storage is now the authoritative source
+    // This method is kept for future compatibility if needed
+    console.log(`🔄 Legacy sync called for ${tankMappings.length} tank mappings (no-op)`);
   }
 
   /**

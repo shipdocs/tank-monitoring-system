@@ -116,14 +116,9 @@ export class UnifiedTankConfigurationService {
         position: index
       }));
 
-    const legacyConfig: AppConfiguration = {
-      id: 'synced-from-tank-table',
-      tanks: legacyTanks,
-      lastUpdated: new Date().toISOString()
-    };
-
     // Note: We don't call saveTankConfiguration to avoid circular updates
     // This is just for compatibility, Tank Table Storage is authoritative
+    // Legacy tanks are available in legacyTanks variable if needed
   }
 
   /**
@@ -219,8 +214,8 @@ export class UnifiedTankConfigurationService {
    * Get configuration status for debugging
    */
   getConfigurationStatus(): {
-    tankTableStorage: any;
-    legacyStorage: any;
+    tankTableStorage: object;
+    legacyStorage: object;
     unifiedConfig: UnifiedTankConfiguration;
     validation: { isValid: boolean; issues: string[] };
   } {

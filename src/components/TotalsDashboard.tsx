@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tank } from '../types/tank';
 import { Product } from '../types/product';
 import { TankTotalsService, GrandTotals, SetpointCalculation } from '../services/TankTotalsService';
-import { TrendingUp, TrendingDown, Minus, Clock, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
 
 interface TotalsDashboardProps {
   tanks: Tank[];

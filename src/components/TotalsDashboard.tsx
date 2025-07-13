@@ -69,7 +69,8 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
       setSetpointCalc(setpoint);
 
       // Update alarm state based on current operation
-      if (totals && initialVolume > 0) {
+      // Update alarm state based on current operation
+      if (totals && initialVolume !== null && initialVolume >= 0) {
         const alarmState = alarmStateService.updateAlarmState(
           totals.totalVolume,
           operationType,

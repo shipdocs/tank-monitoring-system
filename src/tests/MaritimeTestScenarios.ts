@@ -483,15 +483,22 @@ export class MaritimeTestRunner {
 
       // Validate flow rate if specified
       if (step.expectedFlowRate) {
+        // Calculate appropriate max volume based on scenario
+        const maxVolume = Math.max(
+          1000,
+          scenario.initialVolume * 1.5,
+          (scenario.initialVolume + scenario.operationQuantity) * 1.2
+        );
+
         // Create mock tank for flow rate calculation
         const mockTank: Tank = {
           id: 1,
           name: 'Test Tank',
           currentLevel: step.currentVolume * 10, // Convert to mm for tank
-          maxLevel: 1000,
+          maxLevel: maxVolume * 10,            // Convert to mm
           currentVolume: step.currentVolume,
-          maxVolume: 1000,
-          fillPercentage: (step.currentVolume / 1000) * 100,
+          maxVolume: maxVolume,
+          fillPercentage: (step.currentVolume / maxVolume) * 100,
           trend: 'stable',
           trendValue: 0,
           previousLevel: step.currentVolume * 10,

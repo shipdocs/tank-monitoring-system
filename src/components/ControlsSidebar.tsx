@@ -16,7 +16,7 @@ interface ControlsSidebarProps {
   onImport: (file: File) => Promise<boolean>;
   onReset: () => void;
   onMigrate?: () => void;
-  onDebug?: () => any;
+  onDebug?: () => void;
 }
 
 export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({

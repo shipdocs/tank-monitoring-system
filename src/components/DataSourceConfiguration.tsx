@@ -14,10 +14,10 @@ export const DataSourceConfiguration: React.FC = () => {
     // Load current configuration
     const currentConfig = service.getConfiguration();
     setConfig(currentConfig);
-    
+
     // Load server status
     loadServerStatus();
-  }, []);
+  }, [service, loadServerStatus]);
 
   const loadServerStatus = async () => {
     try {
@@ -28,7 +28,7 @@ export const DataSourceConfiguration: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof DataSourceConfiguration, value: any) => {
+  const handleInputChange = (field: keyof DataSourceConfiguration, value: string | number | boolean) => {
     if (!config) return;
     
     setConfig({

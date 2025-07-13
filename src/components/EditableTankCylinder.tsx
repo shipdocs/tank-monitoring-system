@@ -17,7 +17,7 @@ export const EditableTankCylinder: React.FC<EditableTankCylinderProps> = ({
   const [editName, setEditName] = useState(tank.name);
 
   // Use real volume from tank table calibration data if available
-  const currentVolume = (tank as any).current_volume_liters || 0;
+  const currentVolume = (tank as Tank & { current_volume_liters?: number }).current_volume_liters || 0;
   const percentage = ((tank.currentLevel ?? 0) / (tank.maxCapacity ?? 1)) * 100;
   const isAlarm = tank.status === 'critical' || tank.status === 'low';
 

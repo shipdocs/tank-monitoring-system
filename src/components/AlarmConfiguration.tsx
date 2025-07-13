@@ -221,11 +221,29 @@ export const AlarmConfiguration: React.FC = () => {
     alarmStateService.resetAlarmState();
   };
 
-  // Clear alarm history
+  // Clear alarm history with proper confirmation
+  const [clearHistoryConfirmationStep, setClearHistoryConfirmationStep] = useState<number>(0);
+
   const clearAlarmHistory = () => {
-    if (confirm('Clear all alarm history? This cannot be undone.')) {
+    if (clearHistoryConfirmationStep === 0) {
+      // First click - show warning and start confirmation process
+      showWarning(
+        'Clear Alarm History',
+        'Click the clear button again within 10 seconds to confirm clearing all alarm history.',
+        10000
+      );
+      setClearHistoryConfirmationStep(1);
+
+      // Reset confirmation after 10 seconds
+      setTimeout(() => {
+        setClearHistoryConfirmationStep(0);
+      }, 10000);
+    } else if (clearHistoryConfirmationStep === 1) {
+      // Second click within 10 seconds - proceed with clearing
       alarmStateService.clearAlarmHistory();
       setAlarmHistory([]);
+      setClearHistoryConfirmationStep(0);
+      showSuccess('History Cleared', 'All alarm history has been cleared.');
     }
   };
 
@@ -344,9 +362,13 @@ export const AlarmConfiguration: React.FC = () => {
             {alarmHistory.length > 0 && (
               <button
                 onClick={clearAlarmHistory}
-                className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded hover:bg-red-200 transition-colors"
+                className={`px-3 py-1 text-sm rounded transition-colors ${
+                  clearHistoryConfirmationStep === 1
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                }`}
               >
-                Clear
+                {clearHistoryConfirmationStep === 1 ? 'Confirm Clear' : 'Clear'}
               </button>
             )}
           </div>

@@ -111,8 +111,8 @@ export class FlowRateCalculationService {
     const actualInterval = currentTime.getTime() - previousReading.timestamp.getTime();
     
     // Use configured interval if actual interval is close (within 50% tolerance)
-    const timeInterval = Math.abs(actualInterval - configuredInterval) < (configuredInterval * 0.5) 
-      ? configuredInterval 
+    const timeInterval = configuredInterval > 0 && Math.abs(actualInterval - configuredInterval) < (configuredInterval * 0.5)
+      ? configuredInterval
       : actualInterval;
     
     // Calculate volume change and flow rates

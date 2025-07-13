@@ -4,8 +4,9 @@ import { DefaultLayoutSettings } from './DefaultLayoutSettings';
 import { TankTableManagement } from './TankTableManagement';
 import { ProductManagement } from './ProductManagement';
 import { DataSourceConfiguration } from './DataSourceConfiguration';
+import { AlarmConfiguration } from './AlarmConfiguration';
 import { ViewMode } from '../types/tank';
-import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard, Database, Package } from 'lucide-react';
+import { Settings, X, ChevronRight, Download, Upload, RotateCcw, LayoutDashboard, Database, Package, AlertTriangle } from 'lucide-react';
 
 interface ControlsSidebarProps {
   currentView: ViewMode;
@@ -31,7 +32,7 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
   onDebug,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<'view' | 'layout' | 'tank-tables' | 'products' | 'config'>('view');
+  const [activeSection, setActiveSection] = useState<'view' | 'layout' | 'tank-tables' | 'products' | 'alarms' | 'config'>('view');
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -89,11 +90,12 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
               { id: 'view', label: 'View', icon: LayoutDashboard },
               { id: 'tank-tables', label: 'Tank Tables', icon: Database },
               { id: 'products', label: 'Products', icon: Package },
+              { id: 'alarms', label: 'Alarms', icon: AlertTriangle },
               { id: 'config', label: 'Config', icon: Settings }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setActiveSection(id as 'view' | 'tank-tables' | 'products' | 'config')}
+                onClick={() => setActiveSection(id as 'view' | 'tank-tables' | 'products' | 'alarms' | 'config')}
                 className={`py-2 px-2 border-b-2 font-medium text-xs transition-colors flex-shrink-0 ${
                   activeSection === id
                     ? 'border-blue-500 text-blue-600'
@@ -142,6 +144,12 @@ export const ControlsSidebar: React.FC<ControlsSidebarProps> = ({
           {activeSection === 'products' && (
             <div className="p-6">
               <ProductManagement />
+            </div>
+          )}
+
+          {activeSection === 'alarms' && (
+            <div className="p-6">
+              <AlarmConfiguration />
             </div>
           )}
 

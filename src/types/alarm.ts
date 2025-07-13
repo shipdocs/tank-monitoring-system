@@ -65,6 +65,11 @@ export interface AlarmConfiguration {
   // Audio settings
   audioEnabled: boolean;
   audioVolume: number; // 0-100%
+  audioType: AlarmAudioType; // beep, continuous, pattern, voice
+  audioFrequency: number; // Hz for tone generation
+  beepDuration: number; // milliseconds
+  beepInterval: number; // milliseconds between beeps
+  patternRepeat: number; // number of pattern repetitions
   
   // Percentage-based thresholds (% of operation quantity)
   preAlarmPercentage: number;    // Default: 10% (when 90% complete)
@@ -152,6 +157,11 @@ export const DEFAULT_ALARM_CONFIG: AlarmConfiguration = {
   // Audio settings
   audioEnabled: true,
   audioVolume: 75,
+  audioType: 'beep',
+  audioFrequency: 800, // Maritime standard frequency
+  beepDuration: 200,
+  beepInterval: 500,
+  patternRepeat: 3,
   
   // Percentage-based thresholds
   preAlarmPercentage: 10,        // Alert when 90% complete

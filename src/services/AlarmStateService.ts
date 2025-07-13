@@ -16,25 +16,28 @@ import {
   ALARM_SEVERITY_MAP
 } from '../types/alarm';
 import { AlarmConfigurationService } from './AlarmConfigurationService';
+import { AudioAlarmService } from './AudioAlarmService';
 
 export class AlarmStateService {
   private static instance: AlarmStateService;
   private configService: AlarmConfigurationService;
+  private audioService: AudioAlarmService;
   
   // Current alarm state
   private currentStatus: AlarmStatus | null = null;
   private alarmHistory: AlarmEvent[] = [];
   
-  // Timing management
-  private stateChangeTimer: NodeJS.Timeout | null = null;
-  private alarmDelayTimer: NodeJS.Timeout | null = null;
+  // Timing management (browser-compatible timer types)
+  private stateChangeTimer: number | null = null;
+  private alarmDelayTimer: number | null = null;
   
   // Event listeners
-  private statusChangeListeners: ((status: AlarmStatus) => void)[] = [];
+  private statusChangeListeners: ((status: AlarmStatus | null) => void)[] = [];
   private alarmEventListeners: ((event: AlarmEvent) => void)[] = [];
 
   private constructor() {
     this.configService = AlarmConfigurationService.getInstance();
+    this.audioService = AudioAlarmService.getInstance();
   }
 
   static getInstance(): AlarmStateService {
@@ -135,9 +138,15 @@ export class AlarmStateService {
     this.currentStatus.requiresAcknowledgment = false;
     this.currentStatus.isAudioPlaying = false;
 
+    // Stop audio alarm
+    this.audioService.stopAlarm();
+
     // Update alarm history
     const lastEvent = this.alarmHistory[this.alarmHistory.length - 1];
-    if (lastEvent && !lastEvent.acknowledged) {
+    if (lastEvent
+        && !lastEvent.acknowledged
+        && lastEvent.alarmState === this.currentStatus.currentState
+    ) {
       lastEvent.acknowledged = true;
       lastEvent.acknowledgedAt = new Date();
       lastEvent.acknowledgedBy = acknowledgedBy;
@@ -152,14 +161,14 @@ export class AlarmStateService {
   /**
    * Add status change listener
    */
-  addStatusChangeListener(listener: (status: AlarmStatus) => void): void {
+  addStatusChangeListener(listener: (status: AlarmStatus | null) => void): void {
     this.statusChangeListeners.push(listener);
   }
 
   /**
    * Remove status change listener
    */
-  removeStatusChangeListener(listener: (status: AlarmStatus) => void): void {
+  removeStatusChangeListener(listener: (status: AlarmStatus | null) => void): void {
     const index = this.statusChangeListeners.indexOf(listener);
     if (index > -1) {
       this.statusChangeListeners.splice(index, 1);
@@ -197,8 +206,20 @@ export class AlarmStateService {
       this.alarmDelayTimer = null;
     }
 
+    // Stop any playing audio alarms
+    this.audioService.stopAlarm();
+
     // Reset status
     this.currentStatus = null;
+
+    // Notify listeners of the reset
+    this.statusChangeListeners.forEach(listener => {
+      try {
+        listener(null);
+      } catch (error) {
+        console.error('Error in alarm status change listener during reset:', error);
+      }
+    });
   }
 
   // Private helper methods
@@ -229,6 +250,9 @@ export class AlarmStateService {
     if (this.alarmHistory.length > 100) {
       this.alarmHistory = this.alarmHistory.slice(-100);
     }
+
+    // Trigger audio alarm if enabled
+    this.triggerAudioAlarm(newStatus.currentState, config);
 
     // Handle alarm delay for critical alarms
     if (this.requiresDelay(newStatus.currentState) && config.alarmDelaySeconds > 0) {
@@ -273,6 +297,36 @@ export class AlarmStateService {
   private shouldFlash(state: AlarmState, config: { flashOnAlarm: boolean }): boolean {
     if (!config.flashOnAlarm) return false;
     return state === 'OVERSHOOT_ALARM';
+  }
+
+  /**
+   * Trigger audio alarm based on state
+   */
+  private async triggerAudioAlarm(state: AlarmState, config: { audioEnabled: boolean; enableLoadingAlarms: boolean; enableUnloadingAlarms: boolean }): Promise<void> {
+    if (!config.audioEnabled) {
+      return;
+    }
+
+    // Check if operation-specific alarms are enabled
+    const currentStatus = this.getCurrentStatus();
+    if (currentStatus) {
+      if (currentStatus.operationType === 'loading' && !config.enableLoadingAlarms) {
+        return;
+      }
+      if (currentStatus.operationType === 'unloading' && !config.enableUnloadingAlarms) {
+        return;
+      }
+    }
+
+    // Get audio configuration
+    const audioConfig = this.configService.getAudioConfiguration();
+
+    try {
+      // Play alarm sound for the current state
+      await this.audioService.playAlarmForState(state, audioConfig);
+    } catch (error) {
+      console.error('Failed to play audio alarm:', error);
+    }
   }
 
   private requiresAcknowledgment(state: AlarmState): boolean {

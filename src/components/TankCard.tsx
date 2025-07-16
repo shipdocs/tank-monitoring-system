@@ -75,7 +75,21 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
   };
 
   const handleInputChange = (field: keyof TankOperationalData, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    // Handle empty string case properly
+    if (value === '') {
+      // Clear any existing error for this field
+      setErrors(prev => ({ ...prev, [field]: '' }));
+      // Set to 0 for empty values
+      setOperationalData(prev => ({ ...prev, [field]: 0 }));
+      return;
+    }
+    
+    const numValue = parseFloat(value);
+    
+    // Handle invalid number input
+    if (isNaN(numValue)) {
+      return; // Don't update state with invalid values
+    }
     
     // Validation
     let error = '';

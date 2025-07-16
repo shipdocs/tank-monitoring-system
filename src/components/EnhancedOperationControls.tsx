@@ -20,7 +20,10 @@ export const EnhancedOperationControls: React.FC<EnhancedOperationControlsProps>
 
   // Convert between m³ and MT
   const convertQuantity = useCallback((value: number, fromUnit: 'm3' | 'mt', toUnit: 'm3' | 'mt'): number => {
+    // Handle invalid inputs
+    if (!isFinite(value) || value < 0) return 0;
     if (fromUnit === toUnit) return value;
+    if (averageDensity <= 0) return 0;
     
     if (fromUnit === 'm3' && toUnit === 'mt') {
       // m³ to MT: volume * density / 1000

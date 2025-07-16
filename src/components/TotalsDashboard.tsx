@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Tank } from '../types/tank';
 import { Product } from '../types/product';
 import { TankTotalsService, GrandTotals, SetpointCalculation } from '../services/TankTotalsService';
@@ -6,8 +6,6 @@ import { AlarmStateService } from '../services/AlarmStateService';
 import { AlarmConfigurationService } from '../services/AlarmConfigurationService';
 import { AudioAlarmService } from '../services/AudioAlarmService';
 import { AlarmStatus, AlarmState, ALARM_COLOR_MAP, AlarmStateUtils, AlarmAudioType } from '../types/alarm';
-import { ProductQuickEdit } from './ProductQuickEdit';
-import { EnhancedOperationControls } from './EnhancedOperationControls';
 import { FlowRateConfigurationService } from '../services/FlowRateConfigurationService';
 import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, CheckCircle, VolumeX } from 'lucide-react';
 
@@ -191,7 +189,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
   };
 
   // Convert between m³ and MT
-  const convertQuantity = (value: number, fromUnit: 'm3' | 'mt', toUnit: 'm3' | 'mt'): number => {
+  const convertQuantity = useCallback((value: number, fromUnit: 'm3' | 'mt', toUnit: 'm3' | 'mt'): number => {
     if (fromUnit === toUnit) return value;
     
     const averageDensity = products.length > 0 ? products[0]?.density_15c_vacuum || 850 : 850;
@@ -203,7 +201,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
       // MT to m³: (mass * 1000) / density
       return (value * 1000) / averageDensity;
     }
-  };
+  }, [products]);
 
   // Update display when unit changes
   useEffect(() => {
@@ -214,7 +212,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     } else {
       setDisplayQuantity(currentM3.toString());
     }
-  }, [quantityUnit, operationQuantity, products]);
+  }, [quantityUnit, operationQuantity, products, convertQuantity]);
 
   // Handle quantity change with unit conversion
   const handleQuantityChange = (value: string) => {
@@ -234,11 +232,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     setQuantityUnit(prev => prev === 'm3' ? 'mt' : 'm3');
   };
 
-  // Handle operation quantity change (legacy function)
-  const handleOperationQuantityChange = (value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setOperationQuantity(Math.max(0, numValue)); // Ensure positive values
-  };
+
 
   const getTrendIcon = (trend: 'loading' | 'unloading' | 'stable') => {
     switch (trend) {

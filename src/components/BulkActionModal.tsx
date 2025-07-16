@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, AlertCircle, CheckCircle, Package, Thermometer, Target, Activity } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Package, Thermometer, Target } from 'lucide-react';
 import { EnhancedTank } from '../types/tankTable';
 import { Product } from '../types/product';
 import { ProductService } from '../services/ProductService';

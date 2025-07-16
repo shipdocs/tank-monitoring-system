@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface EnhancedOperationControlsProps {
   operationType: 'loading' | 'unloading';
   operationQuantity: number;
   onOperationTypeChange: (type: 'loading' | 'unloading') => void;
   onOperationQuantityChange: (value: string) => void;
-  currentMetricTons: number;
   averageDensity: number;
 }
 
@@ -14,14 +13,13 @@ export const EnhancedOperationControls: React.FC<EnhancedOperationControlsProps>
   operationQuantity,
   onOperationTypeChange,
   onOperationQuantityChange,
-  currentMetricTons,
   averageDensity
 }) => {
   const [quantityUnit, setQuantityUnit] = useState<'m3' | 'mt'>('m3');
   const [displayQuantity, setDisplayQuantity] = useState<string>(operationQuantity.toString());
 
   // Convert between m³ and MT
-  const convertQuantity = (value: number, fromUnit: 'm3' | 'mt', toUnit: 'm3' | 'mt'): number => {
+  const convertQuantity = useCallback((value: number, fromUnit: 'm3' | 'mt', toUnit: 'm3' | 'mt'): number => {
     if (fromUnit === toUnit) return value;
     
     if (fromUnit === 'm3' && toUnit === 'mt') {
@@ -31,7 +29,7 @@ export const EnhancedOperationControls: React.FC<EnhancedOperationControlsProps>
       // MT to m³: (mass * 1000) / density
       return (value * 1000) / averageDensity;
     }
-  };
+  }, [averageDensity]);
 
   // Update display when unit changes
   useEffect(() => {
@@ -42,7 +40,7 @@ export const EnhancedOperationControls: React.FC<EnhancedOperationControlsProps>
     } else {
       setDisplayQuantity(currentM3.toString());
     }
-  }, [quantityUnit, operationQuantity, averageDensity]);
+  }, [quantityUnit, operationQuantity, averageDensity, convertQuantity]);
 
   const handleQuantityChange = (value: string) => {
     setDisplayQuantity(value);

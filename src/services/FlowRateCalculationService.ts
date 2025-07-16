@@ -10,6 +10,7 @@
 
 import { Tank } from '../types/tank';
 import { DataSourceConfigurationService } from './DataSourceConfigurationService';
+import { FlowRateConfigurationService } from './FlowRateConfigurationService';
 
 export interface FlowRateData {
   tankId: number;
@@ -34,8 +35,9 @@ export interface VolumeHistory {
 export class FlowRateCalculationService {
   private static instance: FlowRateCalculationService;
   private dataSourceService: DataSourceConfigurationService;
+  private flowRateConfigService: FlowRateConfigurationService;
   
-  // Store volume history for each tank (last 10 readings)
+  // Store volume history for each tank
   private volumeHistory: Map<number, VolumeHistory[]> = new Map();
   
   // Store current flow rate data
@@ -46,6 +48,7 @@ export class FlowRateCalculationService {
 
   private constructor() {
     this.dataSourceService = DataSourceConfigurationService.getInstance();
+    this.flowRateConfigService = FlowRateConfigurationService.getInstance();
   }
 
   static getInstance(): FlowRateCalculationService {
@@ -75,9 +78,10 @@ export class FlowRateCalculationService {
     
     history.push(currentReading);
     
-    // Keep only last 10 readings (for trend analysis)
-    if (history.length > 10) {
-      history = history.slice(-10);
+    // Keep only configured number of readings for trend analysis
+    const flowRateConfig = this.flowRateConfigService.getConfiguration();
+    if (history.length > flowRateConfig.historySize) {
+      history = history.slice(-flowRateConfig.historySize);
     }
     
     this.volumeHistory.set(tankId, history);
@@ -107,8 +111,8 @@ export class FlowRateCalculationService {
     const previousVolume = previousReading.volume;
     
     // Calculate time interval using configured import interval
-    const config = this.dataSourceService.getConfiguration();
-    const configuredInterval = config.importInterval; // milliseconds
+    const dataSourceConfig = this.dataSourceService.getConfiguration();
+    const configuredInterval = dataSourceConfig.importInterval; // milliseconds
     
     // Use actual time difference as fallback
     const actualInterval = currentTime.getTime() - previousReading.timestamp.getTime();
@@ -126,15 +130,8 @@ export class FlowRateCalculationService {
     const flowRateL_per_hour = flowRateL_per_min * 60;
     const flowRateM3_per_hour = flowRateL_per_hour / 1000;
     
-    // Determine trend with stability threshold
-    const stabilityThreshold = 0.5; // L/min threshold for considering stable
-    let trend: 'loading' | 'unloading' | 'stable';
-    
-    if (Math.abs(flowRateL_per_min) < stabilityThreshold) {
-      trend = 'stable';
-    } else {
-      trend = flowRateL_per_min > 0 ? 'loading' : 'unloading';
-    }
+    // Determine trend using centralized configuration
+    const trend = this.flowRateConfigService.getTrend(flowRateM3_per_hour);
     
     // Calculate confidence based on consistency of recent readings
     const confidence = this.calculateConfidence(history, timeInterval);
@@ -195,15 +192,8 @@ export class FlowRateCalculationService {
     
     const averageConfidence = activeTankCount > 0 ? confidenceSum / activeTankCount : 0;
     
-    // Determine overall trend
-    let trend: 'loading' | 'unloading' | 'stable';
-    const stabilityThreshold = 0.1; // m³/h threshold
-    
-    if (Math.abs(totalFlowRate) < stabilityThreshold) {
-      trend = 'stable';
-    } else {
-      trend = totalFlowRate > 0 ? 'loading' : 'unloading';
-    }
+    // Determine overall trend using centralized configuration
+    const trend = this.flowRateConfigService.getTrend(totalFlowRate);
     
     return {
       totalFlowRateM3_per_hour: totalFlowRate,

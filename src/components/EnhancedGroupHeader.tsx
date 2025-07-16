@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tank } from '../types/tank';
 import { Product } from '../types/product';
 import { TankTotalsService, GroupTotals } from '../services/TankTotalsService';
+import { FlowRateConfigurationService } from '../services/FlowRateConfigurationService';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface EnhancedGroupHeaderProps {
@@ -16,6 +17,7 @@ export const EnhancedGroupHeader: React.FC<EnhancedGroupHeaderProps> = ({
   products = [] 
 }) => {
   const [totalsService] = useState(() => new TankTotalsService());
+  const [flowRateConfigService] = useState(() => FlowRateConfigurationService.getInstance());
   const [groupTotals, setGroupTotals] = useState<GroupTotals | null>(null);
 
   // Calculate group totals whenever tanks data changes
@@ -38,11 +40,9 @@ export const EnhancedGroupHeader: React.FC<EnhancedGroupHeaderProps> = ({
   };
 
   const getFlowRateDisplay = (flowRate: number): string => {
-    if (Math.abs(flowRate) < 0.1) {
-      return '0.0';
-    }
-    const sign = flowRate >= 0 ? '+' : '';
-    return `${sign}${flowRate.toFixed(1)}`;
+    // Use centralized formatting but remove units for compact display
+    const formatted = flowRateConfigService.formatFlowRate(flowRate);
+    return formatted.replace(' m³/h', ''); // Remove units for compact display
   };
 
   if (!groupTotals || groupTotals.tankCount === 0) {
@@ -70,7 +70,7 @@ export const EnhancedGroupHeader: React.FC<EnhancedGroupHeaderProps> = ({
           </div>
 
           <div className="text-center">
-            <div className="text-xs font-bold text-gray-700">WT</div>
+            <div className="text-xs font-bold text-gray-700">MT</div>
             <div className="text-xs font-black text-green-800">
               {groupTotals.totalMetricTons.toFixed(0)} MT
             </div>

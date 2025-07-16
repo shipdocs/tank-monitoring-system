@@ -6,6 +6,9 @@ import { AlarmStateService } from '../services/AlarmStateService';
 import { AlarmConfigurationService } from '../services/AlarmConfigurationService';
 import { AudioAlarmService } from '../services/AudioAlarmService';
 import { AlarmStatus, AlarmState, ALARM_COLOR_MAP, AlarmStateUtils, AlarmAudioType } from '../types/alarm';
+import { ProductQuickEdit } from './ProductQuickEdit';
+import { EnhancedOperationControls } from './EnhancedOperationControls';
+import { FlowRateConfigurationService } from '../services/FlowRateConfigurationService';
 import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, CheckCircle, VolumeX } from 'lucide-react';
 
 interface TotalsDashboardProps {
@@ -30,6 +33,10 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
   const [operationType, setOperationType] = useState<'loading' | 'unloading'>('unloading');
   const [operationQuantity, setOperationQuantity] = useState<number>(500);
   const [initialVolume, setInitialVolume] = useState<number>(0);
+
+  // Unit toggle state for operation quantity
+  const [quantityUnit, setQuantityUnit] = useState<'m3' | 'mt'>('m3');
+  const [displayQuantity, setDisplayQuantity] = useState<string>('500');
 
   // Audio test state
   const [audioTestVolume, setAudioTestVolume] = useState<number>(50);
@@ -183,7 +190,51 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     };
   };
 
-  // Handle operation quantity change
+  // Convert between m³ and MT
+  const convertQuantity = (value: number, fromUnit: 'm3' | 'mt', toUnit: 'm3' | 'mt'): number => {
+    if (fromUnit === toUnit) return value;
+    
+    const averageDensity = products.length > 0 ? products[0]?.density_15c_vacuum || 850 : 850;
+    
+    if (fromUnit === 'm3' && toUnit === 'mt') {
+      // m³ to MT: volume * density / 1000
+      return (value * averageDensity) / 1000;
+    } else {
+      // MT to m³: (mass * 1000) / density
+      return (value * 1000) / averageDensity;
+    }
+  };
+
+  // Update display when unit changes
+  useEffect(() => {
+    const currentM3 = operationQuantity;
+    if (quantityUnit === 'mt') {
+      const mt = convertQuantity(currentM3, 'm3', 'mt');
+      setDisplayQuantity(mt.toFixed(1));
+    } else {
+      setDisplayQuantity(currentM3.toString());
+    }
+  }, [quantityUnit, operationQuantity, products]);
+
+  // Handle quantity change with unit conversion
+  const handleQuantityChange = (value: string) => {
+    setDisplayQuantity(value);
+    const numValue = parseFloat(value) || 0;
+    
+    // Convert to m³ if needed
+    const m3Value = quantityUnit === 'mt' 
+      ? convertQuantity(numValue, 'mt', 'm3')
+      : numValue;
+    
+    setOperationQuantity(Math.max(0, m3Value));
+  };
+
+  // Handle unit toggle
+  const handleUnitToggle = () => {
+    setQuantityUnit(prev => prev === 'm3' ? 'mt' : 'm3');
+  };
+
+  // Handle operation quantity change (legacy function)
   const handleOperationQuantityChange = (value: string) => {
     const numValue = parseFloat(value) || 0;
     setOperationQuantity(Math.max(0, numValue)); // Ensure positive values
@@ -200,12 +251,11 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
     }
   };
 
+  // Use centralized flow rate formatting
+  const [flowRateConfigService] = useState(() => FlowRateConfigurationService.getInstance());
+  
   const getFlowRateDisplay = (flowRate: number): string => {
-    if (Math.abs(flowRate) < 0.1) {
-      return '0.0 m³/h';
-    }
-    const sign = flowRate >= 0 ? '+' : '';
-    return `${sign}${flowRate.toFixed(1)} m³/h`;
+    return flowRateConfigService.formatFlowRate(flowRate);
   };
 
   if (!grandTotals || !setpointCalc) {
@@ -237,19 +287,29 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
 
       {/* Minimal Grand Totals Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5 mb-1">
-        {/* Total Volume - Ultra Compact */}
+        {/* Total Volume - Ultra Compact with Product Info */}
         <div className="bg-blue-900 border border-blue-700 rounded-sm p-1.5 text-white text-center shadow">
           <div className="text-xs font-bold text-blue-200">VOL</div>
           <div className="text-sm font-black text-white">{grandTotals.totalVolume.toFixed(1)} m³</div>
+          {/* Product Quick Info */}
+          {products.length > 0 && (
+            <div className="text-xs text-blue-200 mt-1">
+              {products[0].name}: {products[0].density_15c_vacuum.toFixed(0)} kg/m³
+            </div>
+          )}
         </div>
 
-        {/* Total Metric Tons - Ultra Compact */}
+        {/* Total Metric Tons - Ultra Compact with Quick Stats */}
         <div className="bg-green-900 border border-green-700 rounded-sm p-1.5 text-white text-center shadow">
-          <div className="text-xs font-bold text-green-200">WT</div>
+          <div className="text-xs font-bold text-green-200">METRIC TONS</div>
           <div className="text-sm font-black text-white">{grandTotals.totalMetricTons.toFixed(1)} MT</div>
+          {/* Quick Stats */}
+          <div className="text-xs text-green-200 mt-1">
+            {products.length} Products • {setpointCalc.progressPercentage.toFixed(0)}% Fill
+          </div>
         </div>
 
-        {/* Operation Control - Load/Unload Interface with Alarm Indicator */}
+        {/* Operation Control - Load/Unload Interface with Alarm Indicator and Unit Toggle */}
         <div className={`border rounded-sm p-1.5 text-white text-center shadow transition-all duration-300 ${
           alarmStatus && alarmStatus.currentState === 'OVERSHOOT_ALARM'
             ? 'bg-red-900 border-red-700 animate-pulse'
@@ -293,24 +353,37 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
                 UNLOAD
               </button>
             </div>
+          </div>
 
-            {/* Quantity Input */}
+          {/* Quantity Input with Unit Toggle */}
+          <div className="flex items-center justify-center space-x-1 mb-1">
             <input
               type="number"
-              value={operationQuantity}
-              onChange={(e) => handleOperationQuantityChange(e.target.value)}
+              value={displayQuantity}
+              onChange={(e) => handleQuantityChange(e.target.value)}
               className="bg-white text-black border border-purple-300 rounded px-2 py-1 text-center text-sm font-black w-16"
               placeholder="500"
               min="0"
-              step="10"
-              title="Operation quantity in m³"
+              step={quantityUnit === 'mt' ? '0.1' : '10'}
+              title={`Operation quantity in ${quantityUnit === 'm3' ? 'm³' : 'MT'}`}
             />
-            <span className="text-sm font-black">m³</span>
+            <button
+              onClick={handleUnitToggle}
+              className="text-xs bg-white text-purple-900 px-2 py-1 rounded hover:bg-gray-100 font-black border border-purple-300"
+              title={`Switch to ${quantityUnit === 'm3' ? 'Metric Tons' : 'Cubic Meters'}`}
+            >
+              {quantityUnit === 'm3' ? 'm³' : 'MT'}
+            </button>
           </div>
 
-          {/* Calculated Target Display */}
+          {/* Conversion Display and Target */}
           <div className="text-xs text-purple-200">
-            → Target: {calculatedTarget.toFixed(0)}m³
+            {quantityUnit === 'm3' ? (
+              <div>≈ {convertQuantity(parseFloat(displayQuantity) || 0, 'm3', 'mt').toFixed(1)} MT</div>
+            ) : (
+              <div>≈ {convertQuantity(parseFloat(displayQuantity) || 0, 'mt', 'm3').toFixed(0)} m³</div>
+            )}
+            <div>→ Target: {calculatedTarget.toFixed(0)}m³</div>
           </div>
         </div>
 
@@ -454,7 +527,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
 
         <div className="flex items-center space-x-1">
           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <span className="text-gray-900 text-xs">{grandTotals.activeTankCount} ACT</span>
+          <span className="text-gray-900 text-xs" title="Active tanks (loading/unloading)">{grandTotals.activeTankCount} ACTIVE</span>
         </div>
 
         <div className={`flex items-center space-x-1 px-2 py-1 rounded border ${
@@ -466,7 +539,7 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
             operationType === 'loading' ? 'bg-green-600' : 'bg-orange-600'
           }`}></div>
           <span className="text-gray-900 text-sm font-black">
-            {operationType === 'loading' ? 'TO LOAD' : 'TO UNLOAD'}: {Math.abs(setpointCalc.remainingVolume).toFixed(0)} m³
+            {operationType === 'loading' ? 'REMAINING TO LOAD' : 'REMAINING TO UNLOAD'}: {Math.abs(setpointCalc.remainingVolume).toFixed(0)} m³
           </span>
         </div>
       </div>
@@ -514,6 +587,8 @@ export const TotalsDashboard: React.FC<TotalsDashboardProps> = ({
           </>
         )}
       </div>
+
+
     </div>
   );
 };

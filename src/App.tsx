@@ -50,8 +50,8 @@ function App() {
     setViewMode(defaultLayout);
   }, [defaultLayout]);
 
-  // Load products
-  useEffect(() => {
+  // Load products and set up refresh mechanism
+  const loadProducts = React.useCallback(() => {
     try {
       const loadedProducts = productService.getProducts();
       setProducts(loadedProducts);
@@ -59,6 +59,22 @@ function App() {
       console.error('Failed to load products:', error);
     }
   }, [productService]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  // Listen for product updates via custom events
+  useEffect(() => {
+    const handleProductUpdate = () => {
+      loadProducts();
+    };
+
+    window.addEventListener('productUpdated', handleProductUpdate);
+    return () => {
+      window.removeEventListener('productUpdated', handleProductUpdate);
+    };
+  }, [loadProducts]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">

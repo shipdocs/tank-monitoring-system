@@ -2,6 +2,7 @@ import { Tank } from '../types/tank';
 import { Product } from '../types/product';
 import { ASTM54BService } from './ASTM54BService';
 import { FlowRateCalculationService } from './FlowRateCalculationService';
+import { FlowRateConfigurationService } from './FlowRateConfigurationService';
 
 export interface GroupTotals {
   groupId: string;
@@ -44,9 +45,11 @@ export class TankTotalsService {
   };
 
   private flowRateService: FlowRateCalculationService;
+  private flowRateConfigService: FlowRateConfigurationService;
 
   constructor() {
     this.flowRateService = FlowRateCalculationService.getInstance();
+    this.flowRateConfigService = FlowRateConfigurationService.getInstance();
   }
 
   /**
@@ -321,18 +324,12 @@ export class TankTotalsService {
   }
 
   /**
-   * Determine trend based on flow rate
+   * Determine trend based on flow rate using centralized configuration
    */
-  private determineTrend(flowRate: number): 'loading' | 'unloading' | 'stable' {
-    const threshold = 0.1; // m³/h threshold for stability
-    
-    if (flowRate > threshold) {
-      return 'loading';
-    } else if (flowRate < -threshold) {
-      return 'unloading';
-    } else {
-      return 'stable';
-    }
+  private determineTrend(flowRateL_per_hour: number): 'loading' | 'unloading' | 'stable' {
+    // Convert L/h to m³/h for consistent threshold checking
+    const flowRateM3_per_hour = flowRateL_per_hour / 1000;
+    return this.flowRateConfigService.getTrend(flowRateM3_per_hour);
   }
 
   /**

@@ -46,6 +46,9 @@ export const ProductManagement: React.FC = () => {
         productService.deleteProduct(product.id);
         loadProducts();
         setNotification({ type: 'success', message: `Product "${product.name}" deleted successfully` });
+        
+        // Notify other components that products have been updated
+        window.dispatchEvent(new CustomEvent('productUpdated'));
       } catch (error) {
         setNotification({ type: 'error', message: `Failed to delete product: ${error.message}` });
       }
@@ -70,6 +73,9 @@ export const ProductManagement: React.FC = () => {
       loadProducts();
       setShowFormModal(false);
       setEditingProduct(null);
+      
+      // Notify other components that products have been updated
+      window.dispatchEvent(new CustomEvent('productUpdated'));
     } catch (error) {
       setNotification({ type: 'error', message: error.message });
     }

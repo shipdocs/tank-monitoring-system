@@ -97,7 +97,8 @@ export class ASTM54BService {
       alpha = -0.0033612 + 2680.32 / (density * density);
     } else if (density >= 778 && density < 839) {
       // Range 3: 778 <= density < 839 kg/m³
-      alpha = 594.5418 / (density * density);
+      // Uses the same formula as Range 2 per ASTM 54B standard
+      alpha = -0.0033612 + 2680.32 / (density * density);
     } else if (density >= 839) {
       // Range 4: density >= 839 kg/m³
       alpha = (186.9696 + 0.48618 * density) / (density * density);

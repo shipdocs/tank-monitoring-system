@@ -3,6 +3,7 @@ import { Clock, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 import { EnhancedTank } from '../types/tankTable';
 import { TankOperationalData } from '../types/product';
 import { OperationalCalculationService } from '../services/OperationalCalculationService';
+import { FlowRateConfigurationService } from '../services/FlowRateConfigurationService';
 
 interface TimeTableViewProps {
   tanks: EnhancedTank[];
@@ -16,8 +17,9 @@ export const TimeTableView: React.FC<TimeTableViewProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Service instance
+  // Service instances
   const operationalService = useMemo(() => new OperationalCalculationService(), []);
+  const [flowRateConfigService] = useState(() => FlowRateConfigurationService.getInstance());
 
   // Generate time table data
   const timeTableEntries = useMemo(() => {
@@ -160,7 +162,7 @@ export const TimeTableView: React.FC<TimeTableViewProps> = ({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           <span className={entry.flowRate > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {entry.flowRate > 0 ? '+' : ''}{(entry.flowRate ?? 0).toFixed(1)} L/min
+                            {flowRateConfigService.formatFlowRate(FlowRateConfigurationService.convertLPerMinToM3PerHour(entry.flowRate ?? 0))}
                           </span>
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${getTimeRemainingColor(entry.minutesRemaining)}`}>

@@ -17,15 +17,29 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
   const [operationalData, setOperationalData] = useState<TankOperationalData>({
     temperature: tank.temperature || 0, // Only use actual temperature, 0 as placeholder for input
     setpoint: 0,
-    flowRate: 0
+    flowRate: 0 // This will be populated from calculated flow rates, not manual input
   });
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
-  const [errors, setErrors] = useState<{temperature?: string; setpoint?: string; flowRate?: string}>({});
+  const [errors, setErrors] = useState<{temperature?: string; setpoint?: string}>({});
 
-  // Load products on mount
+  // Load products on mount and listen for updates
   useEffect(() => {
     const productService = ProductService.getInstance();
-    setProducts(productService.getProducts());
+    const loadProducts = () => {
+      setProducts(productService.getProducts());
+    };
+    
+    loadProducts();
+    
+    // Listen for product updates
+    const handleProductUpdate = () => {
+      loadProducts();
+    };
+
+    window.addEventListener('productUpdated', handleProductUpdate);
+    return () => {
+      window.removeEventListener('productUpdated', handleProductUpdate);
+    };
   }, []);
 
   // Calculate metrics whenever inputs change
@@ -322,23 +336,24 @@ export const TankCard: React.FC<TankCardProps> = ({ tank }) => {
                 )}
               </div>
               
-              {/* Flow rate input */}
+              {/* Calculated Flow Rate Display */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Flow Rate (L/min)
+                  Flow Rate (Calculated)
                 </label>
-                <input
-                  type="number"
-                  value={operationalData.flowRate}
-                  onChange={(e) => handleInputChange('flowRate', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
-                    errors.flowRate ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  step="10"
-                  placeholder="+ for filling, - for emptying"
-                />
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm">
+                  {tank.trendValue && tank.trend !== 'stable' ? (
+                    <span className={`font-medium ${
+                      tank.trend === 'loading' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {tank.trend === 'loading' ? '+' : '-'}{Math.abs(tank.trendValue || 0).toFixed(1)} mm/min
+                    </span>
+                  ) : (
+                    <span className="text-gray-500">Stable (0.0 m³/h)</span>
+                  )}
+                </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Positive for filling, negative for emptying
+                  Automatically calculated from volume changes
                 </p>
               </div>
               

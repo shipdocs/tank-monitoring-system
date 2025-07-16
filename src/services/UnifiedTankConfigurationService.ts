@@ -16,6 +16,7 @@ import { TankStorage, AppConfiguration } from '../storage/TankStorage';
 import { Tank } from '../types/tank';
 import { TankMapping, EnhancedTank } from '../types/tankTable';
 import { EnhancedTankDataService } from './EnhancedTankDataService';
+import { DefaultTankConfigurationService } from './DefaultTankConfigurationService';
 
 export interface UnifiedTankConfiguration {
   // Primary configuration from Tank Table Storage
@@ -35,11 +36,29 @@ export class UnifiedTankConfigurationService {
   private tankTableStorage: TankTableStorage;
   private legacyStorage: TankStorage;
   private enhancedDataService: EnhancedTankDataService;
+  private defaultConfigService: DefaultTankConfigurationService;
 
   constructor() {
     this.tankTableStorage = TankTableStorage.getInstance();
     this.legacyStorage = TankStorage.getInstance();
     this.enhancedDataService = new EnhancedTankDataService();
+    this.defaultConfigService = new DefaultTankConfigurationService();
+    
+    // Auto-create default configuration if needed
+    this.ensureConfigurationExists();
+  }
+
+  /**
+   * Ensure that some tank configuration exists
+   * Creates default configuration if none is found
+   */
+  private ensureConfigurationExists(): void {
+    const config = this.getUnifiedConfiguration();
+    
+    if (!config.isConfigured) {
+      console.log('🔧 No tank configuration found, creating default configuration...');
+      this.defaultConfigService.createDefaultConfigurationIfNeeded();
+    }
   }
 
   /**

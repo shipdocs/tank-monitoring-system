@@ -9,7 +9,6 @@ export interface BulkOperationalUpdate {
   productId?: string;
   temperature?: number;
   setpoint?: number;
-  flowRate?: number;
 }
 
 interface BulkActionModalProps {
@@ -29,24 +28,36 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [temperature, setTemperature] = useState<string>('');
   const [setpoint, setSetpoint] = useState<string>('');
-  const [flowRate, setFlowRate] = useState<string>('');
   
   // Checkboxes for which fields to apply
   const [applyProduct, setApplyProduct] = useState(false);
   const [applyTemperature, setApplyTemperature] = useState(false);
   const [applySetpoint, setApplySetpoint] = useState(false);
-  const [applyFlowRate, setApplyFlowRate] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const productService = useMemo(() => ProductService.getInstance(), []);
 
-  // Load products on mount
+  // Load products on mount and listen for updates
   useEffect(() => {
-    if (isOpen) {
+    const loadProducts = () => {
       const loadedProducts = productService.getProducts();
       setProducts(loadedProducts);
+    };
+
+    if (isOpen) {
+      loadProducts();
+      
+      // Listen for product updates while modal is open
+      const handleProductUpdate = () => {
+        loadProducts();
+      };
+
+      window.addEventListener('productUpdated', handleProductUpdate);
+      return () => {
+        window.removeEventListener('productUpdated', handleProductUpdate);
+      };
     }
   }, [isOpen, productService]);
 
@@ -70,7 +81,7 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
     const errors: string[] = [];
 
     // Check if at least one field is selected
-    if (!applyProduct && !applyTemperature && !applySetpoint && !applyFlowRate) {
+    if (!applyProduct && !applyTemperature && !applySetpoint) {
       errors.push('Please select at least one field to update');
     }
 
@@ -99,13 +110,7 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
       }
     }
 
-    // Validate flow rate
-    if (applyFlowRate) {
-      const flowRateValue = parseFloat(flowRate);
-      if (isNaN(flowRateValue)) {
-        errors.push('Flow rate must be a valid number');
-      }
-    }
+
 
     // Check if there are tanks to update
     if (affectedTanks.length === 0) {
@@ -137,9 +142,7 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
       updates.setpoint = parseFloat(setpoint);
     }
 
-    if (applyFlowRate && flowRate) {
-      updates.flowRate = parseFloat(flowRate);
-    }
+
 
     onApply(updates);
     handleClose();
@@ -151,11 +154,9 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
     setSelectedProductId('');
     setTemperature('');
     setSetpoint('');
-    setFlowRate('');
     setApplyProduct(false);
     setApplyTemperature(false);
     setApplySetpoint(false);
-    setApplyFlowRate(false);
     setValidationErrors([]);
     onClose();
   };
@@ -304,33 +305,7 @@ export const BulkActionModal: React.FC<BulkActionModalProps> = ({
               )}
             </div>
 
-            {/* Flow Rate */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <input
-                  type="checkbox"
-                  id="apply-flowrate"
-                  checked={applyFlowRate}
-                  onChange={(e) => setApplyFlowRate(e.target.checked)}
-                  className="mr-2"
-                />
-                <label htmlFor="apply-flowrate" className="flex items-center cursor-pointer">
-                  <Activity className="w-4 h-4 mr-2 text-gray-600" />
-                  <span className="font-medium">Update Flow Rate (L/min)</span>
-                </label>
-              </div>
-              {applyFlowRate && (
-                <input
-                  type="number"
-                  value={flowRate}
-                  onChange={(e) => setFlowRate(e.target.value)}
-                  placeholder="Enter flow rate (positive for filling, negative for emptying)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={!applyFlowRate}
-                  step="0.1"
-                />
-              )}
-            </div>
+
           </div>
 
           {/* Validation Errors */}
